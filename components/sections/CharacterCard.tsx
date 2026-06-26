@@ -1,13 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { m, useReducedMotion } from "framer-motion";
+import { m, useMotionValue, useReducedMotion, useSpring } from "framer-motion";
+import type { PointerEvent as ReactPointerEvent } from "react";
 import { Check, Plus } from "lucide-react";
 import type { Product } from "@/lib/products";
 import { useLocale } from "@/components/providers/LocaleProvider";
 import { useCart } from "@/components/providers/CartProvider";
 import { useAnnouncer } from "@/components/providers/Announcer";
-import { cardHover } from "@/lib/motion";
+import { CARD_TILT } from "@/lib/motion";
 
 const accentTint: Record<Product["accent"], string> = {
   orange: "bg-orange/15",
@@ -29,6 +30,37 @@ export function CharacterCard({ product }: { product: Product }) {
 
   const name = product.name[locale];
 
+  // 3D pointer tilt + lift. Raw motion values are set from pointer position and
+  // eased through springs, so y / scale / rotateX / rotateY compose into one
+  // smooth transform. Mouse-only; resets on leave; disabled for reduced motion.
+  const rotateX = useMotionValue(0);
+  const rotateY = useMotionValue(0);
+  const lift = useMotionValue(0);
+  const scale = useMotionValue(1);
+  const sRotateX = useSpring(rotateX, CARD_TILT.spring);
+  const sRotateY = useSpring(rotateY, CARD_TILT.spring);
+  const sLift = useSpring(lift, CARD_TILT.spring);
+  const sScale = useSpring(scale, CARD_TILT.spring);
+
+  function handlePointerMove(e: ReactPointerEvent<HTMLElement>) {
+    if (reduce || e.pointerType !== "mouse") return;
+    const r = e.currentTarget.getBoundingClientRect();
+    const px = (e.clientX - r.left) / r.width - 0.5; // -0.5 (left) … 0.5 (right)
+    const py = (e.clientY - r.top) / r.height - 0.5; // -0.5 (top)  … 0.5 (bottom)
+    rotateY.set(px * 2 * CARD_TILT.maxDeg);
+    rotateX.set(-py * 2 * CARD_TILT.maxDeg);
+    // Engage the lift on move (fires immediately + continuously over the card),
+    // which is more reliable than depending solely on pointerenter.
+    lift.set(CARD_TILT.lift);
+    scale.set(CARD_TILT.scale);
+  }
+  function handlePointerLeave() {
+    rotateX.set(0);
+    rotateY.set(0);
+    lift.set(0);
+    scale.set(1);
+  }
+
   function handleAdd() {
     add(product.id);
     announce(t("cart.added", { name }));
@@ -38,8 +70,20 @@ export function CharacterCard({ product }: { product: Product }) {
 
   return (
     <m.article
-      whileHover={reduce ? undefined : cardHover}
-      className="group flex h-full flex-col overflow-hidden rounded-clay-lg border border-line bg-surface shadow-photo transition-shadow duration-300 hover:shadow-photo-lg"
+      onPointerMove={handlePointerMove}
+      onPointerLeave={handlePointerLeave}
+      style={
+        reduce
+          ? undefined
+          : {
+              rotateX: sRotateX,
+              rotateY: sRotateY,
+              y: sLift,
+              scale: sScale,
+              transformPerspective: CARD_TILT.perspective,
+            }
+      }
+      className="group flex h-full flex-col overflow-hidden rounded-clay-lg border border-line bg-surface shadow-photo transition-shadow duration-300 [transform-style:preserve-3d] hover:shadow-photo-lg"
     >
       {/* image tile */}
       <div className={`relative ${accentTint[product.accent]} p-4`}>

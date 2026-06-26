@@ -86,10 +86,16 @@ export const chipBob = (offset: number) => ({
   },
 });
 
-/** Hover for character cards — a clean straight float (no tilt), like a photo
- *  lifting off the page; pairs with the warm `shadow-photo-lg` bloom. */
-export const cardHover = {
-  y: -10,
+/**
+ * Character-card hover: a clean lift + scale, plus a subtle 3D tilt toward the
+ * cursor. Driven by motion values in CharacterCard (not a `whileHover` target),
+ * so every transform part — y, scale, rotateX/rotateY — composes into one
+ * smooth, springy matrix. Mouse-only; gated on reduced motion at the call site.
+ */
+export const CARD_TILT = {
+  spring: { stiffness: 240, damping: 20, mass: 0.6 } as const,
+  maxDeg: 7, // peak tilt, in degrees, toward the pointer
+  lift: -10, // px the card floats on hover
   scale: 1.03,
-  transition: { type: "spring" as const, stiffness: 240, damping: 20 },
-};
+  perspective: 850, // smaller = more dramatic depth
+} as const;
