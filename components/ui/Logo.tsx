@@ -1,15 +1,15 @@
 /**
  * Dalia's Corner brand logo — the real hand-drawn lockup
  * (wordmark + the little potted characters + "A Little Corner of Love" ribbon).
- * Transparent PNG, so it drops cleanly onto the site canvas and any light
+ * Transparent WebP, so it drops cleanly onto the site canvas and any light
  * surface; sit it on a light tile when it's placed on a dark one (see the footer).
  *
- * Swap the file at /public/logo-trans.png to update it everywhere — markup won't change.
+ * Swap the file at /public/logo-trans.webp to update it everywhere — markup won't change.
  */
 
 import { asset } from "@/lib/asset";
 
-const LOGO_SRC = asset("/logo-trans.png");
+const LOGO_SRC = asset("/logo-trans.webp");
 
 export function Logo({
   className = "",
@@ -24,8 +24,8 @@ export function Logo({
     <img
       src={LOGO_SRC}
       alt={alt}
-      width={1920}
-      height={1920}
+      width={256}
+      height={256}
       draggable={false}
       className={`block select-none ${className}`}
     />
