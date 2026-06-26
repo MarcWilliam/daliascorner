@@ -25,6 +25,11 @@ export interface Product {
    * automatically shows per-item price + subtotal. Currency label lives in the dictionaries.
    */
   price?: number;
+  /**
+   * OPTIONAL "was" price. When set above `price`, the card and cart show it
+   * struck through to signal a discount (and the cart sums the total savings).
+   */
+  originalPrice?: number;
 }
 
 /**
@@ -46,6 +51,8 @@ export const PRODUCTS: Product[] = [
       ar: "بحيرة — أصيص فخّار على شكل بطة كريمي بمنقار وأرجل برتقالية.",
     },
     accent: "orange",
+    price: 650,
+    originalPrice: 750,
   },
   {
     id: "shokat",
@@ -60,6 +67,8 @@ export const PRODUCTS: Product[] = [
       ar: "شوكت — أصيص فخّار على شكل ثعلب من الطين والكريمي بودان مدببة وخطم أبيض وشوارب.",
     },
     accent: "clay",
+    price: 650,
+    originalPrice: 750,
   },
   {
     id: "shokareya",
@@ -74,6 +83,8 @@ export const PRODUCTS: Product[] = [
       ar: "شكرية — أصيص فخّار بلون أخضر مريمي بوجه هادي ونعسان.",
     },
     accent: "leaf",
+    price: 650,
+    originalPrice: 750,
   },
 ];
 

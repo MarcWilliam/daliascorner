@@ -30,6 +30,7 @@ export const ENABLE_BROWSER_LOCALE_DETECTION = true;
 /** localStorage keys */
 export const STORAGE_LOCALE = "dalias-corner.locale";
 export const STORAGE_CART = "dalias-corner.cart";
+export const STORAGE_CUSTOMER = "dalias-corner.customer";
 
 /** Build a WhatsApp deep link with a pre-filled, URL-encoded message body. */
 export function whatsappLink(message: string): string {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Minus, Plus, ShoppingBag, Trash2, X } from "lucide-react";
 import { useCart } from "@/components/providers/CartProvider";
 import { useLocale } from "@/components/providers/LocaleProvider";
@@ -8,14 +8,62 @@ import { useAnnouncer } from "@/components/providers/Announcer";
 import { ClayButton } from "@/components/ui/ClayButton";
 import { WhatsAppIcon, InstagramIcon } from "@/components/ui/BrandIcons";
 import { getProduct } from "@/lib/products";
-import { buildOrderLink, buildOrderMessage } from "@/lib/whatsapp";
-import { INSTAGRAM_DM_URL } from "@/lib/config";
+import { buildOrderLink, buildOrderMessage, type Customer } from "@/lib/whatsapp";
+import { INSTAGRAM_DM_URL, STORAGE_CUSTOMER } from "@/lib/config";
 
 export function CartDrawer() {
   const { lines, count, isOpen, close, increment, decrement, remove, hasPrices, subtotal } =
     useCart();
   const { t, locale, dir, messages } = useLocale();
   const announce = useAnnouncer();
+
+  const [customer, setCustomer] = useState<Customer>({ name: "", phone: "", address: "" });
+  const [copied, setCopied] = useState(false);
+
+  // Load any saved delivery details once on mount.
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(STORAGE_CUSTOMER);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === "object") {
+          setCustomer({
+            name: String(parsed.name ?? ""),
+            phone: String(parsed.phone ?? ""),
+            address: String(parsed.address ?? ""),
+          });
+        }
+      }
+    } catch {
+      /* ignore corrupt storage */
+    }
+  }, []);
+
+  // Persist details so returning customers don't retype them.
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(STORAGE_CUSTOMER, JSON.stringify(customer));
+    } catch {
+      /* ignore */
+    }
+  }, [customer]);
+
+  const updateField =
+    (key: keyof Customer) => (e: React.ChangeEvent<HTMLInputElement>) =>
+      setCustomer((c) => ({ ...c, [key]: e.target.value }));
+
+  const detailsComplete =
+    customer.name.trim() !== "" &&
+    customer.phone.trim() !== "" &&
+    customer.address.trim() !== "";
+  const canCheckout = lines.length > 0 && detailsComplete;
+
+  // Total saved vs. original prices (for the discount line in the summary).
+  const savings = lines.reduce((sum, l) => {
+    const p = getProduct(l.id);
+    if (p?.price == null || p.originalPrice == null) return sum;
+    return sum + Math.max(0, p.originalPrice - p.price) * l.qty;
+  }, 0);
 
   const panelRef = useRef<HTMLDivElement | null>(null);
   const closeBtnRef = useRef<HTMLButtonElement | null>(null);
@@ -72,18 +120,21 @@ export function CartDrawer() {
     }
   }, [isOpen]);
 
-  const checkoutHref = buildOrderLink(lines, locale, messages);
+  const checkoutHref = buildOrderLink(lines, locale, messages, customer);
 
   // Instagram has no DM pre-fill, so mirror the WhatsApp flow by copying the same
-  // order text to the clipboard for the customer to paste, then open the DM thread.
+  // order text (delivery details included) to the clipboard for the customer to
+  // paste, then open the DM thread.
   const handleInstagramCheckout = useCallback(() => {
     navigator.clipboard
-      ?.writeText(buildOrderMessage(lines, locale, messages))
+      ?.writeText(buildOrderMessage(lines, locale, messages, customer))
       .catch(() => {
         /* clipboard may be blocked; the DM still opens */
       });
     announce(t("cart.copiedForInstagram"));
-  }, [lines, locale, messages, announce, t]);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 2200);
+  }, [lines, locale, messages, customer, announce, t]);
 
   // Off-screen slide direction follows the inline-end side (mirrors in RTL).
   const offClass = isOpen
@@ -229,11 +280,21 @@ export function CartDrawer() {
         {/* footer / checkout */}
         <div className="border-t border-line px-5 py-4">
           {hasPrices ? (
-            <div className="mb-3 flex items-center justify-between font-display text-lg font-bold text-ink">
-              <span>{t("cart.subtotal")}</span>
-              <span className="tabular">
-                {subtotal} {messages.cart.currency}
-              </span>
+            <div className="mb-3 space-y-1">
+              <div className="flex items-center justify-between font-display text-lg font-bold text-ink">
+                <span>{t("cart.subtotal")}</span>
+                <span className="tabular">
+                  {subtotal} {messages.cart.currency}
+                </span>
+              </div>
+              {savings > 0 && (
+                <div className="flex items-center justify-between text-sm font-semibold text-brand">
+                  <span>{t("cart.savings")}</span>
+                  <span className="tabular">
+                    -{savings} {messages.cart.currency}
+                  </span>
+                </div>
+              )}
             </div>
           ) : (
             <p className="mb-3 text-sm leading-relaxed text-ink-muted">
@@ -241,8 +302,59 @@ export function CartDrawer() {
             </p>
           )}
 
+          {/* delivery details — required before checkout */}
+          {lines.length > 0 && (
+            <div className="mb-3 space-y-2">
+              <p className="font-display text-sm font-semibold text-ink">
+                {t("cart.detailsTitle")}
+              </p>
+              <label htmlFor="cart-name" className="sr-only">
+                {t("cart.name")}
+              </label>
+              <input
+                id="cart-name"
+                type="text"
+                autoComplete="name"
+                value={customer.name}
+                onChange={updateField("name")}
+                placeholder={t("cart.namePlaceholder")}
+                className="w-full rounded-clay border border-line bg-surface px-3.5 py-2.5 text-ink placeholder:text-ink-muted focus-visible:border-brand focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/45"
+              />
+              <label htmlFor="cart-phone" className="sr-only">
+                {t("cart.phone")}
+              </label>
+              <input
+                id="cart-phone"
+                type="tel"
+                inputMode="tel"
+                autoComplete="tel"
+                value={customer.phone}
+                onChange={updateField("phone")}
+                placeholder={t("cart.phonePlaceholder")}
+                className="w-full rounded-clay border border-line bg-surface px-3.5 py-2.5 text-ink placeholder:text-ink-muted focus-visible:border-brand focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/45"
+              />
+              <label htmlFor="cart-address" className="sr-only">
+                {t("cart.address")}
+              </label>
+              <input
+                id="cart-address"
+                type="text"
+                autoComplete="street-address"
+                value={customer.address}
+                onChange={updateField("address")}
+                placeholder={t("cart.addressPlaceholder")}
+                className="w-full rounded-clay border border-line bg-surface px-3.5 py-2.5 text-ink placeholder:text-ink-muted focus-visible:border-brand focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/45"
+              />
+              {!detailsComplete && (
+                <p className="text-xs leading-relaxed text-ink-muted">
+                  {t("cart.detailsRequired")}
+                </p>
+              )}
+            </div>
+          )}
+
           <div className="space-y-2.5">
-            {lines.length === 0 ? (
+            {!canCheckout ? (
               <>
                 <ClayButton variant="whatsapp" className="w-full" disabled type="button">
                   <WhatsAppIcon className="h-5 w-5" />
@@ -274,7 +386,7 @@ export function CartDrawer() {
                   onClick={handleInstagramCheckout}
                 >
                   <InstagramIcon className="h-5 w-5" />
-                  {t("cart.checkoutInstagram")}
+                  {copied ? t("cart.copied") : t("cart.checkoutInstagram")}
                 </ClayButton>
               </>
             )}

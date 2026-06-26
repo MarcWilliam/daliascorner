@@ -101,7 +101,16 @@
     "checkout": "Checkout on WhatsApp",
     "checkoutInstagram": "Order on Instagram",
     "copiedForInstagram": "Order details copied — paste them into your Instagram chat with us.",
-    "inCart": "{count} in cart",
+    "copied": "Copied — paste in your DM",
+    "detailsTitle": "Your delivery details",
+    "detailsRequired": "Add your name, phone, and address to place the order.",
+    "name": "Name",
+    "namePlaceholder": "Your name",
+    "phone": "Phone number",
+    "phonePlaceholder": "e.g. 010 1234 5678",
+    "address": "Address",
+    "addressPlaceholder": "Area, street, building, floor…",
+    "savings": "You save",
     "requestNote": "No prices here — it's a wishlist. We'll settle the details and shipping together on WhatsApp.",
     "subtotal": "Subtotal",
     "currency": "EGP",
@@ -111,6 +120,9 @@
   "whatsapp": {
     "greeting": "Hi Dalia's Corner! 🌿 I'd like to order:",
     "line": "• {name} × {qty}",
+    "name": "Name",
+    "phone": "Phone",
+    "address": "Address",
     "closing": "Could you help me with the details and shipping?"
   }
 }
