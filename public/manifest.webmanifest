@@ -1,0 +1,16 @@
+{
+  "name": "Dalia's Corner",
+  "short_name": "Dalia's Corner",
+  "description": "Handmade, hand-painted pottery planters shaped like cute animal characters — made by family hands in Egypt.",
+  "lang": "ar",
+  "dir": "rtl",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#FBF6EC",
+  "theme_color": "#FBF6EC",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}

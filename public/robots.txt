@@ -1,0 +1,80 @@
+# Dalia's Corner — https://daliascorner.com
+# Search engines and AI / answer-engine crawlers are welcome.
+# Brand facts also live in /llms.txt and in on-page JSON-LD (Organization, Product, FAQPage).
+
+User-agent: *
+Allow: /
+
+# --- OpenAI (ChatGPT) ---
+User-agent: GPTBot
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+# --- Anthropic (Claude) ---
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Claude-User
+Allow: /
+
+User-agent: Claude-SearchBot
+Allow: /
+
+# --- Perplexity ---
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Perplexity-User
+Allow: /
+
+# --- Google (Gemini / AI training opt-in; normal Googlebot indexing is unaffected) ---
+User-agent: Google-Extended
+Allow: /
+
+# --- Apple ---
+User-agent: Applebot
+Allow: /
+
+User-agent: Applebot-Extended
+Allow: /
+
+# --- Microsoft (Bing / Copilot) ---
+User-agent: Bingbot
+Allow: /
+
+# --- Common Crawl (used by many LLM training sets) ---
+User-agent: CCBot
+Allow: /
+
+# --- Amazon ---
+User-agent: Amazonbot
+Allow: /
+
+# --- Meta (AI + link previews) ---
+User-agent: Meta-ExternalAgent
+Allow: /
+
+User-agent: Meta-ExternalFetcher
+Allow: /
+
+User-agent: FacebookBot
+Allow: /
+
+# --- Mistral (Le Chat) ---
+User-agent: MistralAI-User
+Allow: /
+
+# --- ByteDance (TikTok) ---
+User-agent: Bytespider
+Allow: /
+
+# --- DuckDuckGo (DuckAssist) ---
+User-agent: DuckAssistBot
+Allow: /
+
+Sitemap: https://daliascorner.com/sitemap.xml

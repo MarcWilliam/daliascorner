@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Single-URL bilingual site: both locales (ar/en) are served at the home URL
+     via an in-page language toggle, declared here as hreflang alternates. -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  <url>
+    <loc>https://daliascorner.com/</loc>
+    <lastmod>2026-06-27</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>1.0</priority>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://daliascorner.com/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://daliascorner.com/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://daliascorner.com/"/>
+  </url>
+</urlset>

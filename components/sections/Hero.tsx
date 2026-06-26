@@ -189,6 +189,9 @@ export function Hero() {
               alt={HERO_ALT[locale]}
               width={640}
               height={640}
+              // LCP image — fetch eagerly with high priority for Core Web Vitals.
+              fetchPriority="high"
+              decoding="async"
               className="h-full w-full object-cover"
             />
           </m.div>
