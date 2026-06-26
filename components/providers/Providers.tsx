@@ -4,6 +4,7 @@ import { LazyMotion, domAnimation } from "framer-motion";
 import { LocaleProvider } from "./LocaleProvider";
 import { AnnouncerProvider } from "./Announcer";
 import { CartProvider } from "./CartProvider";
+import { DeviceTiltProvider } from "./DeviceTiltProvider";
 
 /**
  * Single client boundary: locale + cart + a11y announcer.
@@ -16,7 +17,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <LazyMotion features={domAnimation} strict>
       <LocaleProvider>
         <AnnouncerProvider>
-          <CartProvider>{children}</CartProvider>
+          <CartProvider>
+            <DeviceTiltProvider>{children}</DeviceTiltProvider>
+          </CartProvider>
         </AnnouncerProvider>
       </LocaleProvider>
     </LazyMotion>

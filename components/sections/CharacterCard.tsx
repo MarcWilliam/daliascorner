@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { m, useMotionValue, useReducedMotion, useSpring } from "framer-motion";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import { Minus, Plus } from "lucide-react";
@@ -7,7 +8,8 @@ import type { Product } from "@/lib/products";
 import { useLocale } from "@/components/providers/LocaleProvider";
 import { useCart } from "@/components/providers/CartProvider";
 import { useAnnouncer } from "@/components/providers/Announcer";
-import { CARD_TILT } from "@/lib/motion";
+import { useDeviceTilt } from "@/components/providers/DeviceTiltProvider";
+import { CARD_GYRO, CARD_TILT } from "@/lib/motion";
 
 const accentTint: Record<Product["accent"], string> = {
   orange: "bg-orange/15",
@@ -25,14 +27,18 @@ export function CharacterCard({ product }: { product: Product }) {
   const { add, increment, decrement, lines } = useCart();
   const announce = useAnnouncer();
   const reduce = useReducedMotion();
+  const tilt = useDeviceTilt();
+  const gyroActive = tilt.status === "active";
 
   const name = product.name[locale];
   // How many of this character are currently in the cart.
   const qty = lines.find((l) => l.id === product.id)?.qty ?? 0;
 
-  // 3D pointer tilt + lift. Raw motion values are set from pointer position and
-  // eased through springs, so y / scale / rotateX / rotateY compose into one
-  // smooth transform. Mouse-only; resets on leave; disabled for reduced motion.
+  // 3D tilt + lift. Raw motion values are set from one of three inputs and eased
+  // through springs, so y / scale / rotateX / rotateY compose into one smooth
+  // transform: a mouse over the card (desktop), a finger dragging across it
+  // (touch), or the phone's gyroscope leaning the whole grid (mobile, ambient).
+  // All gated on reduced motion. While a finger is down, touch wins over gyro.
   const rotateX = useMotionValue(0);
   const rotateY = useMotionValue(0);
   const lift = useMotionValue(0);
@@ -41,9 +47,33 @@ export function CharacterCard({ product }: { product: Product }) {
   const sRotateY = useSpring(rotateY, CARD_TILT.spring);
   const sLift = useSpring(lift, CARD_TILT.spring);
   const sScale = useSpring(scale, CARD_TILT.spring);
+  // True between pointerdown and pointerup/cancel for a touch on this card.
+  const touching = useRef(false);
 
+  // Ambient gyroscope lean: subscribe to the shared device tilt and write it
+  // into this card's raw values — unless a finger is currently driving the card.
+  useEffect(() => {
+    if (!gyroActive || reduce) return;
+    const apply = () => {
+      if (touching.current) return;
+      rotateY.set(tilt.tiltX.get() * CARD_GYRO.maxDeg);
+      rotateX.set(tilt.tiltY.get() * CARD_GYRO.maxDeg);
+    };
+    const ux = tilt.tiltX.on("change", apply);
+    const uy = tilt.tiltY.on("change", apply);
+    return () => {
+      ux();
+      uy();
+    };
+  }, [gyroActive, reduce, tilt.tiltX, tilt.tiltY, rotateX, rotateY]);
+
+  // Pointer drives the tilt toward the cursor (mouse) or finger (touch). The
+  // card's `touch-action: pan-y` lets vertical swipes scroll the page (the
+  // browser then fires pointercancel, handled below), while horizontal drags
+  // tilt the card.
   function handlePointerMove(e: ReactPointerEvent<HTMLElement>) {
-    if (reduce || e.pointerType !== "mouse") return;
+    if (reduce) return;
+    if (e.pointerType === "touch") touching.current = true;
     const r = e.currentTarget.getBoundingClientRect();
     const px = (e.clientX - r.left) / r.width - 0.5; // -0.5 (left) … 0.5 (right)
     const py = (e.clientY - r.top) / r.height - 0.5; // -0.5 (top)  … 0.5 (bottom)
@@ -54,11 +84,27 @@ export function CharacterCard({ product }: { product: Product }) {
     lift.set(CARD_TILT.lift);
     scale.set(CARD_TILT.scale);
   }
-  function handlePointerLeave() {
-    rotateX.set(0);
-    rotateY.set(0);
+  // Return the card to rest, or — if the gyroscope is live — hand control back
+  // to it by snapping to the current device lean so there's no visible jump.
+  function rest() {
+    if (gyroActive && !reduce) {
+      rotateY.set(tilt.tiltX.get() * CARD_GYRO.maxDeg);
+      rotateX.set(tilt.tiltY.get() * CARD_GYRO.maxDeg);
+    } else {
+      rotateX.set(0);
+      rotateY.set(0);
+    }
     lift.set(0);
     scale.set(1);
+  }
+  function handlePointerLeave() {
+    // Mouse left the card; a touch never fires this, so it's safe to rest.
+    rest();
+  }
+  function handlePointerUp(e: ReactPointerEvent<HTMLElement>) {
+    if (e.pointerType !== "touch") return;
+    touching.current = false;
+    rest();
   }
 
   function handleAdd() {
@@ -70,6 +116,8 @@ export function CharacterCard({ product }: { product: Product }) {
     <m.article
       onPointerMove={handlePointerMove}
       onPointerLeave={handlePointerLeave}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerUp}
       style={
         reduce
           ? undefined
@@ -81,7 +129,7 @@ export function CharacterCard({ product }: { product: Product }) {
               transformPerspective: CARD_TILT.perspective,
             }
       }
-      className="group flex h-full flex-col overflow-hidden rounded-clay-lg border border-line bg-surface shadow-photo transition-shadow duration-300 [transform-style:preserve-3d] hover:shadow-photo-lg"
+      className="group flex h-full flex-col overflow-hidden rounded-clay-lg border border-line bg-surface shadow-photo transition-shadow duration-300 [touch-action:pan-y] [transform-style:preserve-3d] hover:shadow-photo-lg"
     >
       {/* image tile */}
       <div className={`relative ${accentTint[product.accent]} p-4`}>

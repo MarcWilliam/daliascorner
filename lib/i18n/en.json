@@ -34,7 +34,8 @@
   },
   "characters": {
     "title": "Meet the *Characters*",
-    "intro": "Meet the family — each character has its own mood and story. Pick the one that feels like you."
+    "intro": "Meet the family — each character has its own mood and story. Pick the one that feels like you.",
+    "tiltHint": "Tilt to explore"
   },
   "why": {
     "title": "Why *Dalia's Corner*?",

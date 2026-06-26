@@ -54,8 +54,10 @@ export function Footer() {
 
       <div className="relative container-page flex flex-col items-center gap-7 py-12 text-center">
         <div className="flex items-center gap-3">
-          {/* Cream lockup reads as a badge against the dark footer. */}
-          <Logo className="h-16 w-16 rounded-2xl shadow-clay-sm" />
+          {/* Cream tile keeps the transparent lockup legible on the dark footer. */}
+          <span className="grid place-items-center rounded-2xl bg-canvas p-2.5 shadow-clay-sm">
+            <Logo className="h-16 w-16" />
+          </span>
         </div>
 
         <p className="font-display text-lg font-semibold text-canvas/95">

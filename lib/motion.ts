@@ -99,3 +99,19 @@ export const CARD_TILT = {
   scale: 1.03,
   perspective: 850, // smaller = more dramatic depth
 } as const;
+
+/**
+ * Mobile companion to CARD_TILT. On phones the same cards lean from two inputs:
+ *  • gyroscope — the whole grid tilts ambiently toward the way the device is
+ *    physically held (auto on Android; tap-to-enable on iOS, which gates the
+ *    sensor behind a permission prompt). Kept gentler than the mouse tilt — a
+ *    smaller peak with a deadzone — so it reads as calm ambience, not jitter.
+ *  • touch — drag across a card and it tilts toward your finger, reusing the
+ *    pointer math from CARD_TILT (lift + scale included) for desktop parity.
+ * Both are reduced-motion gated at the call site, exactly like the mouse tilt.
+ */
+export const CARD_GYRO = {
+  maxDeg: 5, // peak tilt from device orientation (below the mouse's 7° on purpose)
+  range: 20, // degrees of physical device tilt that map to the full peak
+  deadzone: 1.5, // degrees of slack around neutral — swallow resting-hand jitter
+} as const;
