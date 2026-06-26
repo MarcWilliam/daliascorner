@@ -1,0 +1,35 @@
+/**
+ * Dalia's Corner — site-wide constants.
+ * Edit these in ONE place. Anything marked PLACEHOLDER must be filled before launch.
+ */
+
+import type { Locale } from "./i18n/types";
+
+/**
+ * PLACEHOLDER — real WhatsApp number not provided yet.
+ * Format: country code + number, digits only, no "+", spaces, or dashes.
+ * Egypt example shape: "201001234567". The deep links below stay broken until
+ * this is replaced with the real business number.
+ */
+export const WHATSAPP_NUMBER = "201000000000"; // TODO: replace with Dalia's Corner WhatsApp number
+export const WHATSAPP_NUMBER_IS_PLACEHOLDER = true; // set false once the real number is in
+
+/** Social handles / URLs */
+export const INSTAGRAM_HANDLE = "bydaliascorner";
+export const INSTAGRAM_URL = `https://instagram.com/${INSTAGRAM_HANDLE}`;
+/** PLACEHOLDER — drop the real Facebook page URL here to show the FB link. */
+export const FACEBOOK_URL = ""; // TODO: e.g. "https://facebook.com/daliascorner"
+
+/** i18n defaults */
+export const DEFAULT_LOCALE: Locale = "ar"; // flip to "en" here to change the default
+export const LOCALES: Locale[] = ["ar", "en"];
+export const ENABLE_BROWSER_LOCALE_DETECTION = true;
+
+/** localStorage keys */
+export const STORAGE_LOCALE = "dalias-corner.locale";
+export const STORAGE_CART = "dalias-corner.cart";
+
+/** Build a WhatsApp deep link with a pre-filled, URL-encoded message body. */
+export function whatsappLink(message: string): string {
+  return `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
+}

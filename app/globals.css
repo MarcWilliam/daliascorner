@@ -1,0 +1,198 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ===========================================================================
+   Dalia's Corner — Design Tokens (Stage 1, approved)
+   Single source of truth. Markup references Tailwind tokens, never raw hex.
+   A future dark mode only needs to override these variables under .dark.
+   =========================================================================== */
+:root {
+  /* Brand greens — the anchor */
+  --brand: #3a5a40;
+  --brand-deep: #2f4a34;
+  --brand-edge: #233a29; /* pressed-clay bottom edge */
+
+  /* Canvas — warm cream */
+  --canvas: #fbf6ec;
+  --canvas-sunk: #f3ecdc; /* slightly deeper cream for inset / alt sections */
+  --surface: #fffdf8; /* cards / drawer */
+
+  /* Ink — warm-green near-black */
+  --ink: #1e2b22;
+  --ink-muted: #5c6b5a;
+
+  /* Terracotta clay — surfaces / frames / borders (mid-tone, AA-aware) */
+  --clay: #c07a4e;
+  --clay-deep: #9c5a34; /* terracotta accent TEXT — AA 4.5:1+ on cream & surface */
+  --clay-edge: #8f5230;
+  --clay-soft: #ecd6c4; /* tints for soft fills */
+
+  /* Warm accent — duck-beak orange (dark ink text only, never white) */
+  --orange: #e8924a;
+  --orange-edge: #c9742e;
+
+  /* Soft accents — succulent */
+  --mauve: #a98bb0;
+  --mauve-soft: #e6dceb;
+  --leaf: #8faa7c;
+  --leaf-soft: #dde7d2;
+
+  --line: #e7ddca; /* hairline borders on cream */
+  --destructive: #c0492b;
+
+  /* Typography tokens */
+  --font-display: "Baloo 2", "Baloo Bhaijaan 2", system-ui, sans-serif;
+  --font-body: "Cairo", system-ui, "Segoe UI", sans-serif;
+
+  /* Z-index scale */
+  --z-nav: 40;
+  --z-drawer: 100;
+  --z-toast: 120;
+
+  color-scheme: light;
+}
+
+@layer base {
+  * {
+    border-color: var(--line);
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: var(--canvas);
+    color: var(--ink);
+    font-family: var(--font-body);
+    /* Subtle paper/clay grain — handcrafted texture, very low opacity */
+    background-image: var(--grain);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Arabic reads a touch larger / looser for comfort */
+  html[lang="ar"] body {
+    line-height: 1.75;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    line-height: 1.12;
+    color: var(--ink);
+    letter-spacing: -0.01em;
+  }
+  html[lang="ar"] h1,
+  html[lang="ar"] h2,
+  html[lang="ar"] h3,
+  html[lang="ar"] h4 {
+    letter-spacing: 0; /* never tighten Arabic */
+    line-height: 1.3;
+  }
+
+  /* Visible, on-brand focus ring for keyboard users */
+  :focus-visible {
+    outline: 3px solid var(--brand);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+
+  /* Tabular figures for quantities so steppers don't jump width */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@layer components {
+  /* Reusable section rhythm */
+  .section {
+    padding-block: clamp(3.5rem, 8vw, 6.5rem);
+  }
+  .container-page {
+    width: 100%;
+    max-width: 72rem; /* max-w-6xl-ish */
+    margin-inline: auto;
+    padding-inline: clamp(1.1rem, 4vw, 2rem);
+  }
+
+  /* Claymorphic button: puffy with a darker bottom "edge" that compresses on press.
+     Variants set --edge + their own bg/text colours via Tailwind utilities. */
+  .btn-clay {
+    --edge: var(--brand-edge);
+    position: relative;
+    box-shadow:
+      0 6px 0 0 var(--edge),
+      0 10px 22px rgba(58, 90, 64, 0.18);
+    transition:
+      transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1),
+      box-shadow 0.18s ease-out,
+      background-color 0.18s ease-out;
+  }
+  .btn-clay:hover {
+    transform: translateY(-1px);
+    box-shadow:
+      0 7px 0 0 var(--edge),
+      0 14px 26px rgba(58, 90, 64, 0.22);
+  }
+  .btn-clay:active {
+    transform: translateY(4px);
+    box-shadow:
+      0 2px 0 0 var(--edge),
+      0 5px 12px rgba(58, 90, 64, 0.18);
+  }
+  .btn-clay:disabled,
+  .btn-clay[aria-disabled="true"] {
+    transform: none;
+    box-shadow: 0 4px 0 0 var(--edge);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .btn-clay,
+    .btn-clay:hover,
+    .btn-clay:active {
+      transform: none;
+    }
+  }
+}
+
+/* Paper grain as an inline SVG (no network, tiny). */
+:root {
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+}
+
+/* ---- Scroll-in reveal (progressive enhancement) ---- */
+.reveal {
+  opacity: 0;
+  transform: translateY(20px);
+  transition:
+    opacity 0.6s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: opacity, transform;
+}
+.reveal.is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+/* ---- Reduced motion: honour the user's preference everywhere ---- */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  .reveal {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

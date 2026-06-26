@@ -1,0 +1,113 @@
+{
+  "meta": {
+    "title": "Dalia's Corner — A Little Corner of Love",
+    "description": "Handmade, hand-painted pottery planters shaped like cute animal characters. Born from clay and painted by family hands in Egypt. Meet Bahira, Shokat & Shokareya."
+  },
+  "lang": {
+    "switch": "العربية",
+    "toggleAria": "Switch language to Arabic"
+  },
+  "nav": {
+    "story": "Our Story",
+    "characters": "Characters",
+    "why": "Why Us",
+    "order": "How to Order",
+    "faq": "FAQ",
+    "orderWhatsapp": "Order on WhatsApp",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu",
+    "skip": "Skip to main content"
+  },
+  "hero": {
+    "badge": "Handmade in Egypt",
+    "wordmark": "Dalia's Corner",
+    "wordmarkSub": "A Little Corner of Love",
+    "subheadline": "Not just planters… they're *characters* with stories, born from clay and painted by family hands.",
+    "supporting": "Choose the character that will live in your corner and keep your plants company.",
+    "ctaShop": "Shop the characters",
+    "ctaWhatsapp": "Message us on WhatsApp",
+    "trust": ["100% Handmade", "Hand-painted", "One-of-a-kind", "Ships across Egypt"]
+  },
+  "about": {
+    "title": "Our *Story*",
+    "body": "It all started with Mama Dalia's love for plants and for working with her hands. From that love, Dalia's Corner was born: a family project we work on together — my mother, my sisters, and I. We shape clay by hand into pottery characters with soul and story, painting each piece one by one — so every single one comes out unique, with no other like it in the world."
+  },
+  "characters": {
+    "title": "Meet the *Characters*",
+    "intro": "Meet the family — each character has its own mood and story. Pick the one that feels like you."
+  },
+  "why": {
+    "title": "Why *Dalia's Corner*?",
+    "points": [
+      "Every pottery piece is fully handmade and hand-painted by the family",
+      "A unique character, no two ever alike",
+      "Perfect for succulents, cacti, and small plants",
+      "Packed with love and care to reach you safely"
+    ]
+  },
+  "order": {
+    "title": "How to *Order*",
+    "primaryTitle": "Cart & checkout",
+    "primaryBody": "Add the characters you love to your cart, then checkout — we'll pick it up on WhatsApp with your list ready.",
+    "primaryCta": "Shop the characters",
+    "altHeading": "Found a character you love?",
+    "altBody": "Screenshot the one you want and send it to us on Instagram or WhatsApp. We'll sort out the details and ship it to your doorstep anywhere in Egypt.",
+    "altInstagram": "Order on Instagram",
+    "altWhatsapp": "Message us on WhatsApp"
+  },
+  "faq": {
+    "title": "Questions, *answered*",
+    "items": [
+      {
+        "q": "Do you ship across Egypt?",
+        "a": "Yes, we ship to all governorates. Cost and time vary by location, and we'll share the details when confirming your order."
+      },
+      {
+        "q": "Are the pieces identical?",
+        "a": "No, each one is hand-painted, so you might find small differences — and that's exactly what makes every piece unique."
+      },
+      {
+        "q": "Can I request a character in a specific color or design?",
+        "a": "Message us on Instagram or WhatsApp and let's see what we can do together."
+      },
+      {
+        "q": "Do the plants come with the planters?",
+        "a": "The planters are sold on their own, but we'll suggest the plants that suit each character best."
+      }
+    ]
+  },
+  "footer": {
+    "madeWith": "Dalia's Corner — Made with love in Egypt",
+    "follow": "Follow us",
+    "instagram": "Instagram",
+    "whatsapp": "WhatsApp",
+    "facebook": "Facebook",
+    "tagline": "Every piece… a story.",
+    "rights": "All rights reserved."
+  },
+  "cart": {
+    "open": "Open cart",
+    "title": "Your cart",
+    "add": "Add to cart",
+    "added": "{name} added to your cart",
+    "quantity": "Quantity",
+    "increase": "Increase quantity",
+    "decrease": "Decrease quantity",
+    "remove": "Remove",
+    "removed": "{name} removed from your cart",
+    "empty": "Your corner is empty — go meet the family.",
+    "emptyCta": "Meet the characters",
+    "close": "Close cart",
+    "checkout": "Checkout on WhatsApp",
+    "requestNote": "No prices here — it's a wishlist. We'll settle the details and shipping together on WhatsApp.",
+    "subtotal": "Subtotal",
+    "currency": "EGP",
+    "itemsOne": "1 piece",
+    "itemsOther": "{count} pieces"
+  },
+  "whatsapp": {
+    "greeting": "Hi Dalia's Corner! 🌿 I'd like to order:",
+    "line": "• {name} × {qty}",
+    "closing": "Could you help me with the details and shipping?"
+  }
+}

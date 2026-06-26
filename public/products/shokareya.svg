@@ -1,0 +1,24 @@
+<!-- PLACEHOLDER ART — swap for a real @bydaliascorner photo of Shokareya (1:1). -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400" role="img" aria-label="Shokareya the sage-green planter (placeholder)">
+  <rect width="400" height="400" fill="#E7EEDD"/>
+  <circle cx="200" cy="195" r="150" fill="#D2E0C2"/>
+  <ellipse cx="200" cy="345" rx="120" ry="20" fill="#000000" opacity="0.06"/>
+  <!-- plant (succulent rosette) -->
+  <g stroke="#3A5A40" stroke-width="5" stroke-linecap="round" fill="#A98BB0">
+    <path d="M200 150 C188 116 172 104 156 102 C164 126 180 144 200 154Z" fill="#8FAA7C"/>
+    <path d="M200 150 C212 114 232 104 250 102 C240 128 222 144 200 154Z" fill="#8FAA7C"/>
+    <path d="M200 148 C194 120 192 108 198 92 C206 108 206 122 200 150Z" fill="#A98BB0"/>
+  </g>
+  <!-- pot body -->
+  <path d="M122 208 C122 170 158 152 200 152 C242 152 278 170 278 208 L268 302 C266 328 240 344 200 344 C160 344 134 328 132 302 Z" fill="#8FAA7C" stroke="#5F7A4F" stroke-width="4"/>
+  <!-- rim -->
+  <path d="M126 200 C150 184 250 184 274 200 L272 214 C246 200 154 200 128 214Z" fill="#7E9A6C"/>
+  <!-- sleepy eyes (closed) -->
+  <path d="M158 248 q16 14 32 0" fill="none" stroke="#1E2B22" stroke-width="5" stroke-linecap="round"/>
+  <path d="M210 248 q16 14 32 0" fill="none" stroke="#1E2B22" stroke-width="5" stroke-linecap="round"/>
+  <!-- cheeks -->
+  <circle cx="160" cy="272" r="12" fill="#E8A07A" opacity="0.55"/>
+  <circle cx="240" cy="272" r="12" fill="#E8A07A" opacity="0.55"/>
+  <!-- calm smile -->
+  <path d="M186 276 q14 12 28 0" fill="none" stroke="#1E2B22" stroke-width="4.5" stroke-linecap="round"/>
+</svg>

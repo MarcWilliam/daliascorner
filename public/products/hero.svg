@@ -1,0 +1,62 @@
+<!-- PLACEHOLDER ART — swap HERO_IMAGE (lib/products.ts) for a real sunlit lifestyle photo. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" width="800" height="800" role="img" aria-label="Three Dalia's Corner planters together (placeholder)">
+  <defs>
+    <radialGradient id="sun" cx="68%" cy="28%" r="70%">
+      <stop offset="0%" stop-color="#FFF3DA"/>
+      <stop offset="60%" stop-color="#FBEFD2"/>
+      <stop offset="100%" stop-color="#F3E3C2"/>
+    </radialGradient>
+  </defs>
+  <rect width="800" height="800" fill="url(#sun)"/>
+  <!-- soft window light -->
+  <g opacity="0.5" fill="#FFFFFF">
+    <rect x="470" y="60" width="120" height="300" rx="60" transform="rotate(18 530 210)"/>
+    <rect x="600" y="120" width="80" height="240" rx="40" transform="rotate(18 640 240)"/>
+  </g>
+  <!-- shelf -->
+  <rect x="70" y="588" width="660" height="26" rx="13" fill="#D8B98E"/>
+  <rect x="70" y="608" width="660" height="14" rx="7" fill="#C7A576"/>
+  <ellipse cx="400" cy="660" rx="300" ry="36" fill="#000000" opacity="0.05"/>
+
+  <!-- Shokareya (left, green) -->
+  <g transform="translate(150 360)">
+    <path d="M0 70 C0 36 32 18 70 18 C108 18 140 36 140 70 L130 214 C128 238 104 252 70 252 C36 252 12 238 10 214 Z" fill="#8FAA7C" stroke="#5F7A4F" stroke-width="4"/>
+    <path d="M16 64 C44 46 96 46 124 64 L122 80 C96 64 44 64 18 80Z" fill="#7E9A6C"/>
+    <path d="M40 120 q14 12 28 0" fill="none" stroke="#1E2B22" stroke-width="5" stroke-linecap="round"/>
+    <path d="M82 120 q14 12 28 0" fill="none" stroke="#1E2B22" stroke-width="5" stroke-linecap="round"/>
+    <path d="M58 146 q12 10 24 0" fill="none" stroke="#1E2B22" stroke-width="4.5" stroke-linecap="round"/>
+    <g stroke="#3A5A40" stroke-width="5" fill="#8FAA7C">
+      <path d="M70 18 C58 -12 44 -22 30 -24 C36 -2 50 12 70 22Z"/>
+      <path d="M70 18 C82 -14 100 -24 116 -24 C108 0 92 14 70 22Z"/>
+    </g>
+  </g>
+
+  <!-- Bahira (center, duck) -->
+  <g transform="translate(320 320)">
+    <g stroke="#3A5A40" stroke-width="6" fill="#8FAA7C">
+      <path d="M80 30 C66 -8 46 -20 28 -22 C36 4 52 22 80 34Z"/>
+      <path d="M80 30 C94 -10 116 -22 136 -22 C126 6 108 24 80 34Z"/>
+    </g>
+    <path d="M0 86 C0 44 36 26 80 26 C124 26 160 44 160 86 L150 232 C148 258 124 276 80 276 C36 276 12 258 10 232 Z" fill="#FCF3DD" stroke="#E8C98E" stroke-width="4"/>
+    <circle cx="54" cy="118" r="10" fill="#1E2B22"/>
+    <circle cx="106" cy="118" r="10" fill="#1E2B22"/>
+    <path d="M64 138 Q80 160 96 138 Q80 150 64 138Z" fill="#E8924A" stroke="#C9742E" stroke-width="2"/>
+    <circle cx="42" cy="140" r="13" fill="#F2B7A0" opacity="0.7"/>
+    <circle cx="118" cy="140" r="13" fill="#F2B7A0" opacity="0.7"/>
+  </g>
+
+  <!-- Shokat (right, fox) -->
+  <g transform="translate(520 372)">
+    <path d="M14 60 L0 0 L52 36Z" fill="#C07A4E" stroke="#8F5230" stroke-width="4"/>
+    <path d="M126 60 L140 0 L88 36Z" fill="#C07A4E" stroke="#8F5230" stroke-width="4"/>
+    <path d="M6 70 C6 36 36 20 70 20 C104 20 134 36 134 70 L126 206 C124 230 102 244 70 244 C38 244 16 230 14 206 Z" fill="#C07A4E" stroke="#8F5230" stroke-width="4"/>
+    <path d="M30 116 C30 100 48 92 70 92 C92 92 110 100 110 116 L104 196 C102 216 88 226 70 226 C52 226 38 216 36 196 Z" fill="#FCF3DD"/>
+    <circle cx="50" cy="112" r="8" fill="#1E2B22"/>
+    <circle cx="90" cy="112" r="8" fill="#1E2B22"/>
+    <path d="M62 138 Q70 148 78 138 Q70 145 62 138Z" fill="#1E2B22"/>
+    <g stroke="#3A5A40" stroke-width="5" fill="#8FAA7C">
+      <path d="M70 20 C58 -10 44 -20 30 -22 C36 0 50 14 70 24Z"/>
+      <path d="M70 20 C82 -12 100 -22 116 -22 C108 2 92 16 70 24Z"/>
+    </g>
+  </g>
+</svg>

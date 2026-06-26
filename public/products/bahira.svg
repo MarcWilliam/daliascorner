@@ -1,0 +1,29 @@
+<!-- PLACEHOLDER ART — swap for a real @bydaliascorner photo of Bahira (1:1). -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400" role="img" aria-label="Bahira the duck planter (placeholder)">
+  <rect width="400" height="400" fill="#FDEFD6"/>
+  <circle cx="200" cy="195" r="150" fill="#F7E3BE"/>
+  <ellipse cx="200" cy="345" rx="120" ry="20" fill="#000000" opacity="0.06"/>
+  <!-- plant -->
+  <g stroke="#3A5A40" stroke-width="6" stroke-linecap="round" fill="#8FAA7C">
+    <path d="M200 150 C188 110 168 96 150 92 C158 118 172 138 200 152Z"/>
+    <path d="M200 150 C212 108 234 94 254 92 C244 120 228 140 200 152Z"/>
+    <path d="M200 156 C200 116 200 98 200 86" fill="none"/>
+  </g>
+  <!-- duck body / pot -->
+  <path d="M120 210 C120 168 156 150 200 150 C244 150 280 168 280 210 L272 300 C270 326 244 344 200 344 C156 344 130 326 128 300 Z" fill="#FCF3DD" stroke="#E8C98E" stroke-width="4"/>
+  <!-- wing hint -->
+  <path d="M150 250 C168 244 186 244 200 252" fill="none" stroke="#EBCF9B" stroke-width="6" stroke-linecap="round"/>
+  <!-- cheeks -->
+  <circle cx="162" cy="252" r="14" fill="#F2B7A0" opacity="0.7"/>
+  <circle cx="238" cy="252" r="14" fill="#F2B7A0" opacity="0.7"/>
+  <!-- eyes -->
+  <circle cx="174" cy="232" r="9" fill="#1E2B22"/>
+  <circle cx="226" cy="232" r="9" fill="#1E2B22"/>
+  <circle cx="177" cy="229" r="3" fill="#FFFFFF"/>
+  <circle cx="229" cy="229" r="3" fill="#FFFFFF"/>
+  <!-- beak -->
+  <path d="M186 250 Q200 270 214 250 Q200 262 186 250Z" fill="#E8924A" stroke="#C9742E" stroke-width="2"/>
+  <!-- feet -->
+  <path d="M168 344 l-10 16 m10 -16 l0 18 m0 -18 l10 16" stroke="#E8924A" stroke-width="7" stroke-linecap="round" fill="none"/>
+  <path d="M232 344 l-10 16 m10 -16 l0 18 m0 -18 l10 16" stroke="#E8924A" stroke-width="7" stroke-linecap="round" fill="none"/>
+</svg>

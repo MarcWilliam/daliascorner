@@ -1,0 +1,252 @@
+"use client";
+
+import { useCallback, useEffect, useRef } from "react";
+import { Minus, Plus, ShoppingBag, Trash2, X } from "lucide-react";
+import { useCart } from "@/components/providers/CartProvider";
+import { useLocale } from "@/components/providers/LocaleProvider";
+import { useAnnouncer } from "@/components/providers/Announcer";
+import { ClayButton } from "@/components/ui/ClayButton";
+import { WhatsAppIcon } from "@/components/ui/BrandIcons";
+import { getProduct } from "@/lib/products";
+import { buildOrderLink } from "@/lib/whatsapp";
+
+export function CartDrawer() {
+  const { lines, count, isOpen, close, increment, decrement, remove, hasPrices, subtotal } =
+    useCart();
+  const { t, locale, dir, messages } = useLocale();
+  const announce = useAnnouncer();
+
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  const closeBtnRef = useRef<HTMLButtonElement | null>(null);
+  const lastFocused = useRef<HTMLElement | null>(null);
+
+  // Lock body scroll + remember the trigger while open.
+  useEffect(() => {
+    if (isOpen) {
+      lastFocused.current = document.activeElement as HTMLElement;
+      const prev = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      // Move focus into the drawer.
+      const id = window.setTimeout(() => closeBtnRef.current?.focus(), 30);
+      return () => {
+        document.body.style.overflow = prev;
+        window.clearTimeout(id);
+      };
+    }
+  }, [isOpen]);
+
+  // ESC to close + focus trap.
+  const onKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        close();
+        return;
+      }
+      if (e.key !== "Tab") return;
+      const panel = panelRef.current;
+      if (!panel) return;
+      const focusables = panel.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), input, [tabindex]:not([tabindex="-1"])',
+      );
+      if (!focusables.length) return;
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    },
+    [close],
+  );
+
+  // Return focus to the trigger after close.
+  useEffect(() => {
+    if (!isOpen && lastFocused.current) {
+      lastFocused.current.focus?.();
+      lastFocused.current = null;
+    }
+  }, [isOpen]);
+
+  const checkoutHref = buildOrderLink(lines, locale, messages);
+  // Off-screen slide direction follows the inline-end side (mirrors in RTL).
+  const offClass = isOpen
+    ? "translate-x-0"
+    : dir === "rtl"
+      ? "-translate-x-full"
+      : "translate-x-full";
+
+  return (
+    <div
+      aria-hidden={!isOpen}
+      className={`fixed inset-0 z-[100] ${isOpen ? "" : "pointer-events-none"}`}
+    >
+      {/* Scrim (≈50% black) */}
+      <div
+        onClick={close}
+        className={`absolute inset-0 bg-ink/55 transition-opacity duration-300 ${
+          isOpen ? "opacity-100" : "opacity-0"
+        }`}
+      />
+
+      {/* Panel pinned to the inline-end side */}
+      <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label={t("cart.title")}
+        onKeyDown={onKeyDown}
+        className={`absolute inset-y-0 end-0 flex h-full w-[min(26rem,100%)] flex-col border-s border-line bg-canvas shadow-clay-lg transition-transform duration-300 ease-out ${offClass}`}
+      >
+        {/* header */}
+        <div className="flex items-center justify-between gap-3 border-b border-line px-5 py-4">
+          <h2 className="flex items-center gap-2 text-xl">
+            <ShoppingBag className="h-5 w-5 text-brand" aria-hidden="true" />
+            {t("cart.title")}
+            {count > 0 && (
+              <span className="tabular rounded-full bg-orange px-2 py-0.5 text-sm font-bold text-ink">
+                {count}
+              </span>
+            )}
+          </h2>
+          <button
+            ref={closeBtnRef}
+            type="button"
+            onClick={close}
+            aria-label={t("cart.close")}
+            className="grid h-11 w-11 place-items-center rounded-clay border border-line bg-surface text-ink shadow-clay-sm transition-colors hover:bg-canvas-sunk focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/45 [touch-action:manipulation] cursor-pointer"
+          >
+            <X className="h-5 w-5" aria-hidden="true" />
+          </button>
+        </div>
+
+        {/* body */}
+        {lines.length === 0 ? (
+          <div className="flex flex-1 flex-col items-center justify-center gap-5 px-6 text-center">
+            <span className="grid h-20 w-20 place-items-center rounded-blob bg-canvas-sunk">
+              <ShoppingBag className="h-9 w-9 text-ink-muted" aria-hidden="true" />
+            </span>
+            <p className="text-lg text-ink-muted">{t("cart.empty")}</p>
+            <ClayButton href="#characters" variant="primary" onClick={close as never}>
+              {t("cart.emptyCta")}
+            </ClayButton>
+          </div>
+        ) : (
+          <ul className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
+            {lines.map((line) => {
+              const product = getProduct(line.id);
+              if (!product) return null;
+              const name = product.name[locale];
+              return (
+                <li
+                  key={line.id}
+                  className="flex gap-3 rounded-clay border border-line bg-surface p-3 shadow-clay-sm"
+                >
+                  <img
+                    src={product.image}
+                    alt=""
+                    width={64}
+                    height={64}
+                    className="h-16 w-16 shrink-0 rounded-clay object-cover"
+                  />
+                  <div className="flex min-w-0 flex-1 flex-col gap-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="font-display font-semibold text-ink">{name}</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          remove(line.id);
+                          announce(t("cart.removed", { name }));
+                        }}
+                        aria-label={`${t("cart.remove")} — ${name}`}
+                        className="grid h-9 w-9 shrink-0 place-items-center rounded-clay text-destructive transition-colors hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-destructive/40 [touch-action:manipulation] cursor-pointer"
+                      >
+                        <Trash2 className="h-[1.15rem] w-[1.15rem]" aria-hidden="true" />
+                      </button>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-2">
+                      {/* quantity stepper */}
+                      <div
+                        className="inline-flex items-center rounded-clay border border-line bg-canvas"
+                        role="group"
+                        aria-label={`${t("cart.quantity")} — ${name}`}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => decrement(line.id)}
+                          aria-label={t("cart.decrease")}
+                          className="grid h-11 w-11 place-items-center rounded-clay text-ink transition-colors hover:bg-canvas-sunk focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/45 [touch-action:manipulation] cursor-pointer"
+                        >
+                          <Minus className="h-4 w-4" aria-hidden="true" />
+                        </button>
+                        <span
+                          className="tabular min-w-[2ch] text-center font-display font-bold text-ink"
+                          aria-live="polite"
+                        >
+                          {line.qty}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => increment(line.id)}
+                          aria-label={t("cart.increase")}
+                          className="grid h-11 w-11 place-items-center rounded-clay text-ink transition-colors hover:bg-canvas-sunk focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/45 [touch-action:manipulation] cursor-pointer"
+                        >
+                          <Plus className="h-4 w-4" aria-hidden="true" />
+                        </button>
+                      </div>
+
+                      {/* optional per-item price */}
+                      {product.price != null && (
+                        <span className="tabular font-display font-bold text-brand">
+                          {product.price * line.qty} {messages.cart.currency}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+
+        {/* footer / checkout */}
+        <div className="border-t border-line px-5 py-4">
+          {hasPrices ? (
+            <div className="mb-3 flex items-center justify-between font-display text-lg font-bold text-ink">
+              <span>{t("cart.subtotal")}</span>
+              <span className="tabular">
+                {subtotal} {messages.cart.currency}
+              </span>
+            </div>
+          ) : (
+            <p className="mb-3 text-sm leading-relaxed text-ink-muted">
+              {t("cart.requestNote")}
+            </p>
+          )}
+
+          {lines.length === 0 ? (
+            <ClayButton variant="primary" className="w-full" disabled type="button">
+              <WhatsAppIcon className="h-5 w-5" />
+              {t("cart.checkout")}
+            </ClayButton>
+          ) : (
+            <ClayButton
+              href={checkoutHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              variant="whatsapp"
+              className="w-full"
+            >
+              <WhatsAppIcon className="h-5 w-5" />
+              {t("cart.checkout")}
+            </ClayButton>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
