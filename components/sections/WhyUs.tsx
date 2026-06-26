@@ -18,7 +18,7 @@ export function WhyUs() {
   return (
     <section
       id="why"
-      className="section relative isolate scroll-mt-24 overflow-hidden bg-canvas-sunk"
+      className="section relative isolate scroll-mt-24 overflow-hidden"
     >
       <FloatingLeaf className="end-[6%] top-6 h-20 w-14" />
       <FloatingLeaf className="start-[7%] bottom-8 h-16 w-11 motion-safe:[animation-delay:-3s]" />

@@ -30,14 +30,9 @@ function ChipCard({ id }: { id: "bahira" | "shokat" }) {
         height={44}
         className="h-11 w-11 rounded-[0.9rem] object-cover"
       />
-      <div className="flex flex-col leading-tight">
-        <span className="font-display text-sm font-bold text-ink">
-          {product.name[locale]}
-        </span>
-        <span className="text-xs text-ink-muted">
-          {locale === "ar" ? "شخصية يدوية" : "Handmade character"}
-        </span>
-      </div>
+      <span className="max-w-[4.5rem] text-balance font-display text-sm font-bold leading-tight text-ink">
+        {product.name[locale]}
+      </span>
     </div>
   );
 }

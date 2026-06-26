@@ -11,10 +11,10 @@ import { WhatsAppIcon } from "@/components/ui/BrandIcons";
 import { WHATSAPP_NUMBER } from "@/lib/config";
 
 const LINKS = [
-  { id: "story", href: "#story", key: "nav.story" },
   { id: "characters", href: "#characters", key: "nav.characters" },
-  { id: "why", href: "#why", key: "nav.why" },
   { id: "order", href: "#order", key: "nav.order" },
+  { id: "story", href: "#story", key: "nav.story" },
+  { id: "why", href: "#why", key: "nav.why" },
   { id: "faq", href: "#faq", key: "nav.faq" },
 ] as const;
 

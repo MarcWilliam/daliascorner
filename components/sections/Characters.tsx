@@ -11,7 +11,10 @@ import { RevealGroup, RevealItem } from "@/components/ui/RevealGroup";
 export function Characters() {
   const { t } = useLocale();
   return (
-    <section id="characters" className="section relative scroll-mt-24">
+    <section
+      id="characters"
+      className="section relative scroll-mt-24 bg-canvas-sunk"
+    >
       <div className="container-page">
         <div className="mx-auto mb-10 max-w-2xl text-center">
           <RevealTitle>

@@ -10,7 +10,10 @@ export function About() {
   const { t } = useLocale();
 
   return (
-    <section id="story" className="section relative scroll-mt-24">
+    <section
+      id="story"
+      className="section relative scroll-mt-24 bg-canvas-sunk"
+    >
       <div className="container-page">
         {/*
           `isolate` is load-bearing: it makes the card its own stacking context so
