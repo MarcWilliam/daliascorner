@@ -45,7 +45,7 @@ export const PRODUCTS: Product[] = [
       en: "Cheerful and loves water, she brings joy to any corner she sits in.",
       ar: "مرحة وبتحب المياه، بتجيب البهجة لأي ركن تقعد فيه.",
     },
-    image: asset("/products/bahira.svg"), // PLACEHOLDER — swap for real photo
+    image: asset("/products/bahira.png"),
     alt: {
       en: "Bahira — a cream duck-shaped pottery planter with an orange beak and feet.",
       ar: "بحيرة — أصيص فخّار على شكل بطة كريمي بمنقار وأرجل برتقالية.",
@@ -61,7 +61,7 @@ export const PRODUCTS: Product[] = [
       en: "Clever, playful, and a little spoiled, he brings life to your plants.",
       ar: "ذكي، لعوب، ومدلّع شوية، بيجيب الحياة لنباتاتك.",
     },
-    image: asset("/products/shokat.svg"), // PLACEHOLDER — swap for real photo
+    image: asset("/products/shokat.png"),
     alt: {
       en: "Shokat — a terracotta-and-cream fox pottery planter with pointed ears, a white snout, and whiskers.",
       ar: "شوكت — أصيص فخّار على شكل ثعلب من الطين والكريمي بودان مدببة وخطم أبيض وشوارب.",
@@ -77,7 +77,7 @@ export const PRODUCTS: Product[] = [
       en: "Calm and sweet, she brightens any spot without making a fuss.",
       ar: "هادية ولطيفة، بتنوّر أي مكان من غير دوشة.",
     },
-    image: asset("/products/shokareya.svg"), // PLACEHOLDER — swap for real photo
+    image: asset("/products/shokareya.png"),
     alt: {
       en: "Shokareya — a sage-green pottery planter with a calm, sleepy face.",
       ar: "شكرية — أصيص فخّار بلون أخضر مريمي بوجه هادي ونعسان.",
@@ -92,8 +92,8 @@ export function getProduct(id: ProductId): Product | undefined {
   return PRODUCTS.find((p) => p.id === id);
 }
 
-/** Hero image — also a PLACEHOLDER. One-line swap for the real lifestyle shot. */
-export const HERO_IMAGE = asset("/products/hero.svg");
+/** Hero image — the real lifestyle shot. */
+export const HERO_IMAGE = asset("/products/hero.png");
 export const HERO_ALT: LocalizedText = {
   en: "Three handmade Dalia's Corner pottery planters — a duck, a fox, and a sleepy green character — with small plants, in warm light.",
   ar: "ثلاثة أصص فخّار يدوية من Dalia's Corner — بطة وثعلب وشخصية خضراء نعسانة — مع نباتات صغيرة في إضاءة دافية.",
