@@ -8,6 +8,7 @@ import { RichText } from "@/components/ui/RichText";
 import { RevealTitle } from "@/components/ui/RevealTitle";
 import { RevealGroup, RevealItem } from "@/components/ui/RevealGroup";
 import { WhatsAppIcon, InstagramIcon } from "@/components/ui/BrandIcons";
+import { FloatingLeaf } from "@/components/ui/FloatingLeaf";
 import { INSTAGRAM_URL, WHATSAPP_NUMBER } from "@/lib/config";
 
 export function HowToOrder() {
@@ -15,7 +16,13 @@ export function HowToOrder() {
   const { open } = useCart();
 
   return (
-    <section id="order" className="section relative scroll-mt-24">
+    <section
+      id="order"
+      className="section relative isolate scroll-mt-24 overflow-hidden"
+    >
+      <FloatingLeaf className="end-[6%] top-8 h-16 w-11" />
+      <FloatingLeaf className="start-[7%] bottom-8 h-20 w-14 motion-safe:[animation-delay:-3s]" />
+
       <div className="container-page">
         <RevealTitle className="mx-auto mb-10 max-w-2xl text-center">
           <h2 className="text-3xl sm:text-4xl">

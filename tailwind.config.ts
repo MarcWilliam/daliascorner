@@ -70,6 +70,11 @@ const config: Config = {
         clay: "cubic-bezier(0.34, 1.56, 0.64, 1)", // gentle springy press
       },
       keyframes: {
+        // Leaf swaying on its stem — gentle pendulum with a touch of lift.
+        "leaf-sway": {
+          "0%, 100%": { transform: "translateY(0) rotate(-13deg)" },
+          "50%": { transform: "translateY(-4px) rotate(13deg)" },
+        },
         // Continuous slow wander — multi-directional so it never reads as static.
         "blob-drift": {
           "0%, 100%": { transform: "translate3d(0px, 0px, 0) rotate(0deg)" },
@@ -91,6 +96,7 @@ const config: Config = {
       animation: {
         "blob-drift": "blob-drift 9s ease-in-out infinite",
         "rise-in": "rise-in 0.5s cubic-bezier(0.22,1,0.36,1) both",
+        "leaf-sway": "leaf-sway 6s ease-in-out infinite",
         marquee: "marquee 32s linear infinite",
       },
     },

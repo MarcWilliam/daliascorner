@@ -1,14 +1,13 @@
 "use client";
 
-import { useId, useRef, useState } from "react";
+import { useId, useState } from "react";
 import { AnimatePresence, m, useReducedMotion } from "framer-motion";
 import { ChevronDown } from "lucide-react";
 import { useLocale } from "@/components/providers/LocaleProvider";
 import { RichText } from "@/components/ui/RichText";
 import { RevealTitle } from "@/components/ui/RevealTitle";
 import { RevealGroup, RevealItem } from "@/components/ui/RevealGroup";
-import { Blob } from "@/components/ui/Blob";
-import { useParallaxPair } from "@/lib/parallax";
+import { FloatingLeaf } from "@/components/ui/FloatingLeaf";
 import { EASE_OUT } from "@/lib/motion";
 
 function FaqItem({
@@ -71,25 +70,14 @@ export function Faq() {
   const { t, messages } = useLocale();
   const items = messages.faq.items;
   const [openIndex, setOpenIndex] = useState<number | null>(0);
-  const reduce = useReducedMotion();
-
-  const ref = useRef<HTMLElement | null>(null);
-  const { down, up } = useParallaxPair(ref, 40);
 
   return (
     <section
       id="faq"
-      ref={ref}
-      className="section relative scroll-mt-24 overflow-hidden bg-canvas-sunk"
+      className="section relative isolate scroll-mt-24 overflow-hidden bg-canvas-sunk"
     >
-      <Blob
-        className="start-[-4rem] top-[3rem] h-48 w-48 text-mauve-soft opacity-70"
-        style={reduce ? undefined : { y: down }}
-      />
-      <Blob
-        className="end-[-4rem] bottom-[2rem] h-56 w-56 text-leaf-soft opacity-60"
-        style={reduce ? undefined : { y: up }}
-      />
+      <FloatingLeaf className="start-[6%] top-8 h-16 w-11" />
+      <FloatingLeaf className="end-[7%] bottom-10 h-20 w-14 motion-safe:[animation-delay:-3s]" />
 
       <div className="container-page">
         <RevealTitle className="mx-auto mb-10 max-w-2xl text-center">

@@ -1,12 +1,9 @@
 "use client";
 
-import { useRef } from "react";
-import { useReducedMotion } from "framer-motion";
 import { useLocale } from "@/components/providers/LocaleProvider";
 import { Logo } from "@/components/ui/Logo";
 import { Blob } from "@/components/ui/Blob";
 import { WhatsAppIcon, InstagramIcon, FacebookIcon } from "@/components/ui/BrandIcons";
-import { useParallaxPair } from "@/lib/parallax";
 import {
   FACEBOOK_URL,
   INSTAGRAM_URL,
@@ -15,10 +12,6 @@ import {
 
 export function Footer() {
   const { t } = useLocale();
-  const reduce = useReducedMotion();
-
-  const ref = useRef<HTMLElement | null>(null);
-  const { down, up } = useParallaxPair(ref, 36);
 
   const socials = [
     {
@@ -38,18 +31,15 @@ export function Footer() {
   ];
 
   return (
-    <footer
-      ref={ref}
-      className="relative overflow-hidden border-t border-line bg-brand text-canvas"
-    >
-      {/* tonal parallax depth — darker-green + leaf blobs drifting against each other */}
+    <footer className="relative isolate overflow-hidden border-t border-line bg-brand text-canvas">
+      {/* tonal depth — darker-green + leaf blobs drifting slowly against each other */}
       <Blob
+        drift
         className="start-[-5rem] top-[-2rem] h-56 w-56 text-brand-deep opacity-50"
-        style={reduce ? undefined : { y: down }}
       />
       <Blob
-        className="end-[-5rem] bottom-[-3rem] h-64 w-64 text-leaf opacity-20"
-        style={reduce ? undefined : { y: up }}
+        drift
+        className="end-[-5rem] bottom-[-3rem] h-64 w-64 text-leaf opacity-20 motion-safe:[animation-delay:-4500ms]"
       />
 
       <div className="relative container-page flex flex-col items-center gap-7 py-12 text-center">
