@@ -59,6 +59,12 @@ const config: Config = {
         "clay-inset":
           "inset 4px 5px 12px rgba(58,90,64,0.16), inset -3px -3px 9px rgba(255,255,255,0.55)",
         "clay-focus": "0 0 0 4px var(--canvas), 0 0 0 7px var(--brand)",
+        // Soft, warm, diffuse "lifted photo" elevation (terracotta-tinted, no white
+        // highlight) — a real drop shadow rather than the puffy clay look.
+        photo:
+          "0 8px 20px -6px rgba(156,90,52,0.20), 0 18px 40px -14px rgba(156,90,52,0.18)",
+        "photo-lg":
+          "0 16px 32px -8px rgba(156,90,52,0.24), 0 34px 64px -16px rgba(156,90,52,0.24)",
       },
       transitionTimingFunction: {
         clay: "cubic-bezier(0.34, 1.56, 0.64, 1)", // gentle springy press
@@ -72,10 +78,17 @@ const config: Config = {
           from: { opacity: "0", transform: "translateY(18px)" },
           to: { opacity: "1", transform: "translateY(0)" },
         },
+        // Seamless marquee: the track holds two identical copies, so shifting by
+        // exactly half its width loops with no visible seam.
+        marquee: {
+          from: { transform: "translate3d(0,0,0)" },
+          to: { transform: "translate3d(-50%,0,0)" },
+        },
       },
       animation: {
         "blob-drift": "blob-drift 9s ease-in-out infinite",
         "rise-in": "rise-in 0.5s cubic-bezier(0.22,1,0.36,1) both",
+        marquee: "marquee 32s linear infinite",
       },
     },
   },

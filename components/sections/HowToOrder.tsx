@@ -5,7 +5,8 @@ import { useLocale } from "@/components/providers/LocaleProvider";
 import { useCart } from "@/components/providers/CartProvider";
 import { ClayButton } from "@/components/ui/ClayButton";
 import { RichText } from "@/components/ui/RichText";
-import { Reveal } from "@/components/ui/Reveal";
+import { RevealTitle } from "@/components/ui/RevealTitle";
+import { RevealGroup, RevealItem } from "@/components/ui/RevealGroup";
 import { WhatsAppIcon, InstagramIcon } from "@/components/ui/BrandIcons";
 import { INSTAGRAM_URL, WHATSAPP_NUMBER } from "@/lib/config";
 
@@ -16,15 +17,15 @@ export function HowToOrder() {
   return (
     <section id="order" className="section relative scroll-mt-24">
       <div className="container-page">
-        <Reveal className="mx-auto mb-10 max-w-2xl text-center">
+        <RevealTitle className="mx-auto mb-10 max-w-2xl text-center">
           <h2 className="text-3xl sm:text-4xl">
             <RichText text={t("order.title")} accentClassName="text-clay-deep" />
           </h2>
-        </Reveal>
+        </RevealTitle>
 
-        <div className="grid gap-6 lg:grid-cols-2">
+        <RevealGroup className="grid gap-6 lg:grid-cols-2">
           {/* Path 1 — cart + WhatsApp (primary) */}
-          <Reveal className="h-full">
+          <RevealItem className="h-full">
             <div className="flex h-full flex-col gap-4 rounded-clay-lg border-2 border-brand/25 bg-surface p-6 shadow-clay sm:p-8">
               <span className="grid h-14 w-14 place-items-center rounded-clay bg-leaf-soft">
                 <ShoppingBag className="h-7 w-7 text-brand" aria-hidden="true" />
@@ -43,10 +44,10 @@ export function HowToOrder() {
                 </ClayButton>
               </div>
             </div>
-          </Reveal>
+          </RevealItem>
 
           {/* Path 2 — screenshot & DM (alternative) */}
-          <Reveal className="h-full" delayMs={90}>
+          <RevealItem className="h-full">
             <div className="flex h-full flex-col gap-4 rounded-clay-lg border border-line bg-canvas-sunk p-6 shadow-clay-sm sm:p-8">
               <span className="grid h-14 w-14 place-items-center rounded-clay bg-mauve-soft">
                 <Camera className="h-7 w-7 text-ink" aria-hidden="true" />
@@ -76,8 +77,8 @@ export function HowToOrder() {
                 </ClayButton>
               </div>
             </div>
-          </Reveal>
-        </div>
+          </RevealItem>
+        </RevealGroup>
       </div>
     </section>
   );

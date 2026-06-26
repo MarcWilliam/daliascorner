@@ -1,11 +1,14 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { AnimatePresence, m, useReducedMotion } from "framer-motion";
 import { ChevronDown } from "lucide-react";
 import { useLocale } from "@/components/providers/LocaleProvider";
 import { RichText } from "@/components/ui/RichText";
-import { Reveal } from "@/components/ui/Reveal";
+import { RevealTitle } from "@/components/ui/RevealTitle";
+import { RevealGroup, RevealItem } from "@/components/ui/RevealGroup";
+import { Blob } from "@/components/ui/Blob";
+import { useParallaxPair } from "@/lib/parallax";
 import { EASE_OUT } from "@/lib/motion";
 
 function FaqItem({
@@ -68,27 +71,45 @@ export function Faq() {
   const { t, messages } = useLocale();
   const items = messages.faq.items;
   const [openIndex, setOpenIndex] = useState<number | null>(0);
+  const reduce = useReducedMotion();
+
+  const ref = useRef<HTMLElement | null>(null);
+  const { down, up } = useParallaxPair(ref, 40);
 
   return (
-    <section id="faq" className="section relative scroll-mt-24 bg-canvas-sunk">
+    <section
+      id="faq"
+      ref={ref}
+      className="section relative scroll-mt-24 overflow-hidden bg-canvas-sunk"
+    >
+      <Blob
+        className="start-[-4rem] top-[3rem] h-48 w-48 text-mauve-soft opacity-70"
+        style={reduce ? undefined : { y: down }}
+      />
+      <Blob
+        className="end-[-4rem] bottom-[2rem] h-56 w-56 text-leaf-soft opacity-60"
+        style={reduce ? undefined : { y: up }}
+      />
+
       <div className="container-page">
-        <Reveal className="mx-auto mb-10 max-w-2xl text-center">
+        <RevealTitle className="mx-auto mb-10 max-w-2xl text-center">
           <h2 className="text-3xl sm:text-4xl">
             <RichText text={t("faq.title")} accentClassName="text-clay-deep" />
           </h2>
-        </Reveal>
+        </RevealTitle>
 
-        <Reveal className="mx-auto flex max-w-3xl flex-col gap-3">
+        <RevealGroup className="mx-auto flex max-w-3xl flex-col gap-3">
           {items.map((item, i) => (
-            <FaqItem
-              key={i}
-              q={item.q}
-              a={item.a}
-              open={openIndex === i}
-              onToggle={() => setOpenIndex(openIndex === i ? null : i)}
-            />
+            <RevealItem key={i}>
+              <FaqItem
+                q={item.q}
+                a={item.a}
+                open={openIndex === i}
+                onToggle={() => setOpenIndex(openIndex === i ? null : i)}
+              />
+            </RevealItem>
           ))}
-        </Reveal>
+        </RevealGroup>
       </div>
     </section>
   );

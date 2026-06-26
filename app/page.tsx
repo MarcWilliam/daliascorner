@@ -10,6 +10,9 @@ import { HowToOrder } from "@/components/sections/HowToOrder";
 import { Faq } from "@/components/sections/Faq";
 import { Footer } from "@/components/sections/Footer";
 import { CartDrawer } from "@/components/sections/CartDrawer";
+import { ScrollProgress } from "@/components/ui/ScrollProgress";
+import { BackToTop } from "@/components/ui/BackToTop";
+import { BrandRibbon } from "@/components/ui/BrandRibbon";
 
 export default function Home() {
   const { t } = useLocale();
@@ -23,12 +26,14 @@ export default function Home() {
         {t("nav.skip")}
       </a>
 
+      <ScrollProgress />
       <Nav />
 
       <main id="main">
         <Hero />
         <About />
         <Characters />
+        <BrandRibbon />
         <WhyUs />
         <HowToOrder />
         <Faq />
@@ -36,6 +41,7 @@ export default function Home() {
 
       <Footer />
       <CartDrawer />
+      <BackToTop />
     </>
   );
 }

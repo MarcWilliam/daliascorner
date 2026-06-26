@@ -39,7 +39,7 @@ export function CharacterCard({ product }: { product: Product }) {
   return (
     <m.article
       whileHover={reduce ? undefined : cardHover}
-      className="group flex h-full flex-col overflow-hidden rounded-clay-lg border border-line bg-surface shadow-clay transition-shadow duration-200 hover:shadow-clay-lg"
+      className="group flex h-full flex-col overflow-hidden rounded-clay-lg border border-line bg-surface shadow-photo transition-shadow duration-300 hover:shadow-photo-lg"
     >
       {/* image tile */}
       <div className={`relative ${accentTint[product.accent]} p-4`}>

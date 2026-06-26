@@ -83,6 +83,11 @@ export function Hero() {
   const yLeaf = useTransform(scrollYProgress, [0, 1], [0, 70]);
   const yMauve = useTransform(scrollYProgress, [0, 1], [0, -50]);
 
+  // Gentle scroll scrub: text lifts + softens, photo eases the other way → depth.
+  const yText = useTransform(scrollYProgress, [0, 1], [0, 64]);
+  const fadeText = useTransform(scrollYProgress, [0, 0.9], [1, 0.45]);
+  const yPhoto = useTransform(scrollYProgress, [0, 1], [0, -28]);
+
   const start = reduce ? false : "hidden";
 
   return (
@@ -98,12 +103,13 @@ export function Hero() {
       />
 
       <div className="container-page grid items-center gap-10 pb-12 pt-10 sm:pt-14 lg:grid-cols-2 lg:gap-12 lg:pb-20 lg:pt-16">
-        {/* Leading column — staggered on-load entrance */}
+        {/* Leading column — staggered on-load entrance, then a soft scroll scrub */}
         <m.div
           className="flex flex-col items-start gap-5"
           variants={heroParent}
           initial={start}
           animate="visible"
+          style={reduce ? undefined : { y: yText, opacity: fadeText }}
         >
           <m.span
             variants={heroItem}
@@ -176,7 +182,10 @@ export function Hero() {
         </m.div>
 
         {/* Trailing column: hero photo (LCP-safe soft entrance) + floating chips */}
-        <div className="relative mx-auto w-full max-w-md lg:max-w-none">
+        <m.div
+          className="relative mx-auto w-full max-w-md lg:max-w-none"
+          style={reduce ? undefined : { y: yPhoto }}
+        >
           <m.div
             className="relative aspect-square overflow-hidden rounded-[2.5rem] border border-line bg-canvas-sunk shadow-clay-lg"
             initial={reduce ? false : { opacity: 0.6, scale: 1.04 }}
@@ -205,7 +214,7 @@ export function Hero() {
             bobOffset={0.9}
             entranceDelay={0.8}
           />
-        </div>
+        </m.div>
       </div>
     </section>
   );
