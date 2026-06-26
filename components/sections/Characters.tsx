@@ -3,7 +3,6 @@
 import { useLocale } from "@/components/providers/LocaleProvider";
 import { PRODUCTS } from "@/lib/products";
 import { CharacterCard } from "./CharacterCard";
-import { TiltPrompt } from "./TiltPrompt";
 import { RichText } from "@/components/ui/RichText";
 import { Reveal } from "@/components/ui/Reveal";
 import { RevealTitle } from "@/components/ui/RevealTitle";
@@ -23,8 +22,6 @@ export function Characters() {
           <Reveal as="p" delayMs={140} className="mt-3 text-lg text-ink-muted">
             {t("characters.intro")}
           </Reveal>
-          {/* iOS-only: tap to grant motion access → gyroscope card tilt. */}
-          <TiltPrompt />
         </div>
 
         <RevealGroup as="ul" className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">

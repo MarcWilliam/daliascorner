@@ -1,25 +1,10 @@
-"use client";
-
-import { m, useReducedMotion } from "framer-motion";
-import { EASE_OUT, VIEWPORT } from "@/lib/motion";
-
 /**
- * Decorative little sprout that "grows" from its base when scrolled into view
- * (scale up from 0 with a tiny settle). Purely cosmetic → aria-hidden.
- * Reduced motion → simply present, no grow.
+ * Decorative little sprout. Purely cosmetic → aria-hidden. Rendered static (no
+ * entrance animation) so it's always present and can never disappear.
  */
 export function GrowLeaf({ className = "" }: { className?: string }) {
-  const reduce = useReducedMotion();
   return (
-    <m.span
-      aria-hidden="true"
-      className={`inline-block ${className}`}
-      style={{ transformOrigin: "bottom center" }}
-      initial={reduce ? false : { scale: 0, rotate: -10, opacity: 0 }}
-      whileInView={{ scale: 1, rotate: 0, opacity: 1 }}
-      viewport={VIEWPORT}
-      transition={{ duration: 0.7, ease: EASE_OUT }}
-    >
+    <span aria-hidden="true" className={`inline-block ${className}`}>
       <svg
         width="40"
         height="46"
@@ -44,6 +29,6 @@ export function GrowLeaf({ className = "" }: { className?: string }) {
           strokeWidth="1.5"
         />
       </svg>
-    </m.span>
+    </span>
   );
 }

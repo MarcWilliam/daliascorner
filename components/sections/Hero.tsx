@@ -74,14 +74,12 @@ export function Hero() {
   const trust = messages.hero.trust;
   const reduce = useReducedMotion();
 
-  // Low-intensity scroll parallax for the decorative blobs (transform only).
+  // Scroll progress drives the gentle text + photo scrub below.
   const heroRef = useRef<HTMLElement | null>(null);
   const { scrollYProgress } = useScroll({
     target: heroRef,
     offset: ["start start", "end start"],
   });
-  const yLeaf = useTransform(scrollYProgress, [0, 1], [0, 70]);
-  const yMauve = useTransform(scrollYProgress, [0, 1], [0, -50]);
 
   // Gentle scroll scrub: text lifts + softens, photo eases the other way → depth.
   const yText = useTransform(scrollYProgress, [0, 1], [0, 64]);
@@ -92,14 +90,12 @@ export function Hero() {
 
   return (
     <section id="top" ref={heroRef} className="relative overflow-hidden">
-      {/* organic background pops with subtle scroll parallax */}
+      {/* organic background pops with a slow, continuous drift (motion-safe);
+          the negative delay offsets the mauve one so they move out of sync */}
+      <Blob drift className="end-[-6rem] top-[-4rem] h-72 w-72 text-leaf-soft" />
       <Blob
-        className="end-[-6rem] top-[-4rem] h-72 w-72 text-leaf-soft"
-        style={reduce ? undefined : { y: yLeaf }}
-      />
-      <Blob
-        className="start-[-7rem] bottom-[2rem] h-80 w-80 text-mauve-soft"
-        style={reduce ? undefined : { y: yMauve }}
+        drift
+        className="start-[-7rem] bottom-[2rem] h-80 w-80 text-mauve-soft motion-safe:[animation-delay:-4500ms]"
       />
 
       <div className="container-page grid items-center gap-10 pb-12 pt-10 sm:pt-14 lg:grid-cols-2 lg:gap-12 lg:pb-20 lg:pt-16">

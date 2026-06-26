@@ -115,3 +115,16 @@ export const CARD_GYRO = {
   range: 20, // degrees of physical device tilt that map to the full peak
   deadzone: 1.5, // degrees of slack around neutral — swallow resting-hand jitter
 } as const;
+
+/**
+ * Scroll fallback for CARD_GYRO. When the gyroscope can't drive the cards — a
+ * phone with no motion sensor, or iOS before/after a denied permission prompt —
+ * scrolling provides the ambient lean instead: each scroll impulse tips the grid
+ * front/back, then decays back to rest when the page stops moving. It feeds the
+ * SAME normalized -1…1 channel as the gyro (peaking at CARD_GYRO.maxDeg), so the
+ * cards never need to know which source is driving them.
+ */
+export const CARD_SCROLL = {
+  deltaFull: 55, // px of scroll travel (per scroll event) that maps to the full lean
+  decay: 0.86, // per-frame impulse falloff → eases back to neutral once idle
+} as const;

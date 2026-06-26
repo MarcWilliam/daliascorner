@@ -27,6 +27,15 @@ export const DEFAULT_LOCALE: Locale = "ar"; // flip to "en" here to change the d
 export const LOCALES: Locale[] = ["ar", "en"];
 export const ENABLE_BROWSER_LOCALE_DETECTION = true;
 
+/**
+ * Element id for the runtime-injected <meta name="google" content="notranslate">.
+ * The site is a single-URL bilingual page statically pre-rendered in DEFAULT_LOCALE;
+ * when a visitor resolves to a different locale, the first paint still shows the
+ * baseline language until React swaps the text — so we flag the page notranslate to
+ * stop the browser offering to translate content the app renders itself.
+ */
+export const NO_TRANSLATE_ID = "x-no-translate";
+
 /** localStorage keys */
 export const STORAGE_LOCALE = "dalias-corner.locale";
 export const STORAGE_CART = "dalias-corner.cart";

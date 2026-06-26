@@ -1,7 +1,12 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { Providers } from "@/components/providers/Providers";
-import { DEFAULT_LOCALE } from "@/lib/config";
+import {
+  DEFAULT_LOCALE,
+  ENABLE_BROWSER_LOCALE_DETECTION,
+  NO_TRANSLATE_ID,
+  STORAGE_LOCALE,
+} from "@/lib/config";
 import { dictionaries } from "@/lib/i18n/dictionaries";
 
 const def = dictionaries[DEFAULT_LOCALE];
@@ -53,8 +58,25 @@ export const viewport: Viewport = {
   themeColor: "#FBF6EC",
 };
 
-// Set <html lang/dir> before paint from the stored preference (avoids FOUC of direction).
-const NO_FLASH = `(function(){try{var d=${JSON.stringify(DEFAULT_LOCALE)};var s=localStorage.getItem('dalias-corner.locale');var l=(s==='ar'||s==='en')?s:(navigator.language||'').toLowerCase().indexOf('ar')===0?'ar':(s?s:d);var e=document.documentElement;e.lang=l;e.dir=(l==='ar')?'rtl':'ltr';}catch(_){}})();`;
+// Resolve the locale before first paint (stored pref → browser language → default)
+// and apply <html lang/dir> to avoid a direction flash. The site is statically
+// pre-rendered in DEFAULT_LOCALE, so when the resolved locale differs, the first
+// paint still shows baseline-language text until React swaps it — flag the page
+// `notranslate` so the browser doesn't sample that text and offer to translate a
+// page we're about to render in the user's own language. Set via JS, so no-JS
+// visitors (who never get the swap) keep native translation available.
+const NO_FLASH =
+  `(function(){try{` +
+  `var def=${JSON.stringify(DEFAULT_LOCALE)},` +
+  `detect=${JSON.stringify(ENABLE_BROWSER_LOCALE_DETECTION)},` +
+  `key=${JSON.stringify(STORAGE_LOCALE)},` +
+  `id=${JSON.stringify(NO_TRANSLATE_ID)};` +
+  `var s=null;try{s=localStorage.getItem(key)}catch(e){}` +
+  `var l=(s==='ar'||s==='en')?s:(detect?((navigator.language||'').toLowerCase().indexOf('ar')===0?'ar':'en'):def);` +
+  `var e=document.documentElement;e.lang=l;e.dir=(l==='ar')?'rtl':'ltr';` +
+  `if(l!==def){e.setAttribute('translate','no');` +
+  `if(!document.getElementById(id)){var m=document.createElement('meta');m.id=id;m.name='google';m.content='notranslate';(document.head||e).appendChild(m)}}` +
+  `}catch(e){}})();`;
 
 export default function RootLayout({
   children,

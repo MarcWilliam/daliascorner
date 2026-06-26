@@ -28,17 +28,20 @@ export function CharacterCard({ product }: { product: Product }) {
   const announce = useAnnouncer();
   const reduce = useReducedMotion();
   const tilt = useDeviceTilt();
-  const gyroActive = tilt.status === "active";
+  // The shared ambient lean — gyroscope where available, scroll-driven where it
+  // isn't. Either way it feeds tilt.tiltX/tiltY; "none" means desktop/no ambient.
+  const ambientActive = tilt.source !== "none";
 
   const name = product.name[locale];
   // How many of this character are currently in the cart.
   const qty = lines.find((l) => l.id === product.id)?.qty ?? 0;
 
-  // 3D tilt + lift. Raw motion values are set from one of three inputs and eased
-  // through springs, so y / scale / rotateX / rotateY compose into one smooth
-  // transform: a mouse over the card (desktop), a finger dragging across it
-  // (touch), or the phone's gyroscope leaning the whole grid (mobile, ambient).
-  // All gated on reduced motion. While a finger is down, touch wins over gyro.
+  // 3D tilt + lift. Raw motion values are set from one of several inputs and
+  // eased through springs, so y / scale / rotateX / rotateY compose into one
+  // smooth transform: a mouse over the card (desktop), a finger dragging across
+  // it (touch), or the shared ambient lean on mobile — the gyroscope where it
+  // works, otherwise scroll. All gated on reduced motion. While a finger is
+  // down, touch wins over the ambient source.
   const rotateX = useMotionValue(0);
   const rotateY = useMotionValue(0);
   const lift = useMotionValue(0);
@@ -50,10 +53,10 @@ export function CharacterCard({ product }: { product: Product }) {
   // True between pointerdown and pointerup/cancel for a touch on this card.
   const touching = useRef(false);
 
-  // Ambient gyroscope lean: subscribe to the shared device tilt and write it
-  // into this card's raw values — unless a finger is currently driving the card.
+  // Ambient lean: subscribe to the shared tilt channel (gyro or scroll) and write
+  // it into this card's raw values — unless a finger is currently driving the card.
   useEffect(() => {
-    if (!gyroActive || reduce) return;
+    if (!ambientActive || reduce) return;
     const apply = () => {
       if (touching.current) return;
       rotateY.set(tilt.tiltX.get() * CARD_GYRO.maxDeg);
@@ -65,7 +68,7 @@ export function CharacterCard({ product }: { product: Product }) {
       ux();
       uy();
     };
-  }, [gyroActive, reduce, tilt.tiltX, tilt.tiltY, rotateX, rotateY]);
+  }, [ambientActive, reduce, tilt.tiltX, tilt.tiltY, rotateX, rotateY]);
 
   // Pointer drives the tilt toward the cursor (mouse) or finger (touch). The
   // card's `touch-action: pan-y` lets vertical swipes scroll the page (the
@@ -84,10 +87,10 @@ export function CharacterCard({ product }: { product: Product }) {
     lift.set(CARD_TILT.lift);
     scale.set(CARD_TILT.scale);
   }
-  // Return the card to rest, or — if the gyroscope is live — hand control back
-  // to it by snapping to the current device lean so there's no visible jump.
+  // Return the card to rest, or — if an ambient source is live — hand control
+  // back to it by snapping to the current lean so there's no visible jump.
   function rest() {
-    if (gyroActive && !reduce) {
+    if (ambientActive && !reduce) {
       rotateY.set(tilt.tiltX.get() * CARD_GYRO.maxDeg);
       rotateX.set(tilt.tiltY.get() * CARD_GYRO.maxDeg);
     } else {

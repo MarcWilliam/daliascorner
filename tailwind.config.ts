@@ -70,9 +70,12 @@ const config: Config = {
         clay: "cubic-bezier(0.34, 1.56, 0.64, 1)", // gentle springy press
       },
       keyframes: {
+        // Continuous slow wander — multi-directional so it never reads as static.
         "blob-drift": {
-          "0%, 100%": { transform: "translate3d(0,0,0) rotate(0deg)" },
-          "50%": { transform: "translate3d(0,-14px,0) rotate(6deg)" },
+          "0%, 100%": { transform: "translate3d(0px, 0px, 0) rotate(0deg)" },
+          "25%": { transform: "translate3d(26px, -20px, 0) rotate(7deg)" },
+          "50%": { transform: "translate3d(-10px, -32px, 0) rotate(-5deg)" },
+          "75%": { transform: "translate3d(-26px, -14px, 0) rotate(5deg)" },
         },
         "rise-in": {
           from: { opacity: "0", transform: "translateY(18px)" },
