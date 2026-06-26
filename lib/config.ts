@@ -17,6 +17,8 @@ export const WHATSAPP_NUMBER_IS_PLACEHOLDER = true; // set false once the real n
 /** Social handles / URLs */
 export const INSTAGRAM_HANDLE = "bydaliascorner";
 export const INSTAGRAM_URL = `https://instagram.com/${INSTAGRAM_HANDLE}`;
+/** Direct "message us" deep link — ig.me opens the Instagram DM thread. */
+export const INSTAGRAM_DM_URL = `https://ig.me/m/${INSTAGRAM_HANDLE}`;
 /** PLACEHOLDER — drop the real Facebook page URL here to show the FB link. */
 export const FACEBOOK_URL = ""; // TODO: e.g. "https://facebook.com/daliascorner"
 

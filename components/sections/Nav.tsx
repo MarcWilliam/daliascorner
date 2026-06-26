@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Menu, X } from "lucide-react";
 import { useLocale } from "@/components/providers/LocaleProvider";
-import { LogoTile, Wordmark } from "@/components/ui/Logo";
+import { Logo } from "@/components/ui/Logo";
 import { LanguageToggle } from "@/components/ui/LanguageToggle";
 import { CartButton } from "@/components/ui/CartButton";
 import { ClayButton } from "@/components/ui/ClayButton";
@@ -69,8 +69,8 @@ export function Nav() {
           className="flex items-center gap-3 rounded-clay focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/45"
           aria-label="Dalia's Corner"
         >
-          <LogoTile />
-          <Wordmark className="hidden xs:flex sm:flex" />
+          {/* Full brand lockup — already includes the wordmark + tagline. */}
+          <Logo alt="" className="h-12 w-12 sm:h-14 sm:w-14" />
         </a>
 
         {/* Center: text links (desktop) */}

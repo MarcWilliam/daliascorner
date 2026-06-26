@@ -23,12 +23,14 @@ const accentDot: Record<Product["accent"], string> = {
 
 export function CharacterCard({ product }: { product: Product }) {
   const { t, locale, messages } = useLocale();
-  const { add } = useCart();
+  const { add, lines } = useCart();
   const announce = useAnnouncer();
   const reduce = useReducedMotion();
   const [justAdded, setJustAdded] = useState(false);
 
   const name = product.name[locale];
+  // How many of this character are currently in the cart.
+  const qty = lines.find((l) => l.id === product.id)?.qty ?? 0;
 
   // 3D pointer tilt + lift. Raw motion values are set from pointer position and
   // eased through springs, so y / scale / rotateX / rotateY compose into one
@@ -97,6 +99,14 @@ export function CharacterCard({ product }: { product: Product }) {
             className="h-full w-full object-cover transition-transform duration-300 motion-safe:group-hover:scale-[1.03]"
           />
         </div>
+
+        {/* in-cart count — persistent badge reflecting the cart quantity */}
+        {qty > 0 && (
+          <span className="tabular absolute end-3 top-3 grid min-h-[1.75rem] min-w-[1.75rem] place-items-center rounded-full bg-orange px-2 text-sm font-bold leading-none text-ink shadow-clay-sm">
+            <span aria-hidden="true">{qty}</span>
+            <span className="sr-only">{t("cart.inCart", { count: qty })}</span>
+          </span>
+        )}
       </div>
 
       {/* body */}

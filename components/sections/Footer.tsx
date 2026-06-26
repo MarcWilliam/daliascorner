@@ -3,7 +3,7 @@
 import { useRef } from "react";
 import { useReducedMotion } from "framer-motion";
 import { useLocale } from "@/components/providers/LocaleProvider";
-import { LogoTile, Wordmark } from "@/components/ui/Logo";
+import { Logo } from "@/components/ui/Logo";
 import { Blob } from "@/components/ui/Blob";
 import { WhatsAppIcon, InstagramIcon, FacebookIcon } from "@/components/ui/BrandIcons";
 import { useParallaxPair } from "@/lib/parallax";
@@ -54,10 +54,8 @@ export function Footer() {
 
       <div className="relative container-page flex flex-col items-center gap-7 py-12 text-center">
         <div className="flex items-center gap-3">
-          <LogoTile className="bg-canvas/15" />
-          <span className="font-display text-2xl font-extrabold tracking-tight text-canvas">
-            Dalia&apos;s Corner
-          </span>
+          {/* Cream lockup reads as a badge against the dark footer. */}
+          <Logo className="h-16 w-16 rounded-2xl shadow-clay-sm" />
         </div>
 
         <p className="font-display text-lg font-semibold text-canvas/95">

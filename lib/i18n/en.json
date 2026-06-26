@@ -26,7 +26,7 @@
     "supporting": "Choose the character that will live in your corner and keep your plants company.",
     "ctaShop": "Shop the characters",
     "ctaWhatsapp": "Message us on WhatsApp",
-    "trust": ["100% Handmade", "Hand-painted", "One-of-a-kind", "Ships across Egypt"]
+    "trust": ["100% Handmade", "Hand-painted", "One-of-a-kind", "Cairo delivery"]
   },
   "about": {
     "title": "Our *Story*",
@@ -41,7 +41,7 @@
     "points": [
       "Every pottery piece is fully handmade and hand-painted by the family",
       "A unique character, no two ever alike",
-      "Perfect for succulents, cacti, and small plants",
+      "Arrives already planted with an easy-care succulent — plus a care card",
       "Packed with love and care to reach you safely"
     ]
   },
@@ -51,7 +51,7 @@
     "primaryBody": "Add the characters you love to your cart, then checkout — we'll pick it up on WhatsApp with your list ready.",
     "primaryCta": "Shop the characters",
     "altHeading": "Found a character you love?",
-    "altBody": "Screenshot the one you want and send it to us on Instagram or WhatsApp. We'll sort out the details and ship it to your doorstep anywhere in Egypt.",
+    "altBody": "Screenshot the one you want and send it to us on Instagram or WhatsApp. We'll sort out the details and deliver it to your doorstep anywhere in Cairo.",
     "altInstagram": "Order on Instagram",
     "altWhatsapp": "Message us on WhatsApp"
   },
@@ -59,8 +59,8 @@
     "title": "Questions, *answered*",
     "items": [
       {
-        "q": "Do you ship across Egypt?",
-        "a": "Yes, we ship to all governorates. Cost and time vary by location, and we'll share the details when confirming your order."
+        "q": "Do you deliver across Cairo?",
+        "a": "Right now we deliver within Cairo only. Cost and timing depend on your area, and we'll share the details when confirming your order."
       },
       {
         "q": "Are the pieces identical?",
@@ -72,7 +72,7 @@
       },
       {
         "q": "Do the plants come with the planters?",
-        "a": "The planters are sold on their own, but we'll suggest the plants that suit each character best."
+        "a": "Yes! Each planter arrives already planted with an easy-care succulent and a little care card — they're hardy and simple to look after."
       }
     ]
   },
@@ -99,6 +99,9 @@
     "emptyCta": "Meet the characters",
     "close": "Close cart",
     "checkout": "Checkout on WhatsApp",
+    "checkoutInstagram": "Order on Instagram",
+    "copiedForInstagram": "Order details copied — paste them into your Instagram chat with us.",
+    "inCart": "{count} in cart",
     "requestNote": "No prices here — it's a wishlist. We'll settle the details and shipping together on WhatsApp.",
     "subtotal": "Subtotal",
     "currency": "EGP",
