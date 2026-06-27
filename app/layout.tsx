@@ -20,11 +20,19 @@ const initialDir = DEFAULT_LOCALE === "ar" ? "rtl" : "ltr";
 // fallback (adjustFontFallback default) so the swap doesn't reflow. Display
 // faces only carry the weights actually used (600/700/800); 400/500 dropped.
 // CSS vars are consumed by --font-display / --font-body in globals.css.
+//
+// Baloo 2 is the *Latin* display face — only used once the visitor switches to
+// English. The default render is Arabic (Baloo Bhaijaan 2 + Cairo), so this
+// file is dead weight on the first paint. preload:false keeps it self-hosted
+// but drops its <link rel=preload>, so its 34KB no longer competes with the
+// hero (the LCP element) for the throttled mobile pipe. It still loads on
+// demand via font-display:swap, and the metric-matched fallback means no CLS.
 const baloo2 = Baloo_2({
   subsets: ["latin"],
   weight: ["600", "700", "800"],
   variable: "--font-baloo2",
   display: "swap",
+  preload: false,
 });
 const balooBhaijaan2 = Baloo_Bhaijaan_2({
   subsets: ["arabic"],
