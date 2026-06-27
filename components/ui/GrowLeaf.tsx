@@ -14,18 +14,18 @@ export function GrowLeaf({ className = "" }: { className?: string }) {
       >
         <path
           d="M20 46 V22"
-          stroke="var(--brand-deep)"
+          stroke="rgb(var(--brand-deep))"
           strokeWidth="3"
           strokeLinecap="round"
         />
         <path
           d="M20 30 C20 18 12 11 3 9 C5 22 11 28 20 31Z"
-          fill="var(--leaf)"
+          fill="rgb(var(--leaf))"
         />
         <path
           d="M20 24 C20 12 28 5 37 3 C35 16 29 22 20 25Z"
-          fill="var(--leaf-soft)"
-          stroke="var(--leaf)"
+          fill="rgb(var(--leaf-soft))"
+          stroke="rgb(var(--leaf))"
           strokeWidth="1.5"
         />
       </svg>

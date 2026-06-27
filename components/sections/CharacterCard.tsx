@@ -114,6 +114,16 @@ export function CharacterCard({ product }: { product: Product }) {
     add(product.id);
     announce(t("cart.added", { name }));
   }
+  function handleIncrement() {
+    increment(product.id);
+    announce(`${name} — ${t("cart.quantity")}: ${qty + 1}`);
+  }
+  // Decrementing the last one removes the line — announce that, not a bare "0",
+  // before the stepper unmounts (mirrors the cart drawer's remove button).
+  function handleDecrement() {
+    announce(qty <= 1 ? t("cart.removed", { name }) : `${name} — ${t("cart.quantity")}: ${qty - 1}`);
+    decrement(product.id);
+  }
 
   return (
     <m.article
@@ -199,21 +209,18 @@ export function CharacterCard({ product }: { product: Product }) {
           >
             <button
               type="button"
-              onClick={() => decrement(product.id)}
+              onClick={handleDecrement}
               aria-label={t("cart.decrease")}
               className="grid h-full place-items-center text-brand transition-colors hover:bg-canvas-sunk focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-brand/45 [touch-action:manipulation] cursor-pointer"
             >
               <Minus className="h-5 w-5" aria-hidden="true" />
             </button>
-            <span
-              className="tabular select-none text-center font-display text-lg font-bold text-ink"
-              aria-live="polite"
-            >
+            <span className="tabular select-none text-center font-display text-lg font-bold text-ink">
               {qty}
             </span>
             <button
               type="button"
-              onClick={() => increment(product.id)}
+              onClick={handleIncrement}
               aria-label={t("cart.increase")}
               className="grid h-full place-items-center text-brand transition-colors hover:bg-canvas-sunk focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-brand/45 [touch-action:manipulation] cursor-pointer"
             >

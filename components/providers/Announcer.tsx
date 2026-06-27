@@ -1,6 +1,13 @@
 "use client";
 
-import { createContext, useCallback, useContext, useRef, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
 /**
  * App-level polite live region. Cart add/remove and other async confirmations
@@ -18,6 +25,14 @@ export function AnnouncerProvider({ children }: { children: React.ReactNode }) {
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(() => setMessage(msg), 60);
   }, []);
+
+  // Clear any pending announce on unmount so it can't fire after teardown.
+  useEffect(
+    () => () => {
+      if (timer.current) clearTimeout(timer.current);
+    },
+    [],
+  );
 
   return (
     <AnnouncerContext.Provider value={announce}>

@@ -9,7 +9,7 @@ import { RevealTitle } from "@/components/ui/RevealTitle";
 import { RevealGroup, RevealItem } from "@/components/ui/RevealGroup";
 import { WhatsAppIcon, InstagramIcon } from "@/components/ui/BrandIcons";
 import { FloatingLeaf } from "@/components/ui/FloatingLeaf";
-import { INSTAGRAM_URL, WHATSAPP_NUMBER } from "@/lib/config";
+import { INSTAGRAM_URL, whatsappLink } from "@/lib/config";
 
 export function HowToOrder() {
   const { t } = useLocale();
@@ -74,7 +74,7 @@ export function HowToOrder() {
                   {t("order.altInstagram")}
                 </ClayButton>
                 <ClayButton
-                  href={`https://wa.me/${WHATSAPP_NUMBER}`}
+                  href={whatsappLink()}
                   target="_blank"
                   rel="noopener noreferrer"
                   variant="outline"

@@ -5,41 +5,46 @@
 /* ===========================================================================
    Dalia's Corner — Design Tokens (Stage 1, approved)
    Single source of truth. Markup references Tailwind tokens, never raw hex.
-   A future dark mode only needs to override these variables under .dark.
+
+   Colours are stored as space-separated RGB *channels* (not hex) so the Tailwind
+   tokens — defined as `rgb(var(--x) / <alpha-value>)` — support opacity
+   modifiers (e.g. `bg-ink/55`, `ring-brand/45`). Any raw CSS consumer of a
+   colour var must wrap it in `rgb(var(--x))`. A future dark mode only needs to
+   override these channel values under .dark.
    =========================================================================== */
 :root {
   /* Brand greens — the anchor */
-  --brand: #3a5a40;
-  --brand-deep: #2f4a34;
-  --brand-edge: #233a29; /* pressed-clay bottom edge */
+  --brand: 58 90 64; /* #3a5a40 */
+  --brand-deep: 47 74 52; /* #2f4a34 */
+  --brand-edge: 35 58 41; /* #233a29 — pressed-clay bottom edge */
 
   /* Canvas — warm cream */
-  --canvas: #fbf6ec;
-  --canvas-sunk: #f3ecdc; /* slightly deeper cream for inset / alt sections */
-  --surface: #fffdf8; /* cards / drawer */
+  --canvas: 251 246 236; /* #fbf6ec */
+  --canvas-sunk: 243 236 220; /* #f3ecdc — deeper cream for inset / alt sections */
+  --surface: 255 253 248; /* #fffdf8 — cards / drawer */
 
   /* Ink — warm-green near-black */
-  --ink: #1e2b22;
-  --ink-muted: #5c6b5a;
+  --ink: 30 43 34; /* #1e2b22 */
+  --ink-muted: 92 107 90; /* #5c6b5a */
 
   /* Terracotta clay — surfaces / frames / borders (mid-tone, AA-aware) */
-  --clay: #c07a4e;
-  --clay-deep: #9c5a34; /* terracotta accent TEXT — AA 4.5:1+ on cream & surface */
-  --clay-edge: #8f5230;
-  --clay-soft: #ecd6c4; /* tints for soft fills */
+  --clay: 192 122 78; /* #c07a4e */
+  --clay-deep: 156 90 52; /* #9c5a34 — terracotta accent TEXT, AA 4.5:1+ on cream & surface */
+  --clay-edge: 143 82 48; /* #8f5230 */
+  --clay-soft: 236 214 196; /* #ecd6c4 — tints for soft fills */
 
   /* Warm accent — duck-beak orange (dark ink text only, never white) */
-  --orange: #e8924a;
-  --orange-edge: #c9742e;
+  --orange: 232 146 74; /* #e8924a */
+  --orange-edge: 201 116 46; /* #c9742e */
 
   /* Soft accents — succulent */
-  --mauve: #a98bb0;
-  --mauve-soft: #e6dceb;
-  --leaf: #8faa7c;
-  --leaf-soft: #dde7d2;
+  --mauve: 169 139 176; /* #a98bb0 */
+  --mauve-soft: 230 220 235; /* #e6dceb */
+  --leaf: 143 170 124; /* #8faa7c */
+  --leaf-soft: 221 231 210; /* #dde7d2 */
 
-  --line: #e7ddca; /* hairline borders on cream */
-  --destructive: #c0492b;
+  --line: 231 221 202; /* #e7ddca — hairline borders on cream */
+  --destructive: 192 73 43; /* #c0492b */
 
   /* Typography tokens */
   --font-display: "Baloo 2", "Baloo Bhaijaan 2", system-ui, sans-serif;
@@ -55,7 +60,7 @@
 
 @layer base {
   * {
-    border-color: var(--line);
+    border-color: rgb(var(--line));
   }
 
   html {
@@ -63,8 +68,8 @@
   }
 
   body {
-    background-color: var(--canvas);
-    color: var(--ink);
+    background-color: rgb(var(--canvas));
+    color: rgb(var(--ink));
     font-family: var(--font-body);
     /* Subtle paper/clay grain — handcrafted texture, very low opacity */
     background-image: var(--grain);
@@ -84,7 +89,7 @@
     font-family: var(--font-display);
     font-weight: 700;
     line-height: 1.12;
-    color: var(--ink);
+    color: rgb(var(--ink));
     letter-spacing: -0.01em;
   }
   html[lang="ar"] h1,
@@ -97,7 +102,7 @@
 
   /* Visible, on-brand focus ring for keyboard users */
   :focus-visible {
-    outline: 3px solid var(--brand);
+    outline: 3px solid rgb(var(--brand));
     outline-offset: 2px;
     border-radius: 6px;
   }
@@ -126,7 +131,7 @@
     --edge: var(--brand-edge);
     position: relative;
     box-shadow:
-      0 6px 0 0 var(--edge),
+      0 6px 0 0 rgb(var(--edge)),
       0 10px 22px rgba(58, 90, 64, 0.18);
     transition:
       transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1),
@@ -136,19 +141,19 @@
   .btn-clay:hover {
     transform: translateY(-1px);
     box-shadow:
-      0 7px 0 0 var(--edge),
+      0 7px 0 0 rgb(var(--edge)),
       0 14px 26px rgba(58, 90, 64, 0.22);
   }
   .btn-clay:active {
     transform: translateY(4px);
     box-shadow:
-      0 2px 0 0 var(--edge),
+      0 2px 0 0 rgb(var(--edge)),
       0 5px 12px rgba(58, 90, 64, 0.18);
   }
   .btn-clay:disabled,
   .btn-clay[aria-disabled="true"] {
     transform: none;
-    box-shadow: 0 4px 0 0 var(--edge);
+    box-shadow: 0 4px 0 0 rgb(var(--edge));
   }
   @media (prefers-reduced-motion: reduce) {
     .btn-clay,

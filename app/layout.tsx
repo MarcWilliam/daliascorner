@@ -9,26 +9,24 @@ import {
 } from "@/lib/config";
 import { dictionaries } from "@/lib/i18n/dictionaries";
 import { jsonLdBlocks } from "@/lib/jsonld";
+import { asset } from "@/lib/asset";
 
 const def = dictionaries[DEFAULT_LOCALE];
 const initialDir = DEFAULT_LOCALE === "ar" ? "rtl" : "ltr";
 
-// Deploy target. Production serves from the custom apex domain at root, so
-// basePath stays empty. NEXT_PUBLIC_BASE_PATH only matters for non-root deploys
-// (e.g. a github.io/<repo> subpath preview); both env vars are "" during local dev.
+// Deploy target. Production serves from the custom apex domain at root (basePath
+// empty); asset() prefixes /public URLs for any non-root subpath preview deploy.
 const siteOrigin = process.env.NEXT_PUBLIC_SITE_ORIGIN || "https://daliascorner.com";
-const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
-const home = `${basePath}/`;
-// Real raster share image (1200×630). Social platforms (Facebook, WhatsApp,
-// X/Twitter, iMessage) ignore SVG OG images, so we rasterize the branded card.
-const ogImage = `${basePath}/og.png`;
+const home = asset("/");
+// Real raster share image (1200×630) — social platforms ignore SVG OG images.
+const ogImage = asset("/og.png");
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteOrigin),
   title: def.meta.title,
   description: def.meta.description,
   applicationName: "Dalia's Corner",
-  manifest: `${basePath}/manifest.webmanifest`,
+  manifest: asset("/manifest.webmanifest"),
   alternates: {
     canonical: home,
     // Single-URL client toggle → both locales resolve to the home path.
@@ -46,7 +44,7 @@ export const metadata: Metadata = {
     url: home,
     locale: "ar_EG",
     alternateLocale: ["en_US"],
-    // Real 1200×630 raster share image (public/og.png, rasterized from og.svg).
+    // Branded 1200×630 PNG share card (public/og.png).
     images: [
       { url: ogImage, width: 1200, height: 630, type: "image/png", alt: "Dalia's Corner" },
     ],

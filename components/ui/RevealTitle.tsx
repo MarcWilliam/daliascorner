@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { m, useReducedMotion } from "framer-motion";
 import { titleRise, VIEWPORT } from "@/lib/motion";
+import { useMounted } from "./reveal-primitives";
 
 /**
  * Section-title reveal: the heading rises out of an overflow-hidden mask when
@@ -24,8 +24,7 @@ export function RevealTitle({
   className?: string;
 }) {
   const reduce = useReducedMotion();
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  const mounted = useMounted();
 
   if (reduce || !mounted) {
     return <div className={className}>{children}</div>;

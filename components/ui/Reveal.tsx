@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { m, useReducedMotion } from "framer-motion";
+import { useReducedMotion } from "framer-motion";
 import { EASE_OUT, DUR, VIEWPORT } from "@/lib/motion";
+import { useMounted, motionTag } from "./reveal-primitives";
 
 /**
  * Scroll-in reveal (fade + gentle rise), composed on top of existing markup.
@@ -24,8 +24,7 @@ export function Reveal({
   as?: keyof JSX.IntrinsicElements;
 }) {
   const reduce = useReducedMotion();
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  const mounted = useMounted();
 
   // No motion path: render the plain element, fully visible.
   if (reduce || !mounted) {
@@ -33,7 +32,7 @@ export function Reveal({
     return <Tag className={className}>{children}</Tag>;
   }
 
-  const MotionTag = (m as unknown as Record<string, React.ElementType>)[as];
+  const MotionTag = motionTag(as);
   return (
     <MotionTag
       className={className}

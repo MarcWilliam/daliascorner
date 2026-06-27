@@ -17,26 +17,28 @@ const config: Config = {
         xs: "400px",
       },
       colors: {
-        brand: "var(--brand)",
-        "brand-deep": "var(--brand-deep)",
-        "brand-edge": "var(--brand-edge)",
-        canvas: "var(--canvas)",
-        "canvas-sunk": "var(--canvas-sunk)",
-        surface: "var(--surface)",
-        ink: "var(--ink)",
-        "ink-muted": "var(--ink-muted)",
-        clay: "var(--clay)",
-        "clay-deep": "var(--clay-deep)",
-        "clay-edge": "var(--clay-edge)",
-        "clay-soft": "var(--clay-soft)",
-        orange: "var(--orange)",
-        "orange-edge": "var(--orange-edge)",
-        mauve: "var(--mauve)",
-        "mauve-soft": "var(--mauve-soft)",
-        leaf: "var(--leaf)",
-        "leaf-soft": "var(--leaf-soft)",
-        line: "var(--line)",
-        destructive: "var(--destructive)",
+        // Channel-based tokens (vars hold "R G B") so opacity modifiers work:
+        // `bg-ink/55`, `ring-brand/45`, etc. resolve to rgb(var(--x) / <alpha>).
+        brand: "rgb(var(--brand) / <alpha-value>)",
+        "brand-deep": "rgb(var(--brand-deep) / <alpha-value>)",
+        "brand-edge": "rgb(var(--brand-edge) / <alpha-value>)",
+        canvas: "rgb(var(--canvas) / <alpha-value>)",
+        "canvas-sunk": "rgb(var(--canvas-sunk) / <alpha-value>)",
+        surface: "rgb(var(--surface) / <alpha-value>)",
+        ink: "rgb(var(--ink) / <alpha-value>)",
+        "ink-muted": "rgb(var(--ink-muted) / <alpha-value>)",
+        clay: "rgb(var(--clay) / <alpha-value>)",
+        "clay-deep": "rgb(var(--clay-deep) / <alpha-value>)",
+        "clay-edge": "rgb(var(--clay-edge) / <alpha-value>)",
+        "clay-soft": "rgb(var(--clay-soft) / <alpha-value>)",
+        orange: "rgb(var(--orange) / <alpha-value>)",
+        "orange-edge": "rgb(var(--orange-edge) / <alpha-value>)",
+        mauve: "rgb(var(--mauve) / <alpha-value>)",
+        "mauve-soft": "rgb(var(--mauve-soft) / <alpha-value>)",
+        leaf: "rgb(var(--leaf) / <alpha-value>)",
+        "leaf-soft": "rgb(var(--leaf-soft) / <alpha-value>)",
+        line: "rgb(var(--line) / <alpha-value>)",
+        destructive: "rgb(var(--destructive) / <alpha-value>)",
       },
       fontFamily: {
         // Baloo 2 carries Latin; Arabic glyphs fall through to Baloo Bhaijaan 2.
@@ -58,7 +60,7 @@ const config: Config = {
           "12px 16px 36px rgba(58,90,64,0.18), -6px -6px 20px rgba(255,255,255,0.7)",
         "clay-inset":
           "inset 4px 5px 12px rgba(58,90,64,0.16), inset -3px -3px 9px rgba(255,255,255,0.55)",
-        "clay-focus": "0 0 0 4px var(--canvas), 0 0 0 7px var(--brand)",
+        "clay-focus": "0 0 0 4px rgb(var(--canvas)), 0 0 0 7px rgb(var(--brand))",
         // Soft, warm, diffuse "lifted photo" elevation (terracotta-tinted, no white
         // highlight) — a real drop shadow rather than the puffy clay look.
         photo:
@@ -82,10 +84,6 @@ const config: Config = {
           "50%": { transform: "translate3d(-10px, -32px, 0) rotate(-5deg)" },
           "75%": { transform: "translate3d(-26px, -14px, 0) rotate(5deg)" },
         },
-        "rise-in": {
-          from: { opacity: "0", transform: "translateY(18px)" },
-          to: { opacity: "1", transform: "translateY(0)" },
-        },
         // Seamless marquee: the track holds two identical copies, so shifting by
         // exactly half its width loops with no visible seam.
         marquee: {
@@ -95,7 +93,6 @@ const config: Config = {
       },
       animation: {
         "blob-drift": "blob-drift 9s ease-in-out infinite",
-        "rise-in": "rise-in 0.5s cubic-bezier(0.22,1,0.36,1) both",
         "leaf-sway": "leaf-sway 6s ease-in-out infinite",
         marquee: "marquee 32s linear infinite",
       },

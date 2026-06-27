@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { m, useReducedMotion, useScroll, useSpring } from "framer-motion";
+import { useLocale } from "@/components/providers/LocaleProvider";
 
 /**
  * Slim reading-progress bar pinned to the top of the viewport (above the nav).
@@ -11,8 +12,11 @@ import { m, useReducedMotion, useScroll, useSpring } from "framer-motion";
  */
 export function ScrollProgress() {
   const reduce = useReducedMotion();
+  const { dir } = useLocale();
   const [mounted, setMounted] = useState(false);
-  const [origin, setOrigin] = useState<"left" | "right">("left");
+  // Reading edge follows the active direction — derived live, so it stays correct
+  // when the visitor toggles locale (which flips <html dir> at runtime).
+  const origin = dir === "rtl" ? "right" : "left";
 
   const { scrollYProgress } = useScroll();
   const scaleX = useSpring(scrollYProgress, {
@@ -21,10 +25,7 @@ export function ScrollProgress() {
     mass: 0.4,
   });
 
-  useEffect(() => {
-    setMounted(true);
-    setOrigin(document.documentElement.dir === "rtl" ? "right" : "left");
-  }, []);
+  useEffect(() => setMounted(true), []);
 
   // No bar for reduced-motion users (and not until mounted, to avoid a flash).
   if (reduce || !mounted) return null;

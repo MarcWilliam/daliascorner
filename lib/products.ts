@@ -11,9 +11,8 @@ export interface Product {
   name: LocalizedText;
   blurb: LocalizedText;
   /**
-   * Image path under /public. These are PLACEHOLDER hand-drawn SVGs.
-   * Swap each for a real, warm, sunlit @bydaliascorner photo (1:1, ~800×800).
-   * Changing the photo is a one-line edit here.
+   * Image path under /public — a real 800×800 hand-painted character photo (WebP).
+   * Swapping the photo is a one-line edit on each product below.
    */
   image: string;
   /** Bilingual alt text — describes the planter for screen readers / SEO. */

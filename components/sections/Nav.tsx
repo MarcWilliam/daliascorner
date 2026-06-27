@@ -8,7 +8,7 @@ import { LanguageToggle } from "@/components/ui/LanguageToggle";
 import { CartButton } from "@/components/ui/CartButton";
 import { ClayButton } from "@/components/ui/ClayButton";
 import { WhatsAppIcon } from "@/components/ui/BrandIcons";
-import { WHATSAPP_NUMBER } from "@/lib/config";
+import { whatsappLink } from "@/lib/config";
 
 const LINKS = [
   { id: "characters", href: "#characters", key: "nav.characters" },
@@ -31,12 +31,24 @@ export function Nav() {
       Boolean,
     ) as HTMLElement[];
     if (!sections.length) return;
+    // Track each section's visibility so we can pick the most-visible one — and
+    // clear the highlight entirely when none is within the spy band (e.g. at the
+    // hero or footer), instead of leaving a stale section marked current.
+    const ratios = new Map<string, number>();
     const obs = new IntersectionObserver(
       (entries) => {
-        const visible = entries
-          .filter((e) => e.isIntersecting)
-          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
-        if (visible) setActive(visible.target.id);
+        for (const e of entries) {
+          ratios.set(e.target.id, e.isIntersecting ? e.intersectionRatio : 0);
+        }
+        let topId = "";
+        let topRatio = 0;
+        for (const [id, ratio] of ratios) {
+          if (ratio > topRatio) {
+            topRatio = ratio;
+            topId = id;
+          }
+        }
+        setActive(topId);
       },
       { rootMargin: "-45% 0px -50% 0px", threshold: [0, 0.25, 0.5] },
     );
@@ -60,7 +72,7 @@ export function Nav() {
   return (
     <header className="sticky top-0 z-40 border-b border-line/70 bg-canvas/85 backdrop-blur-md">
       <nav
-        aria-label={t("nav.skip")}
+        aria-label={t("nav.label")}
         className="container-page flex items-center justify-between gap-3 py-3"
       >
         {/* Leading: logo tile + wordmark */}
@@ -95,7 +107,7 @@ export function Nav() {
           <LanguageToggle className="hidden xs:inline-flex" />
           <CartButton />
           <ClayButton
-            href={`https://wa.me/${WHATSAPP_NUMBER}`}
+            href={whatsappLink()}
             target="_blank"
             rel="noopener noreferrer"
             variant="whatsapp"
@@ -150,7 +162,7 @@ export function Nav() {
             </li>
             <li className="mt-1">
               <ClayButton
-                href={`https://wa.me/${WHATSAPP_NUMBER}`}
+                href={whatsappLink()}
                 target="_blank"
                 rel="noopener noreferrer"
                 variant="whatsapp"

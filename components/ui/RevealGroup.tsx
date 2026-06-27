@@ -1,16 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { m, useReducedMotion } from "framer-motion";
+import { useReducedMotion } from "framer-motion";
 import { cascadeParent, fadeRiseScale, VIEWPORT } from "@/lib/motion";
+import { useMounted, motionTag } from "./reveal-primitives";
 
 type Tag = keyof JSX.IntrinsicElements;
-
-function useMounted() {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
-  return mounted;
-}
 
 /**
  * Orchestrated reveal container. A single in-view observer on the parent drives
@@ -37,7 +31,7 @@ export function RevealGroup({
     return <Plain className={className}>{children}</Plain>;
   }
 
-  const MotionTag = (m as unknown as Record<string, React.ElementType>)[as];
+  const MotionTag = motionTag(as);
   return (
     <MotionTag
       className={className}
@@ -72,7 +66,7 @@ export function RevealItem({
     return <Plain className={className}>{children}</Plain>;
   }
 
-  const MotionTag = (m as unknown as Record<string, React.ElementType>)[as];
+  const MotionTag = motionTag(as);
   return (
     <MotionTag className={className} variants={fadeRiseScale}>
       {children}

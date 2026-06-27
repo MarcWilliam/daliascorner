@@ -13,18 +13,27 @@ import { SPRING_SOFT } from "@/lib/motion";
  * Reduced motion → simple fade + instant scroll.
  */
 export function BackToTop() {
-  const { locale } = useLocale();
+  const { t } = useLocale();
   const reduce = useReducedMotion();
   const [show, setShow] = useState(false);
 
   useEffect(() => {
-    const onScroll = () => setShow(window.scrollY > 700);
+    // Only touch React state when the 700px threshold is actually crossed, so the
+    // vast majority of scroll events do no work.
+    let shown = false;
+    const onScroll = () => {
+      const next = window.scrollY > 700;
+      if (next !== shown) {
+        shown = next;
+        setShow(next);
+      }
+    };
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  const label = locale === "ar" ? "العودة لأعلى" : "Back to top";
+  const label = t("nav.backToTop");
 
   function toTop() {
     window.scrollTo({ top: 0, behavior: reduce ? "auto" : "smooth" });

@@ -16,7 +16,9 @@
     "orderWhatsapp": "اطلب على واتساب",
     "openMenu": "افتح القائمة",
     "closeMenu": "اقفل القائمة",
-    "skip": "تخطَّ إلى المحتوى"
+    "skip": "تخطَّ إلى المحتوى",
+    "label": "الرئيسية",
+    "backToTop": "العودة لأعلى"
   },
   "hero": {
     "badge": "صناعة يدوية من مصر",
@@ -114,8 +116,12 @@
     "requestNote": "مفيش أسعار هنا — دي قايمة أمنيات 😍 هنظبط التفاصيل والتوصيل مع بعض على واتساب.",
     "subtotal": "الإجمالي",
     "currency": "جنيه",
+    "itemsZero": "{count} قطعة",
     "itemsOne": "قطعة واحدة",
-    "itemsOther": "{count} قطع"
+    "itemsTwo": "قطعتين",
+    "itemsFew": "{count} قطع",
+    "itemsMany": "{count} قطعة",
+    "itemsOther": "{count} قطعة"
   },
   "whatsapp": {
     "greeting": "أهلاً يا Dalia's Corner! 🌿 عايز أطلب:",

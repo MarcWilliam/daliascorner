@@ -27,23 +27,42 @@ type Action =
   | { type: "HYDRATE"; lines: CartLine[] };
 
 const VALID_IDS = new Set(PRODUCTS.map((p) => p.id));
+/** Upper bound per line — keeps a stuck "+" (or tampered storage) from runaway qty. */
+const MAX_QTY = 99;
 
 function reducer(state: CartLine[], action: Action): CartLine[] {
   switch (action.type) {
-    case "HYDRATE":
-      return action.lines.filter((l) => VALID_IDS.has(l.id) && l.qty > 0);
+    case "HYDRATE": {
+      // Persisted JSON is untrusted (older schema, hand-edited, corrupt): keep only
+      // well-formed lines, coalesce duplicate ids, floor + clamp each quantity.
+      const byId = new Map<ProductId, number>();
+      for (const l of action.lines) {
+        if (
+          l != null &&
+          typeof l === "object" &&
+          VALID_IDS.has(l.id) &&
+          typeof l.qty === "number" &&
+          Number.isFinite(l.qty) &&
+          l.qty > 0
+        ) {
+          const next = (byId.get(l.id) ?? 0) + Math.floor(l.qty);
+          byId.set(l.id, Math.min(MAX_QTY, next));
+        }
+      }
+      return [...byId].map(([id, qty]) => ({ id, qty }));
+    }
     case "ADD": {
       const existing = state.find((l) => l.id === action.id);
       if (existing) {
         return state.map((l) =>
-          l.id === action.id ? { ...l, qty: l.qty + 1 } : l,
+          l.id === action.id ? { ...l, qty: Math.min(MAX_QTY, l.qty + 1) } : l,
         );
       }
       return [...state, { id: action.id, qty: 1 }];
     }
     case "INCREMENT":
       return state.map((l) =>
-        l.id === action.id ? { ...l, qty: l.qty + 1 } : l,
+        l.id === action.id ? { ...l, qty: Math.min(MAX_QTY, l.qty + 1) } : l,
       );
     case "DECREMENT":
       return state

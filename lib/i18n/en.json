@@ -16,7 +16,9 @@
     "orderWhatsapp": "Order on WhatsApp",
     "openMenu": "Open menu",
     "closeMenu": "Close menu",
-    "skip": "Skip to main content"
+    "skip": "Skip to main content",
+    "label": "Main",
+    "backToTop": "Back to top"
   },
   "hero": {
     "badge": "Handmade in Egypt",
@@ -114,7 +116,11 @@
     "requestNote": "No prices here — it's a wishlist. We'll settle the details and shipping together on WhatsApp.",
     "subtotal": "Subtotal",
     "currency": "EGP",
+    "itemsZero": "{count} pieces",
     "itemsOne": "1 piece",
+    "itemsTwo": "{count} pieces",
+    "itemsFew": "{count} pieces",
+    "itemsMany": "{count} pieces",
     "itemsOther": "{count} pieces"
   },
   "whatsapp": {

@@ -198,7 +198,14 @@ export function DeviceTiltProvider({ children }: { children: React.ReactNode }) 
       for (const evt of events) {
         window.addEventListener(evt, onFirstGesture, { once: true });
       }
-      return cleanupGesture;
+      // Tear down BOTH the first-gesture listeners and any deviceorientation
+      // listener enable() may have attached after a grant — mirrors the Android
+      // branch so the sensor handler can't leak across an unmount.
+      return () => {
+        cleanupGesture();
+        detach.current?.();
+        detach.current = null;
+      };
     }
     // Android & friends: start ambiently right away.
     detach.current = startListening();

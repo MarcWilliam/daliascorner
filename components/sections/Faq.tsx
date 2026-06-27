@@ -43,25 +43,26 @@ function FaqItem({
           />
         </button>
       </h3>
-      <AnimatePresence initial={false}>
-        {open && (
-          <m.div
-            key="panel"
-            id={`${id}-panel`}
-            role="region"
-            aria-labelledby={`${id}-btn`}
-            initial={reduce ? false : { height: 0, opacity: 0 }}
-            animate={reduce ? { opacity: 1 } : { height: "auto", opacity: 1 }}
-            exit={reduce ? { opacity: 0 } : { height: 0, opacity: 0 }}
-            transition={reduce ? { duration: 0 } : { duration: 0.3, ease: EASE_OUT }}
-            style={{ overflow: "hidden" }}
-          >
-            <div className="px-5 pb-5 text-[1.02rem] leading-relaxed text-ink-muted">
-              {a}
-            </div>
-          </m.div>
-        )}
-      </AnimatePresence>
+      {/* Panel container stays mounted with a stable id so the button's
+          aria-controls always resolves; only the animated content toggles. */}
+      <div id={`${id}-panel`} role="region" aria-labelledby={`${id}-btn`}>
+        <AnimatePresence initial={false}>
+          {open && (
+            <m.div
+              key="panel"
+              initial={reduce ? false : { height: 0, opacity: 0 }}
+              animate={reduce ? { opacity: 1 } : { height: "auto", opacity: 1 }}
+              exit={reduce ? { opacity: 0 } : { height: 0, opacity: 0 }}
+              transition={reduce ? { duration: 0 } : { duration: 0.3, ease: EASE_OUT }}
+              style={{ overflow: "hidden" }}
+            >
+              <div className="px-5 pb-5 text-[1.02rem] leading-relaxed text-ink-muted">
+                {a}
+              </div>
+            </m.div>
+          )}
+        </AnimatePresence>
+      </div>
     </div>
   );
 }

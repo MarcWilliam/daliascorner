@@ -23,29 +23,29 @@ export function FloatingLeaf({ className = "" }: { className?: string }) {
         {/* stem */}
         <path
           d="M22 46 C22 52 22 56 22 60"
-          stroke="var(--brand-deep)"
+          stroke="rgb(var(--brand-deep))"
           strokeWidth="2.5"
           strokeLinecap="round"
         />
         {/* blade */}
         <path
           d="M22 2 C37 13 39 31 22 47 C5 31 7 13 22 2 Z"
-          fill="var(--leaf-soft)"
-          stroke="var(--leaf)"
+          fill="rgb(var(--leaf-soft))"
+          stroke="rgb(var(--leaf))"
           strokeWidth="2"
           strokeLinejoin="round"
         />
         {/* midrib */}
         <path
           d="M22 9 C21 22 22 35 22 44"
-          stroke="var(--leaf)"
+          stroke="rgb(var(--leaf))"
           strokeWidth="1.6"
           strokeLinecap="round"
         />
         {/* side veins */}
         <path
           d="M22 19 L13 14 M22 19 L31 14 M22 29 L14 25 M22 29 L30 25"
-          stroke="var(--leaf)"
+          stroke="rgb(var(--leaf))"
           strokeWidth="1.3"
           strokeLinecap="round"
           opacity="0.85"

@@ -1,19 +1,25 @@
 import { forwardRef } from "react";
-import type { ButtonHTMLAttributes, ReactNode } from "react";
+import type {
+  AnchorHTMLAttributes,
+  ButtonHTMLAttributes,
+  ReactNode,
+} from "react";
 
 type Variant = "primary" | "accent" | "outline" | "whatsapp";
 type Size = "md" | "lg";
 
+// Green + white text, dark green edge (verified 7.7:1)
+const PRIMARY = "btn-clay bg-brand text-canvas [--edge:var(--brand-edge)]";
+
 const variantClasses: Record<Variant, string> = {
-  // Green + white text, dark green edge (verified 7.7:1)
-  primary: "btn-clay bg-brand text-canvas [--edge:var(--brand-edge)]",
+  primary: PRIMARY,
   // Orange + DARK ink text only (white fails on orange), darker orange edge
   accent: "btn-clay bg-orange text-ink [--edge:var(--orange-edge)]",
   // White surface, brand text, 2px brand border — no heavy edge
   outline:
     "bg-surface text-brand border-2 border-brand shadow-clay-sm hover:bg-canvas-sunk transition-colors",
-  // WhatsApp action stays in brand green for cohesion
-  whatsapp: "btn-clay bg-brand text-canvas [--edge:var(--brand-edge)]",
+  // WhatsApp CTA stays in brand green for cohesion — same look as primary.
+  whatsapp: PRIMARY,
 };
 
 const sizeClasses: Record<Size, string> = {
@@ -36,39 +42,29 @@ interface CommonProps {
 type ButtonProps = CommonProps &
   ButtonHTMLAttributes<HTMLButtonElement> & { href?: undefined };
 
-type AnchorProps = CommonProps & {
-  href: string;
-  target?: string;
-  rel?: string;
-  "aria-label"?: string;
-  onClick?: React.MouseEventHandler<HTMLAnchorElement>;
-};
+// Full anchor attribute set, so any prop passed to a link-style ClayButton
+// (target, rel, download, data-*, onMouseEnter…) is forwarded onto the <a>.
+type AnchorProps = CommonProps &
+  AnchorHTMLAttributes<HTMLAnchorElement> & { href: string };
 
 export const ClayButton = forwardRef<
   HTMLButtonElement | HTMLAnchorElement,
   ButtonProps | AnchorProps
 >(function ClayButton(props, ref) {
-  const { variant = "primary", size = "md", className = "", children } = props;
+  const { variant = "primary", size = "md", className = "" } = props;
   const cls = `${baseClasses} ${variantClasses[variant]} ${sizeClasses[size]} ${className}`;
 
   if ("href" in props && props.href !== undefined) {
-    const { href, target, rel, onClick } = props as AnchorProps;
+    const { variant: _v, size: _s, className: _c, children, ...rest } =
+      props as AnchorProps;
     return (
-      <a
-        ref={ref as React.Ref<HTMLAnchorElement>}
-        href={href}
-        target={target}
-        rel={rel}
-        onClick={onClick}
-        className={cls}
-        aria-label={(props as AnchorProps)["aria-label"]}
-      >
+      <a ref={ref as React.Ref<HTMLAnchorElement>} className={cls} {...rest}>
         {children}
       </a>
     );
   }
 
-  const { variant: _v, size: _s, className: _c, children: _ch, ...rest } =
+  const { variant: _v, size: _s, className: _c, children, ...rest } =
     props as ButtonProps;
   return (
     <button ref={ref as React.Ref<HTMLButtonElement>} className={cls} {...rest}>

@@ -4,11 +4,7 @@ import { useLocale } from "@/components/providers/LocaleProvider";
 import { Logo } from "@/components/ui/Logo";
 import { Blob } from "@/components/ui/Blob";
 import { WhatsAppIcon, InstagramIcon, FacebookIcon } from "@/components/ui/BrandIcons";
-import {
-  FACEBOOK_URL,
-  INSTAGRAM_URL,
-  WHATSAPP_NUMBER,
-} from "@/lib/config";
+import { FACEBOOK_URL, INSTAGRAM_URL, whatsappLink } from "@/lib/config";
 
 export function Footer() {
   const { t } = useLocale();
@@ -20,7 +16,7 @@ export function Footer() {
       Icon: InstagramIcon,
     },
     {
-      href: `https://wa.me/${WHATSAPP_NUMBER}`,
+      href: whatsappLink(),
       label: t("footer.whatsapp"),
       Icon: WhatsAppIcon,
     },

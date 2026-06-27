@@ -18,10 +18,15 @@ import {
   FACEBOOK_URL,
   WHATSAPP_NUMBER,
   WHATSAPP_NUMBER_IS_PLACEHOLDER,
+  PRICE_CURRENCY,
+  DEFAULT_LOCALE,
   whatsappLink,
 } from "./config";
 
 const en = dictionaries.en;
+// The page is statically pre-rendered in DEFAULT_LOCALE, so any schema Google
+// checks for visible-content parity (FAQPage) must be built from that locale.
+const def = dictionaries[DEFAULT_LOCALE];
 
 /** Production origin — same default as app/layout.tsx's metadataBase. */
 const SITE = process.env.NEXT_PUBLIC_SITE_ORIGIN || "https://daliascorner.com";
@@ -107,7 +112,7 @@ const products = PRODUCTS.map((p) => ({
     ? {
         offers: {
           "@type": "Offer",
-          priceCurrency: en.cart.currency,
+          priceCurrency: PRICE_CURRENCY,
           price: String(p.price),
           availability: "https://schema.org/InStock",
           itemCondition: "https://schema.org/NewCondition",
@@ -122,8 +127,10 @@ const faqPage = {
   "@context": "https://schema.org",
   "@type": "FAQPage",
   "@id": `${SITE}/#faq`,
-  inLanguage: "en",
-  mainEntity: en.faq.items.map((item) => ({
+  // Must match the FAQ text actually rendered into the static HTML (DEFAULT_LOCALE).
+  // Google polices FAQPage for visible-content parity and drops mismatched markup.
+  inLanguage: DEFAULT_LOCALE,
+  mainEntity: def.faq.items.map((item) => ({
     "@type": "Question",
     name: item.q,
     acceptedAnswer: { "@type": "Answer", text: item.a },

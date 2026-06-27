@@ -14,7 +14,7 @@ import { RichText } from "@/components/ui/RichText";
 import { Blob } from "@/components/ui/Blob";
 import { WhatsAppIcon } from "@/components/ui/BrandIcons";
 import { HERO_IMAGE, HERO_ALT, getProduct } from "@/lib/products";
-import { WHATSAPP_NUMBER } from "@/lib/config";
+import { whatsappLink } from "@/lib/config";
 import { EASE_OUT, DUR, heroParent, heroItem, chipBob } from "@/lib/motion";
 
 /** The chip card visual (no positioning) — wrapped by MotionChip for motion. */
@@ -136,7 +136,7 @@ export function Hero() {
               <ArrowRight className="h-5 w-5 rtl:-scale-x-100" aria-hidden="true" />
             </ClayButton>
             <ClayButton
-              href={`https://wa.me/${WHATSAPP_NUMBER}`}
+              href={whatsappLink()}
               target="_blank"
               rel="noopener noreferrer"
               variant="outline"
@@ -183,7 +183,7 @@ export function Hero() {
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: DUR.slow, ease: EASE_OUT }}
           >
-            {/* PLACEHOLDER hero image — swap HERO_IMAGE in lib/products.ts */}
+            {/* Hero lifestyle photo — the LCP image (Next auto-preloads it from the SSR'd markup). */}
             <img
               src={HERO_IMAGE}
               alt={HERO_ALT[locale]}

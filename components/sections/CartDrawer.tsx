@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Minus, Plus, ShoppingBag, Trash2, X } from "lucide-react";
 import { useCart } from "@/components/providers/CartProvider";
 import { useLocale } from "@/components/providers/LocaleProvider";
@@ -19,6 +19,7 @@ export function CartDrawer() {
 
   const [customer, setCustomer] = useState<Customer>({ name: "", phone: "", address: "" });
   const [copied, setCopied] = useState(false);
+  const [loaded, setLoaded] = useState(false);
 
   // Load any saved delivery details once on mount.
   useEffect(() => {
@@ -37,16 +38,20 @@ export function CartDrawer() {
     } catch {
       /* ignore corrupt storage */
     }
+    setLoaded(true);
   }, []);
 
-  // Persist details so returning customers don't retype them.
+  // Persist details so returning customers don't retype them. Gated on `loaded`
+  // so the initial empty default never overwrites saved details before the load
+  // effect restores them (mirrors CartProvider's `hydrated` gate).
   useEffect(() => {
+    if (!loaded) return;
     try {
       window.localStorage.setItem(STORAGE_CUSTOMER, JSON.stringify(customer));
     } catch {
       /* ignore */
     }
-  }, [customer]);
+  }, [customer, loaded]);
 
   const updateField =
     (key: keyof Customer) => (e: React.ChangeEvent<HTMLInputElement>) =>
@@ -59,13 +64,18 @@ export function CartDrawer() {
   const canCheckout = lines.length > 0 && detailsComplete;
 
   // Total saved vs. original prices (for the discount line in the summary).
-  const savings = lines.reduce((sum, l) => {
-    const p = getProduct(l.id);
-    if (p?.price == null || p.originalPrice == null) return sum;
-    return sum + Math.max(0, p.originalPrice - p.price) * l.qty;
-  }, 0);
+  const savings = useMemo(
+    () =>
+      lines.reduce((sum, l) => {
+        const p = getProduct(l.id);
+        if (p?.price == null || p.originalPrice == null) return sum;
+        return sum + Math.max(0, p.originalPrice - p.price) * l.qty;
+      }, 0),
+    [lines],
+  );
 
   const panelRef = useRef<HTMLDivElement | null>(null);
+  const wrapperRef = useRef<HTMLDivElement | null>(null);
   const closeBtnRef = useRef<HTMLButtonElement | null>(null);
   const lastFocused = useRef<HTMLElement | null>(null);
 
@@ -120,7 +130,22 @@ export function CartDrawer() {
     }
   }, [isOpen]);
 
-  const checkoutHref = buildOrderLink(lines, locale, messages, customer);
+  // A closed drawer must leave the tab order entirely — aria-hidden alone keeps
+  // its controls keyboard-focusable. `inert` isn't typed in React 18, so toggle
+  // it imperatively on the wrapper.
+  useEffect(() => {
+    const el = wrapperRef.current;
+    if (!el) return;
+    if (isOpen) el.removeAttribute("inert");
+    else el.setAttribute("inert", "");
+  }, [isOpen]);
+
+  // Only build the (potentially long) order link once details are complete — not
+  // on every keystroke while the form is still being filled in.
+  const checkoutHref = useMemo(
+    () => (canCheckout ? buildOrderLink(lines, locale, messages, customer) : ""),
+    [canCheckout, lines, locale, messages, customer],
+  );
 
   // Instagram has no DM pre-fill, so mirror the WhatsApp flow by copying the same
   // order text (delivery details included) to the clipboard for the customer to
@@ -145,6 +170,7 @@ export function CartDrawer() {
 
   return (
     <div
+      ref={wrapperRef}
       aria-hidden={!isOpen}
       className={`fixed inset-0 z-[100] ${isOpen ? "" : "pointer-events-none"}`}
     >
@@ -241,21 +267,28 @@ export function CartDrawer() {
                       >
                         <button
                           type="button"
-                          onClick={() => decrement(line.id)}
+                          onClick={() => {
+                            announce(
+                              line.qty <= 1
+                                ? t("cart.removed", { name })
+                                : `${name} — ${t("cart.quantity")}: ${line.qty - 1}`,
+                            );
+                            decrement(line.id);
+                          }}
                           aria-label={t("cart.decrease")}
                           className="grid h-11 w-11 place-items-center rounded-clay text-ink transition-colors hover:bg-canvas-sunk focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/45 [touch-action:manipulation] cursor-pointer"
                         >
                           <Minus className="h-4 w-4" aria-hidden="true" />
                         </button>
-                        <span
-                          className="tabular min-w-[2ch] text-center font-display font-bold text-ink"
-                          aria-live="polite"
-                        >
+                        <span className="tabular min-w-[2ch] text-center font-display font-bold text-ink">
                           {line.qty}
                         </span>
                         <button
                           type="button"
-                          onClick={() => increment(line.id)}
+                          onClick={() => {
+                            announce(`${name} — ${t("cart.quantity")}: ${line.qty + 1}`);
+                            increment(line.id);
+                          }}
                           aria-label={t("cart.increase")}
                           className="grid h-11 w-11 place-items-center rounded-clay text-ink transition-colors hover:bg-canvas-sunk focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/45 [touch-action:manipulation] cursor-pointer"
                         >
