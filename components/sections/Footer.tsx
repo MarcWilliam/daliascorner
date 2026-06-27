@@ -51,7 +51,7 @@ export function Footer() {
         </p>
 
         <div className="flex flex-col items-center gap-3">
-          <span className="text-sm font-semibold uppercase tracking-wide text-canvas/70">
+          <span className="text-sm font-semibold uppercase tracking-wide text-canvas/85">
             {t("footer.follow")}
           </span>
           <ul className="flex items-center gap-3">

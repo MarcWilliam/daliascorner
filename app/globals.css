@@ -46,9 +46,10 @@
   --line: 231 221 202; /* #e7ddca — hairline borders on cream */
   --destructive: 192 73 43; /* #c0492b */
 
-  /* Typography tokens */
-  --font-display: "Baloo 2", "Baloo Bhaijaan 2", system-ui, sans-serif;
-  --font-body: "Cairo", system-ui, "Segoe UI", sans-serif;
+  /* Typography tokens — the --font-* faces are injected by next/font (see
+     app/layout.tsx); each already prepends a metric-matched fallback. */
+  --font-display: var(--font-baloo2), var(--font-baloo-bhaijaan2), system-ui, sans-serif;
+  --font-body: var(--font-cairo), system-ui, "Segoe UI", sans-serif;
 
   /* Z-index scale */
   --z-nav: 40;

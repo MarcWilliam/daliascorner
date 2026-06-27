@@ -24,7 +24,7 @@ function ChipCard({ id }: { id: "bahira" | "shokat" }) {
   return (
     <div className="flex items-center gap-2.5 rounded-clay border border-line bg-surface/95 p-2 pe-4 shadow-clay backdrop-blur-sm">
       <img
-        src={product.image}
+        src={product.thumb}
         alt=""
         width={44}
         height={44}

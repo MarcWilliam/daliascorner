@@ -236,7 +236,7 @@ export function CartDrawer() {
                   className="flex gap-3 rounded-clay border border-line bg-surface p-3 shadow-clay-sm"
                 >
                   <img
-                    src={product.image}
+                    src={product.thumb}
                     alt=""
                     width={64}
                     height={64}

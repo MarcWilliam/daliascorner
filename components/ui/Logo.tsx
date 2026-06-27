@@ -24,8 +24,8 @@ export function Logo({
     <img
       src={LOGO_SRC}
       alt={alt}
-      width={256}
-      height={256}
+      width={160}
+      height={160}
       draggable={false}
       className={`block select-none ${className}`}
     />

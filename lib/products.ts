@@ -11,10 +11,16 @@ export interface Product {
   name: LocalizedText;
   blurb: LocalizedText;
   /**
-   * Image path under /public — a real 800×800 hand-painted character photo (WebP).
-   * Swapping the photo is a one-line edit on each product below.
+   * Image path under /public — a real 800×800 hand-painted character photo (WebP),
+   * sized for the product card (retina). Swapping it is a one-line edit below.
    */
   image: string;
+  /**
+   * 200×200 thumbnail (WebP) for the small surfaces — the hero chips (~44px) and
+   * cart rows (~64px). Kept separate from `image` so those eagerly-rendered/
+   * preloaded spots ship ~6KB instead of the 800px card file (LCP win).
+   */
+  thumb: string;
   /** Bilingual alt text — describes the planter for screen readers / SEO. */
   alt: LocalizedText;
   accent: AccentToken;
@@ -45,6 +51,7 @@ export const PRODUCTS: Product[] = [
       ar: "مرحة وبتحب المياه، بتجيب البهجة لأي ركن تقعد فيه.",
     },
     image: asset("/products/bahira.webp"),
+    thumb: asset("/products/bahira-thumb.webp"),
     alt: {
       en: "Bahira — a cream duck-shaped pottery planter with an orange beak and feet.",
       ar: "بحيرة — أصيص فخّار على شكل بطة كريمي بمنقار وأرجل برتقالية.",
@@ -61,6 +68,7 @@ export const PRODUCTS: Product[] = [
       ar: "ذكي، لعوب، ومدلّع شوية، بيجيب الحياة لنباتاتك.",
     },
     image: asset("/products/shokat.webp"),
+    thumb: asset("/products/shokat-thumb.webp"),
     alt: {
       en: "Shokat — a terracotta-and-cream fox pottery planter with pointed ears, a white snout, and whiskers.",
       ar: "شوكت — أصيص فخّار على شكل ثعلب من الطين والكريمي بودان مدببة وخطم أبيض وشوارب.",
@@ -77,6 +85,7 @@ export const PRODUCTS: Product[] = [
       ar: "هادية ولطيفة، بتنوّر أي مكان من غير دوشة.",
     },
     image: asset("/products/shokareya.webp"),
+    thumb: asset("/products/shokareya-thumb.webp"),
     alt: {
       en: "Shokareya — a sage-green pottery planter with a calm, sleepy face.",
       ar: "شكرية — أصيص فخّار بلون أخضر مريمي بوجه هادي ونعسان.",

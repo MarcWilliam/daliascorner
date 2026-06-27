@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { Baloo_2, Baloo_Bhaijaan_2, Cairo } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/providers/Providers";
 import {
@@ -13,6 +14,31 @@ import { asset } from "@/lib/asset";
 
 const def = dictionaries[DEFAULT_LOCALE];
 const initialDir = DEFAULT_LOCALE === "ar" ? "rtl" : "ltr";
+
+// Self-hosted via next/font: the woff2 ship same-origin (no render-blocking
+// fonts.googleapis.com round-trip) and each family gets a metric-matched
+// fallback (adjustFontFallback default) so the swap doesn't reflow. Display
+// faces only carry the weights actually used (600/700/800); 400/500 dropped.
+// CSS vars are consumed by --font-display / --font-body in globals.css.
+const baloo2 = Baloo_2({
+  subsets: ["latin"],
+  weight: ["600", "700", "800"],
+  variable: "--font-baloo2",
+  display: "swap",
+});
+const balooBhaijaan2 = Baloo_Bhaijaan_2({
+  subsets: ["arabic"],
+  weight: ["600", "700", "800"],
+  variable: "--font-baloo-bhaijaan2",
+  display: "swap",
+});
+const cairo = Cairo({
+  subsets: ["arabic", "latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-cairo",
+  display: "swap",
+});
+const fontVars = `${baloo2.variable} ${balooBhaijaan2.variable} ${cairo.variable}`;
 
 // Deploy target. Production serves from the custom apex domain at root (basePath
 // empty); asset() prefixes /public URLs for any non-root subpath preview deploy.
@@ -89,14 +115,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang={DEFAULT_LOCALE} dir={initialDir} suppressHydrationWarning>
+    <html lang={DEFAULT_LOCALE} dir={initialDir} className={fontVars} suppressHydrationWarning>
       <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;500;600;700;800&family=Baloo+Bhaijaan+2:wght@400;500;600;700;800&family=Cairo:wght@400;500;600;700&display=swap"
-          rel="stylesheet"
-        />
         <script dangerouslySetInnerHTML={{ __html: NO_FLASH }} />
         {/* Structured data (Organization, WebSite, Product ×3, FAQPage). Server-
             rendered into the static HTML so AI answer-engines and search crawlers
