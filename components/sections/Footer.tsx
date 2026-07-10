@@ -1,28 +1,41 @@
 "use client";
 
 import { useLocale } from "@/components/providers/LocaleProvider";
+import { useConsent } from "@/components/providers/ConsentProvider";
 import { Logo } from "@/components/ui/Logo";
 import { Blob } from "@/components/ui/Blob";
 import { WhatsAppIcon, InstagramIcon, FacebookIcon } from "@/components/ui/BrandIcons";
 import { FACEBOOK_URL, INSTAGRAM_URL, whatsappLink } from "@/lib/config";
+import { asset } from "@/lib/asset";
+import { PIXEL_CONFIGURED, trackContact } from "@/lib/meta";
 
 export function Footer() {
   const { t } = useLocale();
+  const { reopen } = useConsent();
 
   const socials = [
     {
       href: INSTAGRAM_URL,
       label: t("footer.instagram"),
       Icon: InstagramIcon,
+      onClick: () => trackContact("instagram"),
     },
     {
       href: whatsappLink(),
       label: t("footer.whatsapp"),
       Icon: WhatsAppIcon,
+      onClick: () => trackContact("whatsapp"),
     },
-    // Facebook only renders if a URL is supplied (placeholder empty by default).
+    // Facebook is a follow link, not a contact channel — no Contact event.
     ...(FACEBOOK_URL
-      ? [{ href: FACEBOOK_URL, label: t("footer.facebook"), Icon: FacebookIcon }]
+      ? [
+          {
+            href: FACEBOOK_URL,
+            label: t("footer.facebook"),
+            Icon: FacebookIcon,
+            onClick: undefined,
+          },
+        ]
       : []),
   ];
 
@@ -55,13 +68,14 @@ export function Footer() {
             {t("footer.follow")}
           </span>
           <ul className="flex items-center gap-3">
-            {socials.map(({ href, label, Icon }) => (
+            {socials.map(({ href, label, Icon, onClick }) => (
               <li key={label}>
                 <a
                   href={href}
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label={label}
+                  onClick={onClick}
                   className="grid h-12 w-12 place-items-center rounded-clay bg-canvas/12 text-canvas transition-colors hover:bg-canvas/25 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-canvas/50 [touch-action:manipulation]"
                 >
                   <Icon className="h-6 w-6" />
@@ -71,7 +85,31 @@ export function Footer() {
           </ul>
         </div>
 
-        <p className="mt-2 text-sm text-canvas/80">{t("footer.madeWith")}</p>
+        {/* Privacy + the consent escape hatch. PDPL consent must be revocable as
+            easily as it was given, so "tracking settings" reopens the banner. */}
+        <ul className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-sm">
+          <li>
+            <a
+              href={asset("/privacy/")}
+              className="rounded-clay text-canvas/85 underline underline-offset-4 transition-colors hover:text-canvas focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-canvas/50"
+            >
+              {t("footer.privacy")}
+            </a>
+          </li>
+          {PIXEL_CONFIGURED && (
+            <li>
+              <button
+                type="button"
+                onClick={reopen}
+                className="rounded-clay text-canvas/85 underline underline-offset-4 transition-colors hover:text-canvas focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-canvas/50 [touch-action:manipulation] cursor-pointer"
+              >
+                {t("footer.trackingSettings")}
+              </button>
+            </li>
+          )}
+        </ul>
+
+        <p className="text-sm text-canvas/80">{t("footer.madeWith")}</p>
       </div>
     </footer>
   );

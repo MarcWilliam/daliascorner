@@ -15,11 +15,13 @@ const accentTint: Record<Product["accent"], string> = {
   orange: "bg-orange/15",
   clay: "bg-clay-soft",
   leaf: "bg-leaf-soft",
+  mauve: "bg-mauve-soft",
 };
 const accentDot: Record<Product["accent"], string> = {
   orange: "bg-orange",
   clay: "bg-clay",
   leaf: "bg-leaf",
+  mauve: "bg-mauve",
 };
 
 export function CharacterCard({ product }: { product: Product }) {

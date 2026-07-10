@@ -9,7 +9,8 @@ import {
   STORAGE_LOCALE,
 } from "@/lib/config";
 import { dictionaries } from "@/lib/i18n/dictionaries";
-import { jsonLdBlocks } from "@/lib/jsonld";
+import { siteJsonLd } from "@/lib/jsonld";
+import { JsonLd } from "@/components/ui/JsonLd";
 import { asset } from "@/lib/asset";
 
 const def = dictionaries[DEFAULT_LOCALE];
@@ -126,16 +127,11 @@ export default function RootLayout({
     <html lang={DEFAULT_LOCALE} dir={initialDir} className={fontVars} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: NO_FLASH }} />
-        {/* Structured data (Organization, WebSite, Product ×3, FAQPage). Server-
-            rendered into the static HTML so AI answer-engines and search crawlers
-            read the brand facts in English without executing JS. */}
-        {jsonLdBlocks.map((block, i) => (
-          <script
-            key={i}
-            type="application/ld+json"
-            dangerouslySetInnerHTML={{ __html: JSON.stringify(block) }}
-          />
-        ))}
+        {/* Site-wide structured data (Organization, WebSite). Server-rendered into
+            the static HTML so AI answer-engines and search crawlers read the brand
+            facts in English without executing JS. Page-scoped blocks (Product,
+            FAQPage, BreadcrumbList) are emitted by the pages that display them. */}
+        <JsonLd blocks={siteJsonLd} />
         {/* No-JS fallback: the hero uses on-load entrance animation (initial hidden);
             force its content visible when scripting is disabled. Scroll reveals
             handle this themselves by rendering visibly until mounted. */}

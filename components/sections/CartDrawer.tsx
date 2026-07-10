@@ -10,6 +10,7 @@ import { WhatsAppIcon, InstagramIcon } from "@/components/ui/BrandIcons";
 import { getProduct } from "@/lib/products";
 import { buildOrderLink, buildOrderMessage, type Customer } from "@/lib/whatsapp";
 import { INSTAGRAM_DM_URL, STORAGE_CUSTOMER } from "@/lib/config";
+import { trackCheckoutLead } from "@/lib/meta";
 
 export function CartDrawer() {
   const { lines, count, isOpen, close, increment, decrement, remove, hasPrices, subtotal } =
@@ -147,10 +148,22 @@ export function CartDrawer() {
     [canCheckout, lines, locale, messages, customer],
   );
 
+  // The handoff to chat is the only conversion this site can honestly report:
+  // everything after it — price, delivery, payment — happens in a thread Meta
+  // never sees. Hence `Lead`, never `Purchase`. Fire-and-forget: the CTA opens
+  // in a new tab, so this page stays alive to finish hashing and sending.
+  const handleCheckoutLead = useCallback(
+    (channel: "whatsapp" | "instagram") => {
+      void trackCheckoutLead(lines, channel, customer);
+    },
+    [lines, customer],
+  );
+
   // Instagram has no DM pre-fill, so mirror the WhatsApp flow by copying the same
   // order text (delivery details included) to the clipboard for the customer to
   // paste, then open the DM thread.
   const handleInstagramCheckout = useCallback(() => {
+    handleCheckoutLead("instagram");
     navigator.clipboard
       ?.writeText(buildOrderMessage(lines, locale, messages, customer))
       .catch(() => {
@@ -159,7 +172,7 @@ export function CartDrawer() {
     announce(t("cart.copiedForInstagram"));
     setCopied(true);
     window.setTimeout(() => setCopied(false), 2200);
-  }, [lines, locale, messages, customer, announce, t]);
+  }, [handleCheckoutLead, lines, locale, messages, customer, announce, t]);
 
   // Off-screen slide direction follows the inline-end side (mirrors in RTL).
   const offClass = isOpen
@@ -406,6 +419,7 @@ export function CartDrawer() {
                   rel="noopener noreferrer"
                   variant="whatsapp"
                   className="w-full"
+                  onClick={() => handleCheckoutLead("whatsapp")}
                 >
                   <WhatsAppIcon className="h-5 w-5" />
                   {t("cart.checkout")}

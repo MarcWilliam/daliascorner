@@ -9,6 +9,7 @@ import { CartButton } from "@/components/ui/CartButton";
 import { ClayButton } from "@/components/ui/ClayButton";
 import { WhatsAppIcon } from "@/components/ui/BrandIcons";
 import { whatsappLink } from "@/lib/config";
+import { trackContact } from "@/lib/meta";
 
 const LINKS = [
   { id: "characters", href: "#characters", key: "nav.characters" },
@@ -112,6 +113,7 @@ export function Nav() {
             rel="noopener noreferrer"
             variant="whatsapp"
             className="hidden md:inline-flex"
+            onClick={() => trackContact("whatsapp")}
           >
             <WhatsAppIcon className="h-5 w-5" />
             {t("nav.orderWhatsapp")}
@@ -167,6 +169,7 @@ export function Nav() {
                 rel="noopener noreferrer"
                 variant="whatsapp"
                 className="w-full"
+                onClick={() => trackContact("whatsapp")}
               >
                 <WhatsAppIcon className="h-5 w-5" />
                 {t("nav.orderWhatsapp")}

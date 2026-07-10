@@ -10,6 +10,7 @@ import { RevealGroup, RevealItem } from "@/components/ui/RevealGroup";
 import { WhatsAppIcon, InstagramIcon } from "@/components/ui/BrandIcons";
 import { FloatingLeaf } from "@/components/ui/FloatingLeaf";
 import { INSTAGRAM_URL, whatsappLink } from "@/lib/config";
+import { trackContact } from "@/lib/meta";
 
 export function HowToOrder() {
   const { t } = useLocale();
@@ -69,6 +70,7 @@ export function HowToOrder() {
                   target="_blank"
                   rel="noopener noreferrer"
                   variant="accent"
+                  onClick={() => trackContact("instagram")}
                 >
                   <InstagramIcon className="h-5 w-5" />
                   {t("order.altInstagram")}
@@ -78,6 +80,7 @@ export function HowToOrder() {
                   target="_blank"
                   rel="noopener noreferrer"
                   variant="outline"
+                  onClick={() => trackContact("whatsapp")}
                 >
                   <WhatsAppIcon className="h-5 w-5" />
                   {t("order.altWhatsapp")}

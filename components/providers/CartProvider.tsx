@@ -7,11 +7,13 @@ import {
   useEffect,
   useMemo,
   useReducer,
+  useRef,
   useState,
 } from "react";
 import type { ProductId } from "@/lib/products";
 import { getProduct, PRODUCTS } from "@/lib/products";
 import { STORAGE_CART } from "@/lib/config";
+import { trackAddToCart, trackInitiateCheckout } from "@/lib/meta";
 
 export interface CartLine {
   id: ProductId;
@@ -99,6 +101,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [lines, dispatch] = useReducer(reducer, []);
   const [isOpen, setIsOpen] = useState(false);
   const [hydrated, setHydrated] = useState(false);
+  // InitiateCheckout should describe *reaching* checkout once, not every peek at
+  // the cart. This latches on the first open with items and resets when the cart
+  // empties, so a shopper who opens the drawer three times to check the total
+  // produces one InitiateCheckout, not three.
+  const checkoutSignaled = useRef(false);
 
   // Load persisted cart once on mount.
   useEffect(() => {
@@ -124,6 +131,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   }, [lines, hydrated]);
 
+  // Re-arm the InitiateCheckout latch once the cart is empty again (removed the
+  // last item, or checked out and cleared), so the next shopping run can fire it.
+  useEffect(() => {
+    if (lines.length === 0) checkoutSignaled.current = false;
+  }, [lines.length]);
+
   const count = useMemo(() => lines.reduce((n, l) => n + l.qty, 0), [lines]);
 
   const { hasPrices, subtotal } = useMemo(() => {
@@ -139,19 +152,40 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     return { hasPrices: any, subtotal: sum };
   }, [lines]);
 
+  // Every cart mutation funnels through here, which makes it the one honest
+  // place to fire Meta's AddToCart / InitiateCheckout. All track* helpers are
+  // no-ops until the visitor opts in (see ConsentProvider), so this is safe to
+  // call unconditionally.
   const value = useMemo<CartContextValue>(
     () => ({
       lines,
       count,
       hasPrices,
       subtotal,
-      add: (id) => dispatch({ type: "ADD", id }),
-      increment: (id) => dispatch({ type: "INCREMENT", id }),
+      add: (id) => {
+        dispatch({ type: "ADD", id });
+        trackAddToCart(id);
+      },
+      // The card's "+" stepper is an add-to-cart too — same event, same product.
+      increment: (id) => {
+        dispatch({ type: "INCREMENT", id });
+        trackAddToCart(id);
+      },
       decrement: (id) => dispatch({ type: "DECREMENT", id }),
       remove: (id) => dispatch({ type: "REMOVE", id }),
       clear: () => dispatch({ type: "CLEAR" }),
       isOpen,
-      open: () => setIsOpen(true),
+      // Opening a non-empty cart is where checkout begins on this site — there
+      // is no separate checkout page, just the drawer and then the chat handoff.
+      // Fired once per non-empty cart streak (see checkoutSignaled) so repeated
+      // peeks don't inflate the count.
+      open: () => {
+        setIsOpen(true);
+        if (lines.length > 0 && !checkoutSignaled.current) {
+          checkoutSignaled.current = true;
+          trackInitiateCheckout(lines);
+        }
+      },
       close: () => setIsOpen(false),
     }),
     [lines, count, hasPrices, subtotal, isOpen],

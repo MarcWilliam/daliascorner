@@ -13,12 +13,13 @@ import { ClayButton } from "@/components/ui/ClayButton";
 import { RichText } from "@/components/ui/RichText";
 import { Blob } from "@/components/ui/Blob";
 import { WhatsAppIcon } from "@/components/ui/BrandIcons";
-import { HERO_IMAGE, HERO_ALT, getProduct } from "@/lib/products";
+import { HERO_IMAGE, HERO_ALT, getProduct, type ProductId } from "@/lib/products";
 import { whatsappLink } from "@/lib/config";
+import { trackContact } from "@/lib/meta";
 import { EASE_OUT, DUR, heroParent, heroItem, chipBob } from "@/lib/motion";
 
 /** The chip card visual (no positioning) — wrapped by MotionChip for motion. */
-function ChipCard({ id }: { id: "bahira" | "shokat" }) {
+function ChipCard({ id }: { id: ProductId }) {
   const { locale } = useLocale();
   const product = getProduct(id)!;
   return (
@@ -44,7 +45,7 @@ function MotionChip({
   bobOffset,
   entranceDelay,
 }: {
-  id: "bahira" | "shokat";
+  id: ProductId;
   positionClass: string;
   bobOffset: number;
   entranceDelay: number;
@@ -141,6 +142,7 @@ export function Hero() {
               rel="noopener noreferrer"
               variant="outline"
               size="lg"
+              onClick={() => trackContact("whatsapp")}
             >
               <WhatsAppIcon className="h-5 w-5" />
               {t("hero.ctaWhatsapp")}
@@ -203,7 +205,7 @@ export function Hero() {
             entranceDelay={0.6}
           />
           <MotionChip
-            id="shokat"
+            id="shawkat"
             positionClass="-top-4 end-[-0.5rem] sm:end-[-1.5rem]"
             bobOffset={0.9}
             entranceDelay={0.8}

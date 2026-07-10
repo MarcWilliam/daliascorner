@@ -1,15 +1,21 @@
 /**
- * Structured data (schema.org JSON-LD) for the home page.
+ * Structured data (schema.org JSON-LD).
  *
  * Built from the same single sources of truth as the UI (products, the English
  * dictionary, config) so it never drifts from the visible site. Rendered as
- * <script type="application/ld+json"> in app/layout.tsx, so it lands in the
- * static HTML where search engines and AI answer-engines read it without
- * executing JS — which matters here because the visible English copy is
- * client-rendered. Names/descriptions are in English (the language most AI
- * queries about an Egyptian brand use) with the Arabic name as alternateName.
+ * <script type="application/ld+json"> into the static HTML, where search engines
+ * and AI answer-engines read it without executing JS — which matters here
+ * because the visible English copy is client-rendered. Names/descriptions are in
+ * English (the language most AI queries about an Egyptian brand use) with the
+ * Arabic name as alternateName.
+ *
+ * Split three ways by scope, because Google polices FAQPage for visible-content
+ * parity and would (rightly) flag an FAQ block on a product page that shows no FAQ:
+ *   siteJsonLd     → every page   (layout)
+ *   homeJsonLd     → "/"          (products + FAQ, both visible there)
+ *   productJsonLd  → "/characters/<id>/"
  */
-import { PRODUCTS } from "./products";
+import { POT_HEIGHT_CM, POT_MATERIAL, PRODUCTS, type Product } from "./products";
 import { asset } from "./asset";
 import { dictionaries } from "./i18n/dictionaries";
 import {
@@ -20,6 +26,8 @@ import {
   WHATSAPP_NUMBER_IS_PLACEHOLDER,
   PRICE_CURRENCY,
   DEFAULT_LOCALE,
+  SITE_ORIGIN,
+  productUrl,
   whatsappLink,
 } from "./config";
 
@@ -28,8 +36,7 @@ const en = dictionaries.en;
 // checks for visible-content parity (FAQPage) must be built from that locale.
 const def = dictionaries[DEFAULT_LOCALE];
 
-/** Production origin — same default as app/layout.tsx's metadataBase. */
-const SITE = process.env.NEXT_PUBLIC_SITE_ORIGIN || "https://daliascorner.com";
+const SITE = SITE_ORIGIN;
 
 /** Absolute URL for a /public asset (origin + deploy basePath + path). */
 const abs = (path: string) => `${SITE}${asset(path)}`;
@@ -95,33 +102,50 @@ const website = {
   publisher: { "@id": ORG_ID },
 };
 
-const products = PRODUCTS.map((p) => ({
-  "@context": "https://schema.org",
-  "@type": "Product",
-  "@id": `${SITE}/#product-${p.id}`,
-  name: p.name.en,
-  alternateName: p.name.ar,
-  description: `${p.blurb.en} ${p.alt.en}`,
-  // p.image is already basePath-prefixed by asset(); just prepend the origin.
-  image: `${SITE}${p.image}`,
-  category: "Planter",
-  brand: { "@type": "Brand", name: "Dalia's Corner" },
-  // Offer with the real price when one is set; a price-less character (settled in
-  // chat) is still a valid Product, just without an Offer.
-  ...(p.price != null
-    ? {
-        offers: {
-          "@type": "Offer",
-          priceCurrency: PRICE_CURRENCY,
-          price: String(p.price),
-          availability: "https://schema.org/InStock",
-          itemCondition: "https://schema.org/NewCondition",
-          url: `${SITE}/#characters`,
-          seller: { "@id": ORG_ID },
-        },
-      }
-    : {}),
-}));
+/**
+ * One Product node per character. `sku` carries the same id used by the cart,
+ * the Meta catalog feed, and the pixel's `content_ids` — one namespace across
+ * the whole stack, because a content_id mismatch is the classic way a Meta
+ * catalog silently stops matching events to items.
+ */
+function product(p: Product) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    "@id": `${SITE}/#product-${p.id}`,
+    name: p.name.en,
+    alternateName: p.name.ar,
+    sku: p.id,
+    description: `${p.blurb.en} ${p.alt.en}`,
+    // p.image is already basePath-prefixed by asset(); just prepend the origin.
+    image: `${SITE}${p.image}`,
+    url: productUrl(p.id),
+    category: "Planter",
+    material: POT_MATERIAL.en,
+    // Every piece is the same ~15 cm hand-painted clay pot (see lib/products.ts).
+    height: {
+      "@type": "QuantitativeValue",
+      value: POT_HEIGHT_CM,
+      unitCode: "CMT",
+    },
+    brand: { "@type": "Brand", name: "Dalia's Corner" },
+    // Offer with the real price when one is set; a price-less character (settled
+    // in chat) is still a valid Product, just without an Offer.
+    ...(p.price != null
+      ? {
+          offers: {
+            "@type": "Offer",
+            priceCurrency: PRICE_CURRENCY,
+            price: String(p.price),
+            availability: "https://schema.org/InStock",
+            itemCondition: "https://schema.org/NewCondition",
+            url: productUrl(p.id),
+            seller: { "@id": ORG_ID },
+          },
+        }
+      : {}),
+  };
+}
 
 const faqPage = {
   "@context": "https://schema.org",
@@ -137,10 +161,28 @@ const faqPage = {
   })),
 };
 
-/** All JSON-LD blocks for the home page, each rendered as its own script tag. */
-export const jsonLdBlocks: object[] = [
-  organization,
-  website,
-  ...products,
-  faqPage,
-];
+/** Site-wide identity — safe on every page. */
+export const siteJsonLd: object[] = [organization, website];
+
+/** Home page: the three products and the FAQ are both visible there. */
+export const homeJsonLd: object[] = [...PRODUCTS.map(product), faqPage];
+
+/** A single character's page: the Product, plus a trail back to the home page. */
+export function productJsonLd(p: Product): object[] {
+  return [
+    product(p),
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        {
+          "@type": "ListItem",
+          position: 1,
+          name: "Dalia's Corner",
+          item: `${SITE}/`,
+        },
+        { "@type": "ListItem", position: 2, name: p.name.en },
+      ],
+    },
+  ];
+}
