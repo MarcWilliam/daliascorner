@@ -1,7 +1,7 @@
 {
   "meta": {
     "title": "Dalia's Corner — A Little Corner of Love",
-    "description": "Handmade, hand-painted pottery planters shaped like cute animal characters. Born from clay and painted by family hands in Egypt. Meet Bahira, ZouZou, Shawkat, Shokreya, Zaghloul & Bahgat."
+    "description": "Handmade pottery planters shaped like little animal characters, made and painted by one family in Egypt. Meet Bahira, ZouZou, Shawkat, Shokreya, Zaghloul & Bahgat."
   },
   "lang": {
     "switch": "العربية",
@@ -24,8 +24,8 @@
     "badge": "Handmade in Egypt",
     "wordmark": "Dalia's Corner",
     "wordmarkSub": "A Little Corner of Love",
-    "subheadline": "Not just planters… they're *characters* with stories, born from clay and painted by family hands.",
-    "supporting": "Choose the character that will live in your corner and keep your plants company.",
+    "subheadline": "Every planter here is a little *character* with a name, a mood, and a story, shaped from clay and painted by our family one piece at a time.",
+    "supporting": "Pick the one you want living in your corner, keeping your plants company.",
     "ctaShop": "Shop the characters",
     "ctaWhatsapp": "Message us on WhatsApp",
     "trust": [
@@ -37,28 +37,28 @@
   },
   "about": {
     "title": "Our *Story*",
-    "body": "It all started with Mama Dalia's love for plants and for working with her hands. From that love, Dalia's Corner was born: a family project we work on together — my mother, my sisters, and I. We shape clay by hand into pottery characters with soul and story, painting each piece one by one — so every single one comes out unique, with no other like it in the world."
+    "body": "It started with our mother, Dalia, who loves plants and loves making things with her hands even more. Put the two together and you get Dalia's Corner: a small family project run by Mama, my sisters, and me. We shape each character from clay and paint it ourselves, one piece at a time, so no two ever come out the same."
   },
   "characters": {
     "title": "Meet the *Characters*",
-    "intro": "Meet the family — each character has its own mood and story. Pick the one that feels like you."
+    "intro": "This is the whole family. Each one has its own mood and its own story, so take your time and pick the one that feels like you."
   },
   "why": {
     "title": "Why *Dalia's Corner*?",
     "points": [
-      "Every pottery piece is fully handmade and hand-painted by the family",
-      "A unique character, no two ever alike",
-      "Arrives already planted with an easy-care succulent — plus a care card",
-      "Packed with love and care to reach you safely"
+      "Every piece is shaped and painted by our family, start to finish",
+      "No two are ever the same, even when we try",
+      "Arrives already planted with an easy-going succulent, care card included",
+      "Wrapped up carefully so it reaches you in one piece"
     ]
   },
   "order": {
     "title": "How to *Order*",
     "primaryTitle": "Cart & checkout",
-    "primaryBody": "Add the characters you love to your cart, then checkout — we'll pick it up on WhatsApp with your list ready.",
+    "primaryBody": "Add your favorites to the cart and check out. Your list lands in our WhatsApp chat, and we take it from there.",
     "primaryCta": "Shop the characters",
     "altHeading": "Found a character you love?",
-    "altBody": "Screenshot the one you want and send it to us on Instagram or WhatsApp. We'll sort out the details and deliver it to your doorstep anywhere in Cairo.",
+    "altBody": "Screenshot it and send it over on Instagram or WhatsApp. We'll sort out the details and bring it to your door, anywhere in Cairo.",
     "altInstagram": "Order on Instagram",
     "altWhatsapp": "Message us on WhatsApp"
   },
@@ -67,19 +67,19 @@
     "items": [
       {
         "q": "Do you deliver across Cairo?",
-        "a": "Right now we deliver within Cairo only. Cost and timing depend on your area, and we'll share the details when confirming your order."
+        "a": "For now we deliver within Cairo only. Cost and timing depend on your area, and we'll confirm both with you before anything moves."
       },
       {
         "q": "Are the pieces identical?",
-        "a": "No, each one is hand-painted, so you might find small differences — and that's exactly what makes every piece unique."
+        "a": "Nope. Everything is painted by hand, so there are always small differences between pieces. That's the fun of it: yours is the only one like it."
       },
       {
         "q": "Can I request a character in a specific color or design?",
-        "a": "Message us on Instagram or WhatsApp and let's see what we can do together."
+        "a": "Message us on Instagram or WhatsApp with what you have in mind, and we'll see what we can do."
       },
       {
         "q": "Do the plants come with the planters?",
-        "a": "Yes! Each planter arrives already planted with an easy-care succulent and a little care card — they're hardy and simple to look after."
+        "a": "Yes! Every planter arrives with a succulent already in it, plus a little card that tells you how to keep it happy. They're tough plants, honestly hard to kill."
       }
     ]
   },
@@ -89,7 +89,7 @@
     "instagram": "Instagram",
     "whatsapp": "WhatsApp",
     "facebook": "Facebook",
-    "tagline": "Every piece… a story.",
+    "tagline": "Every piece has a story.",
     "rights": "All rights reserved.",
     "privacy": "Privacy & tracking",
     "trackingSettings": "Tracking settings"
@@ -104,13 +104,13 @@
     "decrease": "Decrease quantity",
     "remove": "Remove",
     "removed": "{name} removed from your cart",
-    "empty": "Your corner is empty — go meet the family.",
+    "empty": "Your corner is still empty. Go meet the family first.",
     "emptyCta": "Meet the characters",
     "close": "Close cart",
     "checkout": "Checkout on WhatsApp",
     "checkoutInstagram": "Order on Instagram",
-    "copiedForInstagram": "Order details copied — paste them into your Instagram chat with us.",
-    "copied": "Copied — paste in your DM",
+    "copiedForInstagram": "Order copied. Paste it into our Instagram chat and you're set.",
+    "copied": "Copied. Paste it in the chat.",
     "detailsTitle": "Your delivery details",
     "detailsRequired": "Add your name, phone, and address to place the order.",
     "name": "Name",
@@ -120,7 +120,7 @@
     "address": "Address",
     "addressPlaceholder": "Area, street, building, floor…",
     "savings": "You save",
-    "requestNote": "No prices here — it's a wishlist. We'll settle the details and shipping together on WhatsApp.",
+    "requestNote": "No prices here, just a wishlist. We'll settle the details and delivery together on WhatsApp.",
     "subtotal": "Subtotal",
     "currency": "EGP",
     "itemsZero": "{count} pieces",
@@ -131,17 +131,17 @@
     "itemsOther": "{count} pieces"
   },
   "whatsapp": {
-    "greeting": "Hi Dalia's Corner! 🌿 I'd like to order:",
+    "greeting": "Hi Dalia's Corner! Here's my order from the site:",
     "line": "• {name} × {qty}",
     "name": "Name",
     "phone": "Phone",
     "address": "Address",
-    "closing": "Could you help me with the details and shipping?"
+    "closing": "Can we sort out the details and delivery?"
   },
   "consent": {
-    "title": "A small question about tracking",
-    "body": "We'd like to use the Meta (Facebook) Pixel to see which of our posts and ads actually bring people here. Nothing loads unless you say yes, and you can change your mind any time.",
-    "learnMore": "Read what we collect",
+    "title": "A quick word about tracking",
+    "body": "We'd like to use the Meta (Facebook) Pixel to see which of our posts and ads actually bring people to the shop. Nothing loads unless you say yes, and you can change your mind whenever you like.",
+    "learnMore": "See what we collect",
     "accept": "Yes, that's fine",
     "decline": "No thanks"
   },
@@ -149,73 +149,73 @@
     "back": "All characters",
     "viewCart": "View cart",
     "size": "Size & finish",
-    "sizeNote": "About {cm} cm tall, hand-shaped from clay and painted by hand — so yours is truly one of a kind.",
+    "sizeNote": "About {cm} cm tall, shaped from clay and painted by hand. Yours won't look exactly like anyone else's, and that's the point.",
     "included": "Arrives already planted",
-    "includedNote": "Every planter comes with an easy-care succulent and a little card explaining how to look after it.",
+    "includedNote": "Every planter comes with a succulent already in it, plus a little card on how to keep it happy.",
     "delivery": "Delivered across Cairo",
-    "deliveryNote": "Cost and timing depend on your area — we'll confirm everything with you in chat before your order goes out.",
+    "deliveryNote": "Cost and timing depend on your area. We'll confirm everything with you in chat before your order heads out.",
     "others": "Meet the others"
   },
   "privacy": {
     "title": "Privacy & tracking",
     "updated": "Last updated: 10 July 2026",
-    "intro": "Dalia's Corner is a small family pottery studio in Cairo. This page explains, in plain language, what happens to your information when you visit this site or place an order.",
+    "intro": "Dalia's Corner is a small family pottery studio in Cairo. This page is the plain, honest version of what happens to your information when you visit the site or place an order.",
     "backHome": "Back to the shop",
     "contactTitle": "Questions, or want your data deleted?",
-    "contactBody": "Message us on WhatsApp or Instagram and we'll take care of it. We're the ones who decide how your information is used here — there's no one else behind the curtain.",
+    "contactBody": "Message us on WhatsApp or Instagram and we'll sort it out. It's just us running this place, so the person reading your message is the same person who can actually fix things.",
     "sections": [
       {
-        "h": "Who is responsible",
-        "p": "Dalia's Corner, a family business based in Cairo, Egypt, is the data controller for this website. You can reach us on WhatsApp or on Instagram at @bydaliascorner.",
+        "h": "Who's responsible",
+        "p": "Dalia's Corner, a family business based in Cairo, Egypt, is the data controller for this website. That's the legal term for the ones answerable for your data. You can reach us any time on WhatsApp or on Instagram at @bydaliascorner.",
         "items": []
       },
       {
-        "h": "What you type into the cart stays in your browser",
-        "p": "When you add characters to the cart and fill in your name, phone number and address, that information is saved only in your own browser's local storage. This site is a set of static files — there is no server behind it and no database. We never receive what you typed until you choose to send it to us.",
+        "h": "Your cart stays in your browser",
+        "p": "When you add characters to the cart and type in your name, phone number, and address, all of it is saved in your own browser's local storage and nowhere else. This whole site is a set of static files. There's no server behind it and no database, so we simply can't see what you typed until you choose to send it to us.",
         "items": [
           "Your cart and delivery details never leave your device on their own.",
-          "When you tap \"Order on WhatsApp\", your browser opens WhatsApp with the order written out, ready for you to send. You send it — we don't take it.",
+          "When you tap \"Order on WhatsApp\", your browser opens WhatsApp with the order already written out. You're the one who hits send, not us.",
           "For Instagram, the same text is copied to your clipboard so you can paste it into a message.",
-          "Clearing your browser data removes all of it."
+          "Clear your browser data and all of it is gone."
         ]
       },
       {
-        "h": "The Meta Pixel — only if you agree",
-        "p": "If you accept tracking, we load the Meta Pixel from Meta Platforms. It helps us understand which posts and ads bring people to the shop. If you decline, or simply ignore the banner, the Pixel is never loaded and no request is made to Meta at all.",
+        "h": "The Meta Pixel, only if you say yes",
+        "p": "If you accept tracking, we load the Meta Pixel from Meta Platforms. It shows us which posts and ads actually bring people to the shop, which is genuinely useful for a small business to know. If you decline, or just ignore the banner, the Pixel never loads and not a single request goes to Meta. When it is on, here's what it collects:",
         "items": [
-          "Pages you view, characters you look at, items you add to the cart, and when you start checking out.",
-          "A random ID stored in your browser so Meta can tell one visit apart from another. It is not derived from anything about you.",
-          "Cookies named _fbp and _fbc, set by Meta after you agree."
+          "The pages you visit, the characters you look at, what you add to your cart, and when you start checking out.",
+          "A random ID stored in your browser so Meta can tell one visit apart from another. It isn't based on anything about you personally.",
+          "Two cookies called _fbp and _fbc, which Meta sets after you agree."
         ]
       },
       {
         "h": "What we send when you check out",
-        "p": "If — and only if — you have accepted tracking, then at the moment you tap the WhatsApp or Instagram checkout button we send Meta a scrambled (SHA-256 hashed) version of the phone number and name you entered, together with the city (Cairo) and country (Egypt). The scrambling happens on your device: your actual phone number and name never leave it. Meta uses this to work out whether you had seen one of our ads. You can turn this off at any time, and you can order without it.",
+        "p": "If, and only if, you've accepted tracking, then the moment you tap the WhatsApp or Instagram checkout button we send Meta a scrambled (SHA-256 hashed) version of the name and phone number you entered, along with the city (Cairo) and country (Egypt). The scrambling happens on your own device, so your real name and number never leave it. Meta uses this to work out whether you'd seen one of our ads. You can switch it off at any time, and ordering works just fine without it.",
         "items": []
       },
       {
         "h": "Where your information goes",
-        "p": "Meta Platforms processes this data outside Egypt, including in Ireland and the United States. If you would rather that did not happen, decline tracking — the shop works exactly the same either way.",
+        "p": "Meta processes this data outside Egypt, including in Ireland and the United States. If you'd rather it didn't, decline tracking. The shop works exactly the same either way.",
         "items": []
       },
       {
         "h": "Your consent, and taking it back",
-        "p": "We rely on your consent, and nothing else, to load the Pixel. You can withdraw it whenever you like using the \"Tracking settings\" link at the bottom of any page. Withdrawing stops any further data being sent and clears Meta's cookies from your browser.",
+        "p": "The only reason we load the Pixel is that you said yes. If you change your mind, use the \"Tracking settings\" link at the bottom of any page. Withdrawing stops any further data from being sent and clears Meta's cookies from your browser.",
         "items": []
       },
       {
         "h": "Once you message us",
-        "p": "When you continue the order in WhatsApp or Instagram Direct, that conversation is governed by Meta's own privacy policy as well as this one. We keep the details of your order — your name, phone number and address — for as long as we need them to deliver it and to help you if something goes wrong, and then we delete them.",
+        "p": "When your order moves into WhatsApp or Instagram Direct, that conversation is covered by Meta's own privacy policy as well as this one. We keep your order details, meaning your name, phone number, and address, for as long as we need them to deliver your order and help if something goes wrong. After that, we delete them.",
         "items": []
       },
       {
         "h": "Your rights",
-        "p": "Under Egypt's Personal Data Protection Law (Law 151 of 2020) you may ask us what we hold about you, ask us to correct or erase it, withdraw your consent, or object to how we use it. Just message us. You also have the right to complain to Egypt's Personal Data Protection Center.",
+        "p": "Under Egypt's Personal Data Protection Law (Law 151 of 2020), you can ask us what we hold about you, have it corrected or erased, withdraw your consent, or object to how we use it. One message is all it takes. You also have the right to complain to Egypt's Personal Data Protection Center.",
         "items": []
       },
       {
         "h": "Changes to this page",
-        "p": "If we change how any of this works, we'll update this page and the date at the top. If the change is significant, we'll ask for your consent again.",
+        "p": "If we change how any of this works, we'll update this page and the date at the top. If it's a big change, we'll ask for your consent all over again.",
         "items": []
       }
     ]
