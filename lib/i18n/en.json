@@ -1,7 +1,7 @@
 {
   "meta": {
     "title": "Dalia's Corner — A Little Corner of Love",
-    "description": "Handmade pottery planters shaped like little animal characters, made and painted by one family in Egypt. Meet Bahira, ZouZou, Shawkat, Shokreya, Zaghloul & Bahgat."
+    "description": "Little handmade, hand-painted characters, each carefully planted and full of personality. No two are ever exactly alike."
   },
   "lang": {
     "switch": "العربية",
@@ -21,44 +21,44 @@
     "backToTop": "Back to top"
   },
   "hero": {
-    "badge": "Handmade in Egypt",
+    "badge": "Handmade & hand-painted in Egypt",
     "wordmark": "Dalia's Corner",
     "wordmarkSub": "A Little Corner of Love",
-    "subheadline": "Every planter here is a little *character* with a name, a mood, and a story, shaped from clay and painted by our family one piece at a time.",
-    "supporting": "Pick the one you want living in your corner, keeping your plants company.",
+    "subheadline": "Every character starts in our hands. We shape it, paint it, and carefully plant it before sending it off to a new home.",
+    "supporting": "Small in size. Big in presence. 🌿",
     "ctaShop": "Shop the characters",
     "ctaWhatsapp": "Message us on WhatsApp",
     "trust": [
-      "100% Handmade",
-      "Hand-painted",
-      "One-of-a-kind",
-      "Cairo delivery"
+      "Handmade & hand-painted",
+      "Every character is unique",
+      "Carefully planted",
+      "Delivery across Cairo & Giza"
     ]
   },
   "about": {
     "title": "Our *Story*",
-    "body": "It started with our mother, Dalia, who loves plants and loves making things with her hands even more. Put the two together and you get Dalia's Corner: a small family project run by Mama, my sisters, and me. We shape each character from clay and paint it ourselves, one piece at a time, so no two ever come out the same."
+    "body": "It all started with Mama Dalia, her love for plants, and her love for making things by hand. That's how Dalia's Corner was born. We're a small family creating every character together, shaping, painting, and planting each one by hand before it finds a new home. Because everything is handmade, every character has its own little details and personality."
   },
   "characters": {
     "title": "Meet the *Characters*",
-    "intro": "This is the whole family. Each one has its own mood and its own story, so take your time and pick the one that feels like you."
+    "intro": "Each character has its own little personality and story. Take your time—you might find one that feels just like you."
   },
   "why": {
     "title": "Why *Dalia's Corner*?",
     "points": [
-      "Every piece is shaped and painted by our family, start to finish",
-      "No two are ever the same, even when we try",
-      "Arrives already planted with an easy-going succulent, care card included",
-      "Wrapped up carefully so it reaches you in one piece"
+      "Every character is handmade and hand-painted with care.",
+      "Every one is unique—no two are exactly alike.",
+      "Arrives carefully planted with a care card included.",
+      "Packed with care to arrive safely."
     ]
   },
   "order": {
     "title": "How to *Order*",
-    "primaryTitle": "Cart & checkout",
-    "primaryBody": "Add your favorites to the cart and check out. Your list lands in our WhatsApp chat, and we take it from there.",
+    "primaryTitle": "Choose your character",
+    "primaryBody": "Add your favorite character to the cart and send your order. It comes straight to us on WhatsApp, where we'll confirm the details and delivery.",
     "primaryCta": "Shop the characters",
     "altHeading": "Found a character you love?",
-    "altBody": "Screenshot it and send it over on Instagram or WhatsApp. We'll sort out the details and bring it to your door, anywhere in Cairo.",
+    "altBody": "See a character you love? Send us its name or a screenshot on Instagram or WhatsApp, and we'll take care of the rest.",
     "altInstagram": "Order on Instagram",
     "altWhatsapp": "Message us on WhatsApp"
   },
@@ -66,8 +66,8 @@
     "title": "Questions, *answered*",
     "items": [
       {
-        "q": "Do you deliver across Cairo?",
-        "a": "For now we deliver within Cairo only. Cost and timing depend on your area, and we'll confirm both with you before anything moves."
+        "q": "Where do you deliver?",
+        "a": "We currently deliver across Cairo & Giza. Delivery cost and timing depend on your area, and we'll confirm everything before your order is dispatched."
       },
       {
         "q": "Are the pieces identical?",
@@ -152,7 +152,7 @@
     "sizeNote": "About {cm} cm tall, shaped from clay and painted by hand. Yours won't look exactly like anyone else's, and that's the point.",
     "included": "Arrives already planted",
     "includedNote": "Every planter comes with a succulent already in it, plus a little card on how to keep it happy.",
-    "delivery": "Delivered across Cairo",
+    "delivery": "Delivery across Cairo & Giza",
     "deliveryNote": "Cost and timing depend on your area. We'll confirm everything with you in chat before your order heads out.",
     "others": "Meet the others"
   },
