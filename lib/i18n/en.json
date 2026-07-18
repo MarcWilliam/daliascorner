@@ -35,6 +35,20 @@
       "Delivery across Cairo & Giza"
     ]
   },
+  "promo": {
+    "aria": "Offers: up to 20% off until 15 August, and free delivery on orders over 2,000 EGP",
+    "sealTop": "up to",
+    "sealValue": "20%",
+    "sealBottom": "off",
+    "eyebrow": "Our offers right now",
+    "saleTitle": "Up to 20% off",
+    "saleNote": "Until 15 August",
+    "deliveryTitle": "Free delivery",
+    "deliveryNote": "On orders over 2,000 EGP",
+    "cta": "Shop the characters",
+    "close": "Close offers",
+    "hide": "Hide for now"
+  },
   "about": {
     "title": "Our *Story*",
     "body": "It all started with Mama Dalia, her love for plants, and her love for making things by hand. That's how Dalia's Corner was born. We're a small family creating every character together, shaping, painting, and planting each one by hand before it finds a new home. Because everything is handmade, every character has its own little details and personality."

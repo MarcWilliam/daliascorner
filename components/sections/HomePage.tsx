@@ -12,6 +12,7 @@ import { Footer } from "@/components/sections/Footer";
 import { CartDrawer } from "@/components/sections/CartDrawer";
 import { ScrollProgress } from "@/components/ui/ScrollProgress";
 import { BackToTop } from "@/components/ui/BackToTop";
+import { PromoStamp } from "@/components/ui/PromoStamp";
 
 export function HomePage() {
   const { t } = useLocale();
@@ -40,6 +41,7 @@ export function HomePage() {
       <Footer />
       <CartDrawer />
       <BackToTop />
+      <PromoStamp />
     </>
   );
 }

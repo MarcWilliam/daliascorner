@@ -87,6 +87,17 @@ export const chipBob = (offset: number) => ({
 });
 
 /**
+ * Perpetual "floats around" loop for the promo seal: bob + a lazy tilt sway,
+ * keyed off a resting tilt so the seal always leans the same way (mirror the
+ * sign per direction at the call site). Transform-only; gate on reduced motion.
+ */
+export const sealFloat = (baseTilt: number) => ({
+  y: [0, -7, 0],
+  rotate: [baseTilt - 2.5, baseTilt + 2.5, baseTilt - 2.5],
+  transition: { duration: 6, repeat: Infinity, ease: "easeInOut" as const },
+});
+
+/**
  * Character-card hover: a clean lift + scale, plus a subtle 3D tilt toward the
  * cursor. Driven by motion values in CharacterCard (not a `whileHover` target),
  * so every transform part — y, scale, rotateX/rotateY — composes into one

@@ -73,6 +73,8 @@ export const STORAGE_LOCALE = "dalias-corner.locale";
 export const STORAGE_CART = "dalias-corner.cart";
 export const STORAGE_CUSTOMER = "dalias-corner.customer";
 export const STORAGE_CONSENT = "dalias-corner.consent";
+/** Session-only: the visitor hid the floating promo seal (resets next visit). */
+export const STORAGE_PROMO_DISMISSED = "dalias-corner.promo-dismissed";
 /** Random per-browser id sent to Meta as external_id. Pseudonymous, never PII. */
 export const STORAGE_EXTERNAL_ID = "dalias-corner.eid";
 
