@@ -130,6 +130,23 @@
       "accent": "clay",
       "price": 440,
       "originalPrice": 550
+    },
+    {
+      "id": "farawla",
+      "name": { "en": "Farawla", "ar": "فراولة" },
+      "blurb": {
+        "en": "Cute without even trying, and always makes every corner feel a little brighter",
+        "ar": "كيوت من غير ما تحاول، ودايمًا بتخلي أي مكان حواليها أحلى"
+      },
+      "image": "/products/farawla.webp",
+      "thumb": "/products/farawla-thumb.webp",
+      "alt": {
+        "en": "Farawla — a hand-painted pink character planter with a bow, a smiling face, and a succulent.",
+        "ar": "فراولة — أصيص وردي بشخصية مبتسمة وفيونكة، مصنوع وملون يدويًا ومزروع بنبات عصاري."
+      },
+      "accent": "mauve",
+      "price": 440,
+      "originalPrice": 550
     }
   ]
 }

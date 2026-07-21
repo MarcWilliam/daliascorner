@@ -9,7 +9,8 @@ export type ProductId =
   | "shokreya"
   | "zaghloul"
   | "bahgat"
-  | "bondoq";
+  | "bondoq"
+  | "farawla";
 
 /** Accent token used to theme each character's card (must exist in tailwind config). */
 export type AccentToken = "orange" | "clay" | "leaf" | "mauve";
@@ -43,7 +44,7 @@ export interface Product {
   alt: LocalizedText;
   accent: AccentToken;
   /**
-   * OPTIONAL. When set, the card and cart show the price and subtotal. All seven
+   * OPTIONAL. When set, the card and cart show the price and subtotal. All eight
    * characters are priced today; a character left without a price becomes a
    * "request this piece" item settled entirely in chat, and drops out of the
    * Meta catalog feed / pixel value automatically.
