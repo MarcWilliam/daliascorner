@@ -126,6 +126,10 @@ export default function RootLayout({
   return (
     <html lang={DEFAULT_LOCALE} dir={initialDir} className={fontVars} suppressHydrationWarning>
       <head>
+        <meta
+          name="facebook-domain-verification"
+          content="b0rtkp89r6ftq9hbp5qls5j8q8aa4q"
+        />
         <script dangerouslySetInnerHTML={{ __html: NO_FLASH }} />
         {/* Site-wide structured data (Organization, WebSite). Server-rendered into
             the static HTML so AI answer-engines and search crawlers read the brand
