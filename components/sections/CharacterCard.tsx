@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import { m, useMotionValue, useReducedMotion, useSpring } from "framer-motion";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import { Minus, Plus } from "lucide-react";
-import type { Product } from "@/lib/products";
+import { getProductCategory, type Product } from "@/lib/products";
 import { useLocale } from "@/components/providers/LocaleProvider";
 import { useCart } from "@/components/providers/CartProvider";
 import { useAnnouncer } from "@/components/providers/Announcer";
@@ -35,6 +35,7 @@ export function CharacterCard({ product }: { product: Product }) {
   const ambientActive = tilt.source !== "none";
 
   const name = product.name[locale];
+  const category = getProductCategory(product.category);
   // How many of this character are currently in the cart.
   const qty = lines.find((l) => l.id === product.id)?.qty ?? 0;
 
@@ -159,6 +160,12 @@ export function CharacterCard({ product }: { product: Product }) {
           />
         </div>
 
+        {product.category === "ultra-small" && (
+          <span className="absolute start-3 top-3 rounded-full bg-brand px-2.5 py-1 text-xs font-extrabold leading-none text-canvas shadow-clay-sm">
+            {category.badge[locale]}
+          </span>
+        )}
+
         {/* discount badge — shows the % saved when a product is on sale */}
         {product.price != null &&
           product.originalPrice != null &&
@@ -171,10 +178,10 @@ export function CharacterCard({ product }: { product: Product }) {
 
       {/* body */}
       <div className="flex flex-1 flex-col gap-2 p-5">
-        <h3 className="flex items-center gap-2 text-xl">
+        <h4 className="flex items-center gap-2 text-xl">
           <span aria-hidden="true" className={`h-2.5 w-2.5 rounded-full ${accentDot[product.accent]}`} />
           {name}
-        </h3>
+        </h4>
         <p className="flex-1 text-[0.975rem] leading-relaxed text-ink-muted">
           {product.blurb[locale]}
         </p>

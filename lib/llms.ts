@@ -1,14 +1,20 @@
 /**
  * The public llms.txt — a plain-text brand + catalog brief for AI answer
  * engines (the llms.txt convention). Built at build time from the SAME single
- * sources of truth as the rest of the site: PRODUCTS, POT_*, and config. The
+ * sources of truth as the rest of the site: products, categories, and config. The
  * old public/llms.txt was hand-written, so every price change or new character
  * had to be copied here by hand and quietly drifted; this can't.
  *
  * Emitted by app/llms.txt/route.ts. English only — it's the English-surfacing
  * layer of the bilingual site (the AR copy lives in the UI).
  */
-import { PRODUCTS, POT_HEIGHT_CM, POT_MATERIAL, type Product } from "./products";
+import {
+  PRODUCT_CATEGORIES,
+  POT_MATERIAL,
+  getProductsByCategory,
+  type Product,
+  type ProductCategory,
+} from "./products";
 import {
   SITE_ORIGIN,
   PRICE_CURRENCY,
@@ -38,6 +44,15 @@ function visual(p: Product): string {
 /** One catalog bullet: linked name, Arabic name, look, personality, price. */
 function characterLine(p: Product): string {
   return `- [${p.name.en}](${productUrl(p.id)}) (${p.name.ar}) — ${visual(p)} ${p.blurb.en} ${priceLine(p)}`;
+}
+
+function categoryBlock(category: ProductCategory): string {
+  const size = category.potHeightCm != null
+    ? ` Pots in this collection are about ${category.potHeightCm} cm tall.`
+    : "";
+  return `### ${category.name.en}
+${category.intro.en}${size}
+${getProductsByCategory(category.id).map(characterLine).join("\n")}`;
 }
 
 /**
@@ -86,10 +101,10 @@ export function buildLlmsTxt(): string {
 - Tagline: "A Little Corner of Love."
 - What it is: a family-run pottery studio in Egypt. Mama Dalia, her daughters, and family shape and hand-paint each piece together.
 - Product type: handmade ceramic/pottery planters (plant pots / succulent pots) shaped like animal characters. Fully handmade and hand-painted; every piece is one-of-a-kind.
-- Each pot is about ${POT_HEIGHT_CM} cm tall, made of ${POT_MATERIAL.en}, and ships pre-planted with a low-maintenance succulent plus a care card explaining how to look after it.
+- Every pot is ${POT_MATERIAL.en} and ships pre-planted with a low-maintenance succulent plus a care card explaining how to look after it. Exact dimensions vary by collection.
 
-## Characters (products)
-${PRODUCTS.map(characterLine).join("\n")}
+## Collections and characters
+${PRODUCT_CATEGORIES.map(categoryBlock).join("\n\n")}
 - Bahira, Zaghloul and Bahgat are three duckling siblings.
 
 ## Shipping & delivery

@@ -15,7 +15,12 @@
  *   homeJsonLd     → "/"          (products + FAQ, both visible there)
  *   productJsonLd  → "/characters/<id>/"
  */
-import { POT_HEIGHT_CM, POT_MATERIAL, PRODUCTS, type Product } from "./products";
+import {
+  POT_MATERIAL,
+  PRODUCTS,
+  getProductCategory,
+  type Product,
+} from "./products";
 import { asset } from "./asset";
 import { dictionaries } from "./i18n/dictionaries";
 import {
@@ -109,6 +114,7 @@ const website = {
  * catalog silently stops matching events to items.
  */
 function product(p: Product) {
+  const category = getProductCategory(p.category);
   return {
     "@context": "https://schema.org",
     "@type": "Product",
@@ -120,14 +126,18 @@ function product(p: Product) {
     // p.image is already basePath-prefixed by asset(); just prepend the origin.
     image: `${SITE}${p.image}`,
     url: productUrl(p.id),
-    category: "Planter",
+    category: category.name.en,
     material: POT_MATERIAL.en,
-    // Every piece is the same ~15 cm hand-painted clay pot (see lib/products.ts).
-    height: {
-      "@type": "QuantitativeValue",
-      value: POT_HEIGHT_CM,
-      unitCode: "CMT",
-    },
+    // Only publish a precise dimension when the category has a confirmed one.
+    ...(category.potHeightCm != null
+      ? {
+          height: {
+            "@type": "QuantitativeValue",
+            value: category.potHeightCm,
+            unitCode: "CMT",
+          },
+        }
+      : {}),
     brand: { "@type": "Brand", name: "Dalia's Corner" },
     // Offer with the real price when one is set; a price-less character (settled
     // in chat) is still a valid Product, just without an Offer.
@@ -164,11 +174,12 @@ const faqPage = {
 /** Site-wide identity — safe on every page. */
 export const siteJsonLd: object[] = [organization, website];
 
-/** Home page: the three products and the FAQ are both visible there. */
+/** Home page: the full catalog and the FAQ are both visible there. */
 export const homeJsonLd: object[] = [...PRODUCTS.map(product), faqPage];
 
 /** A single character's page: the Product, plus a trail back to the home page. */
 export function productJsonLd(p: Product): object[] {
+  const category = getProductCategory(p.category);
   return [
     product(p),
     {
@@ -181,7 +192,13 @@ export function productJsonLd(p: Product): object[] {
           name: "Dalia's Corner",
           item: `${SITE}/`,
         },
-        { "@type": "ListItem", position: 2, name: p.name.en },
+        {
+          "@type": "ListItem",
+          position: 2,
+          name: category.name.en,
+          item: `${SITE}/#collection-${category.id}`,
+        },
+        { "@type": "ListItem", position: 3, name: p.name.en },
       ],
     },
   ];

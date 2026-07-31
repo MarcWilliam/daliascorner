@@ -55,7 +55,9 @@
   },
   "characters": {
     "title": "Meet the *Characters*",
-    "intro": "Each character has its own little personality and story. Take your time—you might find one that feels just like you."
+    "intro": "Two sizes, the same handmade personality. Meet our signature pots or discover the new Pocket Size collection — there’s a character for every kind of corner.",
+    "collectionNav": "Browse product collections",
+    "pieces": "pieces"
   },
   "why": {
     "title": "Why *Dalia's Corner*?",
@@ -161,6 +163,7 @@
   },
   "product": {
     "back": "All characters",
+    "backToCollection": "Back to {collection}",
     "viewCart": "View cart",
     "size": "Size & finish",
     "sizeNote": "About {cm} cm tall, shaped from clay and painted by hand. Yours won't look exactly like anyone else's, and that's the point.",

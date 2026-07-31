@@ -24,7 +24,12 @@ import {
   PRICE_CURRENCY,
   STORAGE_EXTERNAL_ID,
 } from "./config";
-import { getProduct, type Product, type ProductId } from "./products";
+import {
+  getProduct,
+  getProductCategory,
+  type Product,
+  type ProductId,
+} from "./products";
 import type { CartLine } from "@/components/providers/CartProvider";
 
 type FbqArgs = unknown[];
@@ -267,10 +272,12 @@ export function trackPageView() {
 }
 
 export function trackViewContent(product: Product) {
+  const category = getProductCategory(product.category);
   track("ViewContent", {
     content_type: "product",
     content_ids: [product.id],
     content_name: product.name.en,
+    content_category: category.name.en,
     value: product.price ?? 0,
     currency: PRICE_CURRENCY,
   });
@@ -279,10 +286,12 @@ export function trackViewContent(product: Product) {
 export function trackAddToCart(id: ProductId) {
   const product = getProduct(id);
   if (!product) return;
+  const category = getProductCategory(product.category);
   track("AddToCart", {
     content_type: "product",
     content_ids: [id],
     content_name: product.name.en,
+    content_category: category.name.en,
     value: product.price ?? 0,
     currency: PRICE_CURRENCY,
   });

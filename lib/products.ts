@@ -10,22 +10,36 @@ export type ProductId =
   | "zaghloul"
   | "bahgat"
   | "bondoq"
-  | "farawla";
+  | "farawla"
+  | "suzy"
+  | "bahloul";
+
+export type ProductCategoryId = "signature" | "ultra-small";
 
 /** Accent token used to theme each character's card (must exist in tailwind config). */
 export type AccentToken = "orange" | "clay" | "leaf" | "mauve";
 
-/**
- * Every piece is the same object, so these live in ONE place rather than being
- * repeated on each product: ~15 cm tall, hand-shaped from clay and hand-painted,
- * and shipped already planted with a succulent. Consumed by the product page,
- * the JSON-LD, and llms.txt.
- */
-export const POT_HEIGHT_CM: number = catalog.potHeightCm;
+/** Shared material; dimensions now live on the category because the two lines differ. */
 export const POT_MATERIAL: LocalizedText = catalog.potMaterial;
+
+export interface ProductCategory {
+  id: ProductCategoryId;
+  eyebrow: LocalizedText;
+  name: LocalizedText;
+  intro: LocalizedText;
+  badge: LocalizedText;
+  sizeNote: LocalizedText;
+  /** Exact height is intentionally optional until a line's measurement is confirmed. */
+  potHeightCm?: number;
+}
+
+/** Display order is the JSON order: signature line first, new ultra-small line second. */
+export const PRODUCT_CATEGORIES: ProductCategory[] =
+  catalog.categories as ProductCategory[];
 
 export interface Product {
   id: ProductId;
+  category: ProductCategoryId;
   name: LocalizedText;
   blurb: LocalizedText;
   /**
@@ -44,8 +58,8 @@ export interface Product {
   alt: LocalizedText;
   accent: AccentToken;
   /**
-   * OPTIONAL. When set, the card and cart show the price and subtotal. All eight
-   * characters are priced today; a character left without a price becomes a
+   * OPTIONAL. When set, the card and cart show the price and subtotal. Every
+   * current character is priced; a character left without a price becomes a
    * "request this piece" item settled entirely in chat, and drops out of the
    * Meta catalog feed / pixel value automatically.
    */
@@ -58,11 +72,11 @@ export interface Product {
 }
 
 /**
- * Single source of truth for the characters. The raw data lives in
+ * Single source of truth for the catalog. The raw data lives in
  * products.json (like the i18n dictionaries in lib/i18n/*.json) so a character
- * can be added or edited without touching this file — this module is just the
+ * can be added or edited without touching UI code — this module is just the
  * typed loader. To add a product: add an entry to products.json and its id to
- * the ProductId union above. The "Meet the Characters" section, the per-
+ * the ProductId union above. The category sections, the per-
  * character pages, the cart, the JSON-LD and the Meta catalog feed all read
  * from this array, so it appears everywhere without touching layout.
  *
@@ -81,6 +95,18 @@ export const PRODUCTS: Product[] = (catalog.products as Product[]).map((p) => ({
 
 export function getProduct(id: ProductId): Product | undefined {
   return PRODUCTS.find((p) => p.id === id);
+}
+
+export function getProductCategory(
+  id: ProductCategoryId,
+): ProductCategory {
+  const category = PRODUCT_CATEGORIES.find((c) => c.id === id);
+  if (!category) throw new Error(`Unknown product category: ${id}`);
+  return category;
+}
+
+export function getProductsByCategory(id: ProductCategoryId): Product[] {
+  return PRODUCTS.filter((p) => p.category === id);
 }
 
 /** Hero image — the real lifestyle shot. */

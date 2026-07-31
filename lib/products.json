@@ -1,9 +1,39 @@
 {
-  "potHeightCm": 15,
   "potMaterial": {
     "en": "handmade & hand-painted",
     "ar": "مصنوع وملون يدويًا"
   },
+  "categories": [
+    {
+      "id": "signature",
+      "eyebrow": { "en": "The originals", "ar": "العيلة الأصلية" },
+      "name": { "en": "Signature Pots", "ar": "الأصص المميزة" },
+      "intro": {
+        "en": "Our original, roomier characters — handmade statement pieces with plenty of personality.",
+        "ar": "شخصياتنا الأصلية بحجمها المميز… قطع معمولة بالإيد وحضورها مالي المكان."
+      },
+      "badge": { "en": "Signature size", "ar": "الحجم المميز" },
+      "sizeNote": {
+        "en": "About 15 cm tall, shaped from clay and painted by hand. The piece you receive will be truly one of a kind.",
+        "ar": "طوله حوالي ١٥ سم، متشكّل من الطين ومتلوّن بالإيد. يعني اللي هيوصلك مفيش زيّه عند حد تاني."
+      },
+      "potHeightCm": 15
+    },
+    {
+      "id": "ultra-small",
+      "eyebrow": { "en": "New collection", "ar": "تشكيلة جديدة" },
+      "name": { "en": "Pocket Size", "ar": "حجم الجيب" },
+      "intro": {
+        "en": "Tiny pots with big personalities, made for desks, shelves, and the smallest little corners.",
+        "ar": "أصيصات صغيرة جدًا بشخصيات كبيرة، معمولة للمكتب والرف وأصغر ركن عندك."
+      },
+      "badge": { "en": "Pocket size", "ar": "حجم الجيب" },
+      "sizeNote": {
+        "en": "An ultra-small pot shaped and painted by hand, designed to add personality without taking over your space.",
+        "ar": "أصيص صغير جدًا متشكّل ومتلوّن بالإيد، معمول علشان يضيف روح للمكان من غير ما ياخد مساحة."
+      }
+    }
+  ],
   "hero": {
     "image": "/products/hero.webp",
     "alt": {
@@ -14,6 +44,7 @@
   "products": [
     {
       "id": "bahira",
+      "category": "signature",
       "name": { "en": "Bahira", "ar": "بهيرة" },
       "blurb": {
         "en": "The eldest of our three duckling siblings, big sister to Bahgat and baby Zaghloul. Nothing ruffles her feathers, and she's happiest with a bit of water nearby.",
@@ -31,6 +62,7 @@
     },
     {
       "id": "zouzou",
+      "category": "signature",
       "name": { "en": "ZouZou", "ar": "زوزو" },
       "blurb": {
         "en": "A little bunny with big curious eyes and rosy cheeks. Put her anywhere and the whole corner suddenly feels softer.",
@@ -48,6 +80,7 @@
     },
     {
       "id": "shawkat",
+      "category": "signature",
       "name": { "en": "Shawkat", "ar": "شوكت" },
       "blurb": {
         "en": "A russet fox who knows exactly how clever he is, and yes, a little spoiled. Wherever he sits, mischief follows.",
@@ -65,6 +98,7 @@
     },
     {
       "id": "shokreya",
+      "category": "signature",
       "name": { "en": "Shokreya", "ar": "شكرية" },
       "blurb": {
         "en": "Forever halfway into a nap, and all the sweeter for it. She brightens up her spot quietly, no fuss at all.",
@@ -82,6 +116,7 @@
     },
     {
       "id": "zaghloul",
+      "category": "signature",
       "name": { "en": "Zaghloul", "ar": "زغلول" },
       "blurb": {
         "en": "The baby of the duckling trio, still hatching out of his shell and brand new to everything. Bahira and Bahgat keep him tucked safely between them.",
@@ -99,6 +134,7 @@
     },
     {
       "id": "bahgat",
+      "category": "signature",
       "name": { "en": "Bahgat", "ar": "بهجت" },
       "blurb": {
         "en": "His name means “joy”, and he takes the job seriously. He's the sunny middle duckling of the trio, right between Bahira and little Zaghloul.",
@@ -116,6 +152,7 @@
     },
     {
       "id": "bondoq",
+      "category": "signature",
       "name": { "en": "Bondoq", "ar": "بندق" },
       "blurb": {
         "en": "His name is Bondoq… always smiling and effortlessly spreading joy",
@@ -133,6 +170,7 @@
     },
     {
       "id": "farawla",
+      "category": "signature",
       "name": { "en": "Farawla", "ar": "فراولة" },
       "blurb": {
         "en": "Cute without even trying, and always makes every corner feel a little brighter",
@@ -147,6 +185,40 @@
       "accent": "mauve",
       "price": 440,
       "originalPrice": 550
+    },
+    {
+      "id": "suzy",
+      "category": "ultra-small",
+      "name": { "en": "Suzy", "ar": "سوزي" },
+      "blurb": {
+        "en": "It won’t take up much space, but it’ll definitely catch your eye.",
+        "ar": "مش هتاخد مكان… بس هتلفت النظر."
+      },
+      "image": "/products/suzy.webp",
+      "thumb": "/products/suzy-thumb.webp",
+      "alt": {
+        "en": "Suzy — an ultra-small cream cat-shaped planter with pink ears and paws, holding a cluster of succulents.",
+        "ar": "سوزي — أصيص صغير جدًا على شكل قطة كريمية بودان وكفوف وردية، مزروع بنباتات عصارية."
+      },
+      "accent": "mauve",
+      "price": 250
+    },
+    {
+      "id": "bahloul",
+      "category": "ultra-small",
+      "name": { "en": "Bahloul", "ar": "بهلول" },
+      "blurb": {
+        "en": "First impressions aren’t always right. He looks suspicious… but he’s actually pretty fun.",
+        "ar": "أول انطباع؟ مش دايمًا صح. شكله مريب… بس دمه خفيف."
+      },
+      "image": "/products/bahloul.webp",
+      "thumb": "/products/bahloul-thumb.webp",
+      "alt": {
+        "en": "Bahloul — an ultra-small cream character planter with wide eyes, a coral nose, and a striped succulent.",
+        "ar": "بهلول — أصيص صغير جدًا كريمي بعيون واسعة ومناخير مرجانية، مزروع بنبات عصاري مخطط."
+      },
+      "accent": "orange",
+      "price": 320
     }
   ]
 }

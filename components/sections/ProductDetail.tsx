@@ -10,7 +10,11 @@ import { MiniNav } from "@/components/sections/MiniNav";
 import { Footer } from "@/components/sections/Footer";
 import { CartDrawer } from "@/components/sections/CartDrawer";
 import { ClayButton } from "@/components/ui/ClayButton";
-import { POT_HEIGHT_CM, PRODUCTS, type Product } from "@/lib/products";
+import {
+  PRODUCTS,
+  getProductCategory,
+  type Product,
+} from "@/lib/products";
 import { productPath } from "@/lib/config";
 import { asset } from "@/lib/asset";
 import { trackViewContent } from "@/lib/meta";
@@ -37,7 +41,16 @@ export function ProductDetail({ product }: { product: Product }) {
 
   const name = product.name[locale];
   const qty = lines.find((l) => l.id === product.id)?.qty ?? 0;
-  const others = PRODUCTS.filter((p) => p.id !== product.id);
+  const category = getProductCategory(product.category);
+  // Keep recommendations useful as the catalog grows: siblings first, then a
+  // small cross-collection sample instead of rendering the entire catalog.
+  const others = PRODUCTS.filter((p) => p.id !== product.id)
+    .sort((a, b) => {
+      const aSame = a.category === product.category ? 0 : 1;
+      const bSame = b.category === product.category ? 0 : 1;
+      return aSame - bSame;
+    })
+    .slice(0, 4);
 
   const onSale =
     product.price != null &&
@@ -64,11 +77,13 @@ export function ProductDetail({ product }: { product: Product }) {
         <article className="section">
           <div className="container-page">
             <a
-              href={asset("/#characters")}
+              href={asset(`/#collection-${product.category}`)}
               className="inline-flex items-center gap-2 rounded-clay py-2 font-display text-sm font-semibold text-ink-muted transition-colors hover:text-brand focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/45"
             >
               <ArrowLeft className="h-4 w-4 rtl:-scale-x-100" aria-hidden="true" />
-              {t("product.back")}
+              {t("product.backToCollection", {
+                collection: category.name[locale],
+              })}
             </a>
 
             <div className="mt-6 grid gap-8 lg:grid-cols-2 lg:items-start lg:gap-12">
@@ -99,6 +114,9 @@ export function ProductDetail({ product }: { product: Product }) {
 
               {/* body */}
               <div className="flex flex-col gap-5">
+                <span className="w-fit rounded-full border border-brand/15 bg-canvas-sunk px-3 py-1.5 font-display text-xs font-bold text-brand">
+                  {category.badge[locale]}
+                </span>
                 <h1 className="text-3xl sm:text-4xl">{name}</h1>
                 <p className="text-lg leading-relaxed text-ink-muted">
                   {product.blurb[locale]}
@@ -189,7 +207,7 @@ export function ProductDetail({ product }: { product: Product }) {
                         {t("product.size")}
                       </p>
                       <p className="text-sm leading-relaxed text-ink-muted">
-                        {t("product.sizeNote", { cm: POT_HEIGHT_CM })}
+                        {category.sizeNote[locale]}
                       </p>
                     </div>
                   </li>

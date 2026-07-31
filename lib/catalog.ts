@@ -14,7 +14,7 @@
  * - `link` must be "the specific product page for the item", which is why
  *   /characters/<id>/ exists at all.
  */
-import { PRODUCTS, type Product } from "./products";
+import { PRODUCTS, getProductCategory, type Product } from "./products";
 import { PRICE_CURRENCY, SITE_ORIGIN, productUrl } from "./config";
 
 /** Meta wants "<amount> <ISO currency>", period decimal, no symbol. */
@@ -44,6 +44,7 @@ function row(p: Product): string[] {
   // A character with no price cannot be a catalog item — Meta requires one.
   const regular = p.originalPrice ?? p.price!;
   const sale = p.originalPrice != null && p.price! < p.originalPrice ? p.price! : null;
+  const category = getProductCategory(p.category);
 
   return [
     p.id,
@@ -57,7 +58,7 @@ function row(p: Product): string[] {
     // p.image is already basePath-prefixed by asset(); prepend the origin.
     `${SITE_ORIGIN}${p.image}`,
     "Dalia's Corner",
-    "Home & Garden > Planters",
+    `Home & Garden > Planters > ${category.name.en}`,
     "Home & Garden > Lawn & Garden > Gardening > Pots & Planters",
   ];
 }

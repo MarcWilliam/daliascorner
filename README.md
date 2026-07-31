@@ -19,16 +19,14 @@ All live in **one place each** — edit and you're done.
 | **WhatsApp number** | `lib/config.ts` → `WHATSAPP_NUMBER` | Digits only, country code, no `+`. Also set `WHATSAPP_NUMBER_IS_PLACEHOLDER = false`. |
 | **Facebook page URL** | `lib/config.ts` → `FACEBOOK_URL` | Empty by default → the FB link simply doesn't render until set. |
 | **Default language** | `lib/config.ts` → `DEFAULT_LOCALE` | `"ar"` (default) or `"en"`. Browser detection toggle: `ENABLE_BROWSER_LOCALE_DETECTION`. |
-| **Product photos** | `lib/products.ts` → each `image` | Replace the placeholder SVGs in `/public/products/*.svg` with real square (1:1) photos. |
-| **Hero photo** | `lib/products.ts` → `HERO_IMAGE` | Wider lifestyle shot. |
-| **OG / share image** | `/public/og.svg` + `app/layout.tsx` | Swap for a real 1200×630 image. |
+| **Product photos** | `lib/products.json` → each `image` / `thumb` | Square WebP assets live in `/public/products/` (800×800 and 200×200). |
+| **Hero photo** | `lib/products.json` → `hero.image` | Wider lifestyle shot. |
+| **OG / share image** | `/public/og.png` + `app/layout.tsx` | Use a 1200×630 image. |
 | **Production URL** | `app/layout.tsx` → `metadataBase` | For correct absolute OG/canonical URLs. |
-
-> The placeholder character art (`/public/products/*.svg`) and `og.svg` are hand-drawn stand-ins so the layout looks complete today. Each file is commented `PLACEHOLDER`.
 
 ## Adding a product
 
-Append to the `PRODUCTS` array in [`lib/products.ts`](lib/products.ts). It automatically appears in the Characters grid **and** the cart — no layout changes. Add an optional `price` and the cart + cards switch on price/subtotal display.
+Append the bilingual entry to [`lib/products.json`](lib/products.json), assign its `category`, then add its id to the `ProductId` union in [`lib/products.ts`](lib/products.ts). It automatically appears in the correct collection, its detail page, cart, sitemap, JSON-LD, Meta catalog feed, and `llms.txt`. In the JSON model, `price` is the current sale price and `originalPrice` is the struck-through regular price.
 
 ## Copy / translations
 
