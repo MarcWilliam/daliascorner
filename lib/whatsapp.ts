@@ -12,8 +12,7 @@ export interface Customer {
 }
 
 /**
- * Build the localized order message from cart lines. The same text powers both
- * the WhatsApp deep link and the Instagram clipboard copy.
+ * Build the localized order message from cart lines for the WhatsApp deep link.
  * Loops one bullet per item using the localized product name, appends a subtotal
  * line when any product is priced, and appends the customer's delivery details.
  */

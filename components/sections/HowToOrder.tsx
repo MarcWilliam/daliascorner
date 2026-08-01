@@ -1,15 +1,15 @@
 "use client";
 
-import { Camera, ShoppingBag } from "lucide-react";
+import { MessageCircle, ShoppingBag } from "lucide-react";
 import { useLocale } from "@/components/providers/LocaleProvider";
 import { useCart } from "@/components/providers/CartProvider";
 import { ClayButton } from "@/components/ui/ClayButton";
 import { RichText } from "@/components/ui/RichText";
 import { RevealTitle } from "@/components/ui/RevealTitle";
 import { RevealGroup, RevealItem } from "@/components/ui/RevealGroup";
-import { WhatsAppIcon, InstagramIcon } from "@/components/ui/BrandIcons";
+import { WhatsAppIcon } from "@/components/ui/BrandIcons";
 import { FloatingLeaf } from "@/components/ui/FloatingLeaf";
-import { INSTAGRAM_URL, whatsappLink } from "@/lib/config";
+import { whatsappLink } from "@/lib/config";
 import { trackContact } from "@/lib/meta";
 
 export function HowToOrder() {
@@ -54,11 +54,11 @@ export function HowToOrder() {
             </div>
           </RevealItem>
 
-          {/* Path 2 — screenshot & DM (alternative) */}
+          {/* Path 2 — ask for help on the single supported order channel */}
           <RevealItem className="h-full">
             <div className="flex h-full flex-col gap-4 rounded-clay-lg border border-line bg-canvas-sunk p-6 shadow-clay-sm sm:p-8">
               <span className="grid h-14 w-14 place-items-center rounded-clay bg-mauve-soft">
-                <Camera className="h-7 w-7 text-ink" aria-hidden="true" />
+                <MessageCircle className="h-7 w-7 text-ink" aria-hidden="true" />
               </span>
               <h3 className="text-2xl">{t("order.altHeading")}</h3>
               <p className="flex-1 text-lg leading-relaxed text-ink-muted">
@@ -66,20 +66,10 @@ export function HowToOrder() {
               </p>
               <div className="flex flex-wrap gap-3">
                 <ClayButton
-                  href={INSTAGRAM_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  variant="accent"
-                  onClick={() => trackContact("instagram")}
-                >
-                  <InstagramIcon className="h-5 w-5" />
-                  {t("order.altInstagram")}
-                </ClayButton>
-                <ClayButton
                   href={whatsappLink()}
                   target="_blank"
                   rel="noopener noreferrer"
-                  variant="outline"
+                  variant="whatsapp"
                   onClick={() => trackContact("whatsapp")}
                 >
                   <WhatsAppIcon className="h-5 w-5" />

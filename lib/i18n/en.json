@@ -73,10 +73,9 @@
     "primaryTitle": "Choose your character",
     "primaryBody": "Add your favorite character to the cart and send your order. It comes straight to us on WhatsApp, where we'll confirm the details and delivery.",
     "primaryCta": "Shop the characters",
-    "altHeading": "Found a character you love?",
-    "altBody": "See a character you love? Send us its name or a screenshot on Instagram or WhatsApp, and we'll take care of the rest.",
-    "altInstagram": "Order on Instagram",
-    "altWhatsapp": "Message us on WhatsApp"
+    "altHeading": "Need a hand choosing?",
+    "altBody": "Message us on WhatsApp and tell us what you have in mind. We’ll help you choose a character or discuss a custom color or design.",
+    "altWhatsapp": "Chat on WhatsApp"
   },
   "faq": {
     "title": "Questions, *answered*",
@@ -91,7 +90,7 @@
       },
       {
         "q": "Can I request a character in a specific color or design?",
-        "a": "Message us on Instagram or WhatsApp with what you have in mind, and we'll see what we can do."
+        "a": "Message us on WhatsApp with what you have in mind, and we'll see what we can do."
       },
       {
         "q": "Do the plants come with the planters?",
@@ -124,9 +123,6 @@
     "emptyCta": "Meet the characters",
     "close": "Close cart",
     "checkout": "Checkout on WhatsApp",
-    "checkoutInstagram": "Order on Instagram",
-    "copiedForInstagram": "Order copied. Paste it into our Instagram chat and you're set.",
-    "copied": "Copied. Paste it in the chat.",
     "detailsTitle": "Your delivery details",
     "detailsRequired": "Add your name, phone, and address to place the order.",
     "name": "Name",
@@ -175,7 +171,7 @@
   },
   "privacy": {
     "title": "Privacy & tracking",
-    "updated": "Last updated: 10 July 2026",
+    "updated": "Last updated: 1 August 2026",
     "intro": "Dalia's Corner is a small family pottery studio in Cairo. This page is the plain, honest version of what happens to your information when you visit the site or place an order.",
     "backHome": "Back to the shop",
     "contactTitle": "Questions, or want your data deleted?",
@@ -192,7 +188,6 @@
         "items": [
           "Your cart and delivery details never leave your device on their own.",
           "When you tap \"Order on WhatsApp\", your browser opens WhatsApp with the order already written out. You're the one who hits send, not us.",
-          "For Instagram, the same text is copied to your clipboard so you can paste it into a message.",
           "Clear your browser data and all of it is gone."
         ]
       },
@@ -207,7 +202,7 @@
       },
       {
         "h": "What we send when you check out",
-        "p": "If, and only if, you've accepted tracking, then the moment you tap the WhatsApp or Instagram checkout button we send Meta a scrambled (SHA-256 hashed) version of the name and phone number you entered, along with the city (Cairo) and country (Egypt). The scrambling happens on your own device, so your real name and number never leave it. Meta uses this to work out whether you'd seen one of our ads. You can switch it off at any time, and ordering works just fine without it.",
+        "p": "If, and only if, you've accepted tracking, then the moment you tap the WhatsApp checkout button we send Meta a scrambled (SHA-256 hashed) version of the name and phone number you entered, along with the city (Cairo) and country (Egypt). The scrambling happens on your own device, so your real name and number never leave it. Meta uses this to work out whether you'd seen one of our ads. You can switch it off at any time, and ordering works just fine without it.",
         "items": []
       },
       {
@@ -222,7 +217,7 @@
       },
       {
         "h": "Once you message us",
-        "p": "When your order moves into WhatsApp or Instagram Direct, that conversation is covered by Meta's own privacy policy as well as this one. We keep your order details, meaning your name, phone number, and address, for as long as we need them to deliver your order and help if something goes wrong. After that, we delete them.",
+        "p": "When your order moves into WhatsApp, that conversation is covered by Meta's own privacy policy as well as this one. We keep your order details, meaning your name, phone number, and address, for as long as we need them to deliver your order and help if something goes wrong. After that, we delete them.",
         "items": []
       },
       {

@@ -9,7 +9,7 @@
  *    request itself sets cookies.
  *
  * 2. THERE IS NO `Purchase` EVENT, and there never can be. Payment is settled in
- *    a WhatsApp / Instagram conversation, off-site. The truthful on-site
+ *    a WhatsApp conversation, off-site. The truthful on-site
  *    conversion is `Lead` — the moment the visitor hands off to chat. Firing a
  *    fabricated Purchase would poison ad optimisation with unverifiable revenue.
  *
@@ -303,13 +303,12 @@ export function trackInitiateCheckout(lines: CartLine[]) {
 }
 
 /**
- * The real conversion this site owns: the visitor leaves for WhatsApp or
- * Instagram carrying an order. Everything after this happens in a chat thread
- * Meta cannot see, which is exactly why this is `Lead` and not `Purchase`.
+ * The real conversion this site owns: the visitor leaves for WhatsApp carrying
+ * an order. Everything after this happens in a chat thread Meta cannot see,
+ * which is exactly why this is `Lead` and not `Purchase`.
  */
 export async function trackCheckoutLead(
   lines: CartLine[],
-  channel: "whatsapp" | "instagram",
   customer: { name: string; phone: string },
 ) {
   if (!enabled || !PIXEL_CONFIGURED) return;
@@ -318,7 +317,7 @@ export async function trackCheckoutLead(
   } catch {
     /* hashing unavailable (no SubtleCrypto) — still send the event */
   }
-  track("Lead", { ...cartParams(lines), channel });
+  track("Lead", { ...cartParams(lines), channel: "whatsapp" });
 }
 
 /** A bare "message us" CTA — no cart attached, so no value. */

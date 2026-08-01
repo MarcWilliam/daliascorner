@@ -18,7 +18,6 @@ import {
 import {
   SITE_ORIGIN,
   PRICE_CURRENCY,
-  INSTAGRAM_HANDLE,
   INSTAGRAM_URL,
   FACEBOOK_URL,
   WHATSAPP_NUMBER,
@@ -79,9 +78,9 @@ export function buildLlmsTxt(): string {
   // Order matches the site's own contact policy (see lib/jsonld.ts): never
   // publish a placeholder WhatsApp number or an unset Facebook URL.
   const orderLines = [
-    "- There is no online payment or checkout. Orders are arranged by direct message.",
-    '- On the website you can add characters to a cart and "check out" — this opens a pre-filled WhatsApp (or Instagram) message with the chosen list, and the details and delivery are settled in chat.',
-    `- You can also message directly on Instagram (@${INSTAGRAM_HANDLE}) or WhatsApp to order, ask about a custom color/design, or arrange delivery.`,
+    "- There is no online payment. Website orders are completed through WhatsApp.",
+    '- Add characters to the website cart and select "Checkout on WhatsApp" to open a pre-filled message with the order and delivery details.',
+    "- WhatsApp is also the order channel for custom color/design requests and delivery questions. Instagram remains a social and discovery channel, not a website checkout option.",
     ...(WHATSAPP_NUMBER_IS_PLACEHOLDER ? [] : [`- WhatsApp: ${prettyWhatsApp()}.`]),
   ];
 

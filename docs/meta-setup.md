@@ -96,7 +96,7 @@ Events, in funnel order:
 | `ViewContent` | a character's own page opens |
 | `AddToCart` | "Add to cart", and the `+` stepper |
 | `InitiateCheckout` | the cart drawer opens with something in it |
-| `Lead` | the WhatsApp or Instagram checkout button is tapped |
+| `Lead` | the WhatsApp checkout button is tapped |
 | `Contact` | a bare "message us" CTA is tapped (no cart) |
 
 **There is no `Purchase` event and there cannot be one.** Payment is settled in a

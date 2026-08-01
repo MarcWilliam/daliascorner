@@ -6,10 +6,10 @@ import { useCart } from "@/components/providers/CartProvider";
 import { useLocale } from "@/components/providers/LocaleProvider";
 import { useAnnouncer } from "@/components/providers/Announcer";
 import { ClayButton } from "@/components/ui/ClayButton";
-import { WhatsAppIcon, InstagramIcon } from "@/components/ui/BrandIcons";
+import { WhatsAppIcon } from "@/components/ui/BrandIcons";
 import { getProduct } from "@/lib/products";
-import { buildOrderLink, buildOrderMessage, type Customer } from "@/lib/whatsapp";
-import { INSTAGRAM_DM_URL, STORAGE_CUSTOMER } from "@/lib/config";
+import { buildOrderLink, type Customer } from "@/lib/whatsapp";
+import { STORAGE_CUSTOMER } from "@/lib/config";
 import { trackCheckoutLead } from "@/lib/meta";
 
 export function CartDrawer() {
@@ -19,7 +19,6 @@ export function CartDrawer() {
   const announce = useAnnouncer();
 
   const [customer, setCustomer] = useState<Customer>({ name: "", phone: "", address: "" });
-  const [copied, setCopied] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
   // Load any saved delivery details once on mount.
@@ -153,26 +152,11 @@ export function CartDrawer() {
   // never sees. Hence `Lead`, never `Purchase`. Fire-and-forget: the CTA opens
   // in a new tab, so this page stays alive to finish hashing and sending.
   const handleCheckoutLead = useCallback(
-    (channel: "whatsapp" | "instagram") => {
-      void trackCheckoutLead(lines, channel, customer);
+    () => {
+      void trackCheckoutLead(lines, customer);
     },
     [lines, customer],
   );
-
-  // Instagram has no DM pre-fill, so mirror the WhatsApp flow by copying the same
-  // order text (delivery details included) to the clipboard for the customer to
-  // paste, then open the DM thread.
-  const handleInstagramCheckout = useCallback(() => {
-    handleCheckoutLead("instagram");
-    navigator.clipboard
-      ?.writeText(buildOrderMessage(lines, locale, messages, customer))
-      .catch(() => {
-        /* clipboard may be blocked; the DM still opens */
-      });
-    announce(t("cart.copiedForInstagram"));
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 2200);
-  }, [handleCheckoutLead, lines, locale, messages, customer, announce, t]);
 
   // Off-screen slide direction follows the inline-end side (mirrors in RTL).
   const offClass = isOpen
@@ -401,41 +385,22 @@ export function CartDrawer() {
 
           <div className="space-y-2.5">
             {!canCheckout ? (
-              <>
-                <ClayButton variant="whatsapp" className="w-full" disabled type="button">
-                  <WhatsAppIcon className="h-5 w-5" />
-                  {t("cart.checkout")}
-                </ClayButton>
-                <ClayButton variant="accent" className="w-full" disabled type="button">
-                  <InstagramIcon className="h-5 w-5" />
-                  {t("cart.checkoutInstagram")}
-                </ClayButton>
-              </>
+              <ClayButton variant="whatsapp" className="w-full" disabled type="button">
+                <WhatsAppIcon className="h-5 w-5" />
+                {t("cart.checkout")}
+              </ClayButton>
             ) : (
-              <>
-                <ClayButton
-                  href={checkoutHref}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  variant="whatsapp"
-                  className="w-full"
-                  onClick={() => handleCheckoutLead("whatsapp")}
-                >
-                  <WhatsAppIcon className="h-5 w-5" />
-                  {t("cart.checkout")}
-                </ClayButton>
-                <ClayButton
-                  href={INSTAGRAM_DM_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  variant="accent"
-                  className="w-full"
-                  onClick={handleInstagramCheckout}
-                >
-                  <InstagramIcon className="h-5 w-5" />
-                  {copied ? t("cart.copied") : t("cart.checkoutInstagram")}
-                </ClayButton>
-              </>
+              <ClayButton
+                href={checkoutHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                variant="whatsapp"
+                className="w-full"
+                onClick={handleCheckoutLead}
+              >
+                <WhatsAppIcon className="h-5 w-5" />
+                {t("cart.checkout")}
+              </ClayButton>
             )}
           </div>
         </div>
