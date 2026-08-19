@@ -86,6 +86,8 @@ interface CartContextValue {
   hasPrices: boolean;
   subtotal: number;
   add: (id: ProductId) => void;
+  /** Add the product if needed, then move straight into checkout. */
+  buyNow: (id: ProductId) => void;
   increment: (id: ProductId) => void;
   decrement: (id: ProductId) => void;
   remove: (id: ProductId) => void;
@@ -165,6 +167,26 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       add: (id) => {
         dispatch({ type: "ADD", id });
         trackAddToCart(id);
+      },
+      // Buy Now is intentionally idempotent for a product already in the cart:
+      // it opens checkout with the shopper's chosen quantity instead of silently
+      // adding one more. Starting from outside the cart adds exactly one item.
+      buyNow: (id) => {
+        const alreadyInCart = lines.some((line) => line.id === id);
+        const checkoutLines = alreadyInCart
+          ? lines
+          : [...lines, { id, qty: 1 }];
+
+        if (!alreadyInCart) {
+          dispatch({ type: "ADD", id });
+          trackAddToCart(id);
+        }
+
+        setIsOpen(true);
+        if (!checkoutSignaled.current) {
+          checkoutSignaled.current = true;
+          trackInitiateCheckout(checkoutLines);
+        }
       },
       // The card's "+" stepper is an add-to-cart too — same event, same product.
       increment: (id) => {

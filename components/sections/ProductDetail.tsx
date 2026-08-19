@@ -35,7 +35,7 @@ const accentTint: Record<Product["accent"], string> = {
  */
 export function ProductDetail({ product }: { product: Product }) {
   const { t, locale, messages } = useLocale();
-  const { add, increment, decrement, lines, open } = useCart();
+  const { add, buyNow, increment, decrement, lines } = useCart();
   const { consent } = useConsent();
   const announce = useAnnouncer();
 
@@ -135,21 +135,35 @@ export function ProductDetail({ product }: { product: Product }) {
                   </p>
                 )}
 
-                {/* add to cart, or the quantity stepper once it's in the cart */}
+                {/* Cart controls plus a direct path into checkout. */}
                 {qty === 0 ? (
-                  <ClayButton
-                    type="button"
-                    variant="primary"
-                    size="lg"
-                    className="w-full sm:w-auto"
-                    onClick={() => {
-                      add(product.id);
-                      announce(t("cart.added", { name }));
-                    }}
-                  >
-                    <Plus className="h-5 w-5" aria-hidden="true" />
-                    {t("cart.add")}
-                  </ClayButton>
+                  <div className="flex flex-col gap-3 sm:flex-row">
+                    <ClayButton
+                      type="button"
+                      variant="primary"
+                      size="lg"
+                      className="w-full sm:w-auto"
+                      onClick={() => {
+                        add(product.id);
+                        announce(t("cart.added", { name }));
+                      }}
+                    >
+                      <Plus className="h-5 w-5" aria-hidden="true" />
+                      {t("cart.add")}
+                    </ClayButton>
+                    <ClayButton
+                      type="button"
+                      variant="accent"
+                      size="lg"
+                      className="w-full sm:w-auto"
+                      onClick={() => {
+                        buyNow(product.id);
+                        announce(t("cart.added", { name }));
+                      }}
+                    >
+                      {t("cart.buyNow")}
+                    </ClayButton>
+                  </div>
                 ) : (
                   <div className="flex flex-wrap items-center gap-3">
                     <div
@@ -189,11 +203,11 @@ export function ProductDetail({ product }: { product: Product }) {
                     </div>
                     <ClayButton
                       type="button"
-                      variant="outline"
+                      variant="accent"
                       size="lg"
-                      onClick={open}
+                      onClick={() => buyNow(product.id)}
                     >
-                      {t("product.viewCart")}
+                      {t("cart.buyNow")}
                     </ClayButton>
                   </div>
                 )}

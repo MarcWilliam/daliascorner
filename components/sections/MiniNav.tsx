@@ -4,11 +4,8 @@ import { useLocale } from "@/components/providers/LocaleProvider";
 import { Logo } from "@/components/ui/Logo";
 import { LanguageToggle } from "@/components/ui/LanguageToggle";
 import { CartButton } from "@/components/ui/CartButton";
-import { ClayButton } from "@/components/ui/ClayButton";
-import { WhatsAppIcon } from "@/components/ui/BrandIcons";
-import { whatsappLink } from "@/lib/config";
+import { WhatsAppOrderButton } from "@/components/ui/WhatsAppOrderButton";
 import { asset } from "@/lib/asset";
-import { trackContact } from "@/lib/meta";
 
 /**
  * Header for the pages that aren't the one-pager. The main <Nav> is built from
@@ -38,17 +35,7 @@ export function MiniNav() {
               large share of phones) would strand these pages in one language. */}
           <LanguageToggle />
           <CartButton />
-          <ClayButton
-            href={whatsappLink()}
-            target="_blank"
-            rel="noopener noreferrer"
-            variant="whatsapp"
-            className="hidden md:inline-flex"
-            onClick={() => trackContact("whatsapp")}
-          >
-            <WhatsAppIcon className="h-5 w-5" />
-            {t("nav.orderWhatsapp")}
-          </ClayButton>
+          <WhatsAppOrderButton className="hidden md:inline-flex" />
         </div>
       </nav>
     </header>

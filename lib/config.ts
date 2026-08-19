@@ -54,6 +54,13 @@ export const META_ADVANCED_MATCHING: boolean = true;
  */
 export const PRICE_CURRENCY = "EGP";
 
+/**
+ * Show the floating home-page promotion seal. Keep this off between campaigns;
+ * the component, copy, and campaign-specific expiry gate remain available for
+ * the next promotion.
+ */
+export const PROMO_ENABLED = false;
+
 /** i18n defaults */
 export const DEFAULT_LOCALE: Locale = "ar"; // flip to "en" here to change the default
 export const LOCALES: Locale[] = ["ar", "en"];

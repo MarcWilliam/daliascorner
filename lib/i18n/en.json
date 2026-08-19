@@ -113,6 +113,7 @@
     "open": "Open cart",
     "title": "Your cart",
     "add": "Add to cart",
+    "buyNow": "Buy now",
     "added": "{name} added to your cart",
     "quantity": "Quantity",
     "increase": "Increase quantity",

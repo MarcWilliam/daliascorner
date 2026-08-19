@@ -26,7 +26,7 @@ const accentDot: Record<Product["accent"], string> = {
 
 export function CharacterCard({ product }: { product: Product }) {
   const { t, locale, messages } = useLocale();
-  const { add, increment, decrement, lines } = useCart();
+  const { add, buyNow, increment, decrement, lines } = useCart();
   const announce = useAnnouncer();
   const reduce = useReducedMotion();
   const tilt = useDeviceTilt();
@@ -127,6 +127,10 @@ export function CharacterCard({ product }: { product: Product }) {
     announce(qty <= 1 ? t("cart.removed", { name }) : `${name} — ${t("cart.quantity")}: ${qty - 1}`);
     decrement(product.id);
   }
+  function handleBuyNow() {
+    buyNow(product.id);
+    if (qty === 0) announce(t("cart.added", { name }));
+  }
 
   return (
     <m.article
@@ -200,43 +204,52 @@ export function CharacterCard({ product }: { product: Product }) {
           </p>
         )}
 
-        {/* add to cart, or an inline quantity stepper once it's in the cart */}
-        {qty === 0 ? (
-          <button
-            type="button"
-            onClick={handleAdd}
-            className="btn-clay mt-2 inline-flex min-h-[3rem] items-center justify-center gap-2 rounded-clay bg-brand px-5 font-display font-semibold leading-none text-canvas [--edge:var(--brand-edge)] [touch-action:manipulation] cursor-pointer focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/45"
-          >
-            <Plus className="h-5 w-5" aria-hidden="true" />
-            {t("cart.add")}
-          </button>
-        ) : (
-          <div
-            role="group"
-            aria-label={`${t("cart.quantity")} — ${name}`}
-            className="mt-2 grid min-h-[3rem] grid-cols-[3rem_1fr_3rem] items-center overflow-hidden rounded-clay border-2 border-brand bg-surface"
-          >
+        {/* Keep both shopping paths visible: build a cart or check out now. */}
+        <div className="mt-2 grid grid-cols-2 gap-2.5">
+          {qty === 0 ? (
             <button
               type="button"
-              onClick={handleDecrement}
-              aria-label={t("cart.decrease")}
-              className="grid h-full place-items-center text-brand transition-colors hover:bg-canvas-sunk focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-brand/45 [touch-action:manipulation] cursor-pointer"
-            >
-              <Minus className="h-5 w-5" aria-hidden="true" />
-            </button>
-            <span className="tabular select-none text-center font-display text-lg font-bold text-ink">
-              {qty}
-            </span>
-            <button
-              type="button"
-              onClick={handleIncrement}
-              aria-label={t("cart.increase")}
-              className="grid h-full place-items-center text-brand transition-colors hover:bg-canvas-sunk focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-brand/45 [touch-action:manipulation] cursor-pointer"
+              onClick={handleAdd}
+              className="btn-clay inline-flex min-h-[3rem] items-center justify-center gap-2 rounded-clay bg-brand px-3 font-display text-sm font-semibold leading-none text-canvas [--edge:var(--brand-edge)] [touch-action:manipulation] cursor-pointer focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/45"
             >
               <Plus className="h-5 w-5" aria-hidden="true" />
+              {t("cart.add")}
             </button>
-          </div>
-        )}
+          ) : (
+            <div
+              role="group"
+              aria-label={`${t("cart.quantity")} — ${name}`}
+              className="grid min-h-[3rem] grid-cols-[2.75rem_1fr_2.75rem] items-center overflow-hidden rounded-clay border-2 border-brand bg-surface"
+            >
+              <button
+                type="button"
+                onClick={handleDecrement}
+                aria-label={t("cart.decrease")}
+                className="grid h-full place-items-center text-brand transition-colors hover:bg-canvas-sunk focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-brand/45 [touch-action:manipulation] cursor-pointer"
+              >
+                <Minus className="h-5 w-5" aria-hidden="true" />
+              </button>
+              <span className="tabular select-none text-center font-display text-lg font-bold text-ink">
+                {qty}
+              </span>
+              <button
+                type="button"
+                onClick={handleIncrement}
+                aria-label={t("cart.increase")}
+                className="grid h-full place-items-center text-brand transition-colors hover:bg-canvas-sunk focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-brand/45 [touch-action:manipulation] cursor-pointer"
+              >
+                <Plus className="h-5 w-5" aria-hidden="true" />
+              </button>
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={handleBuyNow}
+            className="btn-clay inline-flex min-h-[3rem] items-center justify-center rounded-clay bg-orange px-3 font-display text-sm font-semibold leading-none text-ink [--edge:var(--orange-edge)] [touch-action:manipulation] cursor-pointer focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/45"
+          >
+            {t("cart.buyNow")}
+          </button>
+        </div>
       </div>
     </m.article>
   );

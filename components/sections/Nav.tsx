@@ -6,10 +6,7 @@ import { useLocale } from "@/components/providers/LocaleProvider";
 import { Logo } from "@/components/ui/Logo";
 import { LanguageToggle } from "@/components/ui/LanguageToggle";
 import { CartButton } from "@/components/ui/CartButton";
-import { ClayButton } from "@/components/ui/ClayButton";
-import { WhatsAppIcon } from "@/components/ui/BrandIcons";
-import { whatsappLink } from "@/lib/config";
-import { trackContact } from "@/lib/meta";
+import { WhatsAppOrderButton } from "@/components/ui/WhatsAppOrderButton";
 
 const LINKS = [
   { id: "characters", href: "#characters", key: "nav.characters" },
@@ -107,17 +104,7 @@ export function Nav() {
         <div className="flex items-center gap-2">
           <LanguageToggle className="hidden xs:inline-flex" />
           <CartButton />
-          <ClayButton
-            href={whatsappLink()}
-            target="_blank"
-            rel="noopener noreferrer"
-            variant="whatsapp"
-            className="hidden md:inline-flex"
-            onClick={() => trackContact("whatsapp")}
-          >
-            <WhatsAppIcon className="h-5 w-5" />
-            {t("nav.orderWhatsapp")}
-          </ClayButton>
+          <WhatsAppOrderButton className="hidden md:inline-flex" />
 
           <button
             ref={burgerRef}
@@ -163,17 +150,7 @@ export function Nav() {
               <LanguageToggle className="flex-1 justify-center xs:hidden" />
             </li>
             <li className="mt-1">
-              <ClayButton
-                href={whatsappLink()}
-                target="_blank"
-                rel="noopener noreferrer"
-                variant="whatsapp"
-                className="w-full"
-                onClick={() => trackContact("whatsapp")}
-              >
-                <WhatsAppIcon className="h-5 w-5" />
-                {t("nav.orderWhatsapp")}
-              </ClayButton>
+              <WhatsAppOrderButton className="w-full" />
             </li>
           </ul>
         </div>

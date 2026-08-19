@@ -13,6 +13,7 @@ import { CartDrawer } from "@/components/sections/CartDrawer";
 import { ScrollProgress } from "@/components/ui/ScrollProgress";
 import { BackToTop } from "@/components/ui/BackToTop";
 import { PromoStamp } from "@/components/ui/PromoStamp";
+import { PROMO_ENABLED } from "@/lib/config";
 
 export function HomePage() {
   const { t } = useLocale();
@@ -41,7 +42,7 @@ export function HomePage() {
       <Footer />
       <CartDrawer />
       <BackToTop />
-      <PromoStamp />
+      {PROMO_ENABLED && <PromoStamp />}
     </>
   );
 }
