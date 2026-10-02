@@ -8,6 +8,7 @@ A single-page, fully bilingual (Arabic + English, RTL) marketing site for **Dali
 npm install
 npm run dev      # http://localhost:3000
 npm run build    # production build
+npm test         # catalog, variant, and bilingual order checks
 ```
 
 ## Things to fill in (clearly-marked placeholders)
@@ -27,6 +28,12 @@ All live in **one place each** — edit and you're done.
 ## Adding a product
 
 Append the bilingual entry to [`lib/products.json`](lib/products.json), assign its `category`, then add its id to the `ProductId` union in [`lib/products.ts`](lib/products.ts). It automatically appears in the correct collection, its detail page, cart, sitemap, JSON-LD, Meta catalog feed, and `llms.txt`. In the JSON model, `price` is the current sale price and `originalPrice` is the struck-through regular price.
+
+### Colours and other variants
+
+Each version is a complete product entry with its own stable `id`, bilingual `name` and `blurb`, photos, and price. On additional versions, set `variantOf` to the original product's ID, such as `"bahloul"`. Give every version (including the original) a bilingual `variantLabel`, such as `{ "en": "Green", "ar": "أخضر" }`. For colour variants, also set `color` to the bilingual colour; other design variations can leave it out. Names and prices may differ between versions. Keep every member in the same category and point directly to the original, never to another variant.
+
+The collection shows one card per family with photo choices. Switching a choice updates the photo, name, description, price, and quantity controls. Each version keeps its own detail URL and cart line, and the colour/design label follows it into WhatsApp orders, structured data, and catalog exports. Existing product IDs remain unchanged so saved carts and links continue to work. There is no inventory system; two versions do not imply two units in stock.
 
 ## Copy / translations
 

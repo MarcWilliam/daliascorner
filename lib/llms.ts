@@ -12,6 +12,7 @@ import {
   PRODUCT_CATEGORIES,
   POT_MATERIAL,
   getProductsByCategory,
+  getProductName,
   type Product,
   type ProductCategory,
 } from "./products";
@@ -42,7 +43,7 @@ function visual(p: Product): string {
 
 /** One catalog bullet: linked name, Arabic name, look, personality, price. */
 function characterLine(p: Product): string {
-  return `- [${p.name.en}](${productUrl(p.id)}) (${p.name.ar}) — ${visual(p)} ${p.blurb.en} ${priceLine(p)}`;
+  return `- [${getProductName(p, "en")}](${productUrl(p.id)}) (${getProductName(p, "ar")}) — ${visual(p)} ${p.blurb.en} ${priceLine(p)}`;
 }
 
 function categoryBlock(category: ProductCategory): string {

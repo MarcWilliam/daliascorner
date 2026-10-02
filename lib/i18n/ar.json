@@ -159,6 +159,7 @@
     "decline": "لأ شكرًا"
   },
   "product": {
+    "chooseVariant": "اختار الشكل اللي تحبّه",
     "back": "كل الشخصيات",
     "backToCollection": "ارجع لتشكيلة {collection}",
     "viewCart": "شوف السلة",

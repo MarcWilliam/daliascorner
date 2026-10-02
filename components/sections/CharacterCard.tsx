@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { m, useMotionValue, useReducedMotion, useSpring } from "framer-motion";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import { Minus, Plus } from "lucide-react";
-import { getProductCategory, type Product } from "@/lib/products";
+import { getProductCategory, getProductName, type Product } from "@/lib/products";
+import { VariantPicker } from "@/components/ui/VariantPicker";
 import { useLocale } from "@/components/providers/LocaleProvider";
 import { useCart } from "@/components/providers/CartProvider";
 import { useAnnouncer } from "@/components/providers/Announcer";
@@ -24,7 +25,8 @@ const accentDot: Record<Product["accent"], string> = {
   mauve: "bg-mauve",
 };
 
-export function CharacterCard({ product }: { product: Product }) {
+export function CharacterCard({ product: initialProduct }: { product: Product }) {
+  const [product, setProduct] = useState(initialProduct);
   const { t, locale, messages } = useLocale();
   const { add, buyNow, increment, decrement, lines } = useCart();
   const announce = useAnnouncer();
@@ -34,7 +36,7 @@ export function CharacterCard({ product }: { product: Product }) {
   // isn't. Either way it feeds tilt.tiltX/tiltY; "none" means desktop/no ambient.
   const ambientActive = tilt.source !== "none";
 
-  const name = product.name[locale];
+  const name = getProductName(product, locale);
   const category = getProductCategory(product.category);
   // How many of this character are currently in the cart.
   const qty = lines.find((l) => l.id === product.id)?.qty ?? 0;
@@ -186,6 +188,7 @@ export function CharacterCard({ product }: { product: Product }) {
           <span aria-hidden="true" className={`h-2.5 w-2.5 rounded-full ${accentDot[product.accent]}`} />
           {name}
         </h4>
+        <VariantPicker product={product} onSelect={setProduct} />
         <p className="flex-1 text-[0.975rem] leading-relaxed text-ink-muted">
           {product.blurb[locale]}
         </p>

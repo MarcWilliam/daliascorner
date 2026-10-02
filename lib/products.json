@@ -200,8 +200,8 @@
       "category": "ultra-small",
       "name": { "en": "Bahloul", "ar": "بهلول" },
       "blurb": {
-        "en": "First impressions aren’t always right. He looks suspicious… but he’s actually pretty fun.",
-        "ar": "أول انطباع؟ مش دايمًا صح. شكله مريب… بس دمه خفيف."
+        "en": "Bahloul always looks surprised, and no one knows what he’s seen",
+        "ar": "بهلول شكله مستغرب على طول، ومحدش عارف إيه اللي شافه"
       },
       "image": "/products/bahloul.webp",
       "thumb": "/products/bahloul-thumb.webp",
@@ -210,7 +210,102 @@
         "ar": "بهلول — أصيص صغير جدًا كريمي بعيون واسعة ومناخير مرجانية، مزروع بنبات عصاري مخطط."
       },
       "accent": "orange",
-      "price": 320
+      "price": 320,
+      "variantLabel": { "en": "Cream", "ar": "كريمي" },
+      "color": { "en": "Cream", "ar": "كريمي" }
+    },
+    {
+      "id": "bahloul-green",
+      "category": "ultra-small",
+      "name": { "en": "Bahloul", "ar": "بهلول" },
+      "blurb": {
+        "en": "Bahloul always looks surprised, and no one knows what he’s seen",
+        "ar": "بهلول شكله مستغرب على طول، ومحدش عارف إيه اللي شافه"
+      },
+      "image": "/products/bahloul-green.webp",
+      "thumb": "/products/bahloul-green-thumb.webp",
+      "alt": {
+        "en": "Bahloul — a pocket-size green character planter with wide eyes, a brown nose and a striped succulent.",
+        "ar": "بهلول — أصيص أخضر بحجم الجيب بعيون واسعة ومناخير بنية، مزروع بنبات عصاري مخطط."
+      },
+      "accent": "leaf",
+      "price": 320,
+      "variantOf": "bahloul",
+      "variantLabel": { "en": "Green", "ar": "أخضر" },
+      "color": { "en": "Green", "ar": "أخضر" }
+    },
+    {
+      "id": "semsem",
+      "category": "ultra-small",
+      "name": { "en": "Semsem", "ar": "سمسم" },
+      "blurb": {
+        "en": "Semsem is a little pot with a big smile that makes you smile right back",
+        "ar": "سمسم صغير وقاعد في حاله، بس ضحكته بتخلّيكم تضحكوا معاه"
+      },
+      "image": "/products/semsem.webp",
+      "thumb": "/products/semsem-thumb.webp",
+      "alt": {
+        "en": "Semsem — a pocket-size white smiling planter with pink feet and cheeks, planted with succulents.",
+        "ar": "سمسم — أصيص أبيض مبتسم بحجم الجيب برجول وخدود وردية، مزروع بنباتات عصارية."
+      },
+      "accent": "mauve",
+      "price": 280,
+      "variantLabel": { "en": "White", "ar": "أبيض" },
+      "color": { "en": "White", "ar": "أبيض" }
+    },
+    {
+      "id": "semsem-yellow",
+      "category": "ultra-small",
+      "name": { "en": "Semsem", "ar": "سمسم" },
+      "blurb": {
+        "en": "Semsem is a little pot with a big smile that makes you smile right back",
+        "ar": "سمسم صغير وقاعد في حاله، بس ضحكته بتخلّيكم تضحكوا معاه"
+      },
+      "image": "/products/semsem-yellow.webp",
+      "thumb": "/products/semsem-yellow-thumb.webp",
+      "alt": {
+        "en": "Semsem — a pocket-size yellow smiling planter with white feet and pink cheeks, planted with succulents.",
+        "ar": "سمسم — أصيص أصفر مبتسم بحجم الجيب برجول بيضاء وخدود وردية، مزروع بنباتات عصارية."
+      },
+      "accent": "orange",
+      "price": 280,
+      "variantOf": "semsem",
+      "variantLabel": { "en": "Yellow", "ar": "أصفر" },
+      "color": { "en": "Yellow", "ar": "أصفر" }
+    },
+    {
+      "id": "zooba",
+      "category": "ultra-small",
+      "name": { "en": "Zooba", "ar": "زووبا" },
+      "blurb": {
+        "en": "Zooba is a little scooter taking her plant along for a ride",
+        "ar": "زووبا ڤيسبا صغيرة، واخدة زرعتها وطالعة تتمشّى"
+      },
+      "image": "/products/zooba.webp",
+      "thumb": "/products/zooba-thumb.webp",
+      "alt": {
+        "en": "Zooba — a pocket-size turquoise scooter planter with a yellow headlight, planted with succulents.",
+        "ar": "زووبا — أصيص بحجم الجيب على شكل ڤيسبا تركواز بفانوس أصفر، مزروع بنباتات عصارية."
+      },
+      "accent": "leaf",
+      "price": 380
+    },
+    {
+      "id": "azza",
+      "category": "ultra-small",
+      "name": { "en": "Azza", "ar": "عزة" },
+      "blurb": {
+        "en": "Azza is a little red classic car, parked in style and ready for a spot in your home",
+        "ar": "عزة عربية كلاسيك حمرا، راكنة بشياكة ومستنية مكانها عندكم"
+      },
+      "image": "/products/azza.webp",
+      "thumb": "/products/azza-thumb.webp",
+      "alt": {
+        "en": "Azza — a pocket-size red classic car planter with gold details, planted with upright succulents.",
+        "ar": "عزة — أصيص بحجم الجيب على شكل عربية كلاسيك حمراء بتفاصيل ذهبية، مزروع بنباتات عصارية."
+      },
+      "accent": "clay",
+      "price": 450
     }
   ]
 }

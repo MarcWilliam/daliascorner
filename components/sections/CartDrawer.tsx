@@ -7,7 +7,7 @@ import { useLocale } from "@/components/providers/LocaleProvider";
 import { useAnnouncer } from "@/components/providers/Announcer";
 import { ClayButton } from "@/components/ui/ClayButton";
 import { WhatsAppIcon } from "@/components/ui/BrandIcons";
-import { getProduct } from "@/lib/products";
+import { getProduct, getProductName } from "@/lib/products";
 import { buildOrderLink, type Customer } from "@/lib/whatsapp";
 import { STORAGE_CUSTOMER } from "@/lib/config";
 import { trackCheckoutLead } from "@/lib/meta";
@@ -226,7 +226,7 @@ export function CartDrawer() {
             {lines.map((line) => {
               const product = getProduct(line.id);
               if (!product) return null;
-              const name = product.name[locale];
+              const name = getProductName(product, locale);
               return (
                 <li
                   key={line.id}

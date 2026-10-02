@@ -14,7 +14,14 @@
  * - `link` must be "the specific product page for the item", which is why
  *   /characters/<id>/ exists at all.
  */
-import { PRODUCTS, getProductCategory, type Product } from "./products";
+import {
+  PRODUCTS,
+  getProductCategory,
+  getProductFamilyId,
+  getProductName,
+  getProductVariants,
+  type Product,
+} from "./products";
 import { PRICE_CURRENCY, SITE_ORIGIN, productUrl } from "./config";
 
 /** Meta wants "<amount> <ISO currency>", period decimal, no symbol. */
@@ -38,6 +45,8 @@ const COLUMNS = [
   "brand",
   "product_type",
   "google_product_category",
+  "item_group_id",
+  "color",
 ] as const;
 
 function row(p: Product): string[] {
@@ -48,7 +57,7 @@ function row(p: Product): string[] {
 
   return [
     p.id,
-    p.name.en,
+    getProductName(p, "en"),
     `${p.blurb.en} ${p.alt.en}`,
     "in stock",
     "new",
@@ -60,6 +69,8 @@ function row(p: Product): string[] {
     "Dalia's Corner",
     `Home & Garden > Planters > ${category.name.en}`,
     "Home & Garden > Lawn & Garden > Gardening > Pots & Planters",
+    getProductVariants(p).length > 1 ? getProductFamilyId(p) : "",
+    p.color?.en ?? "",
   ];
 }
 

@@ -3,7 +3,7 @@
 import { useLocale } from "@/components/providers/LocaleProvider";
 import {
   PRODUCT_CATEGORIES,
-  getProductsByCategory,
+  getProductFamiliesByCategory,
 } from "@/lib/products";
 import { CharacterCard } from "./CharacterCard";
 import { RichText } from "@/components/ui/RichText";
@@ -35,7 +35,7 @@ export function Characters() {
           className="mx-auto mb-14 flex max-w-2xl flex-wrap justify-center gap-3"
         >
           {PRODUCT_CATEGORIES.map((category) => {
-            const count = getProductsByCategory(category.id).length;
+            const count = getProductFamiliesByCategory(category.id).length;
             return (
               <a
                 key={category.id}
@@ -53,7 +53,7 @@ export function Characters() {
 
         <div className="space-y-16 sm:space-y-20">
           {PRODUCT_CATEGORIES.map((category) => {
-            const products = getProductsByCategory(category.id);
+            const products = getProductFamiliesByCategory(category.id);
             const isNewCollection = category.id === "ultra-small";
 
             return (

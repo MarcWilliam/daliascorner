@@ -1,8 +1,8 @@
 import type { CartLine } from "@/components/providers/CartProvider";
 import type { Messages } from "@/lib/i18n/dictionaries";
 import type { Locale } from "@/lib/i18n/types";
-import { getProduct } from "@/lib/products";
-import { whatsappLink } from "@/lib/config";
+import { getProduct, getProductName } from "./products";
+import { whatsappLink } from "./config";
 
 /** Customer delivery details collected at checkout. */
 export interface Customer {
@@ -25,7 +25,7 @@ export function buildOrderMessage(
   const wa = messages.whatsapp;
   const bullets = lines.map((line) => {
     const product = getProduct(line.id);
-    const name = product ? product.name[locale] : line.id;
+    const name = product ? getProductName(product, locale) : line.id;
     return wa.line.replace("{name}", name).replace("{qty}", String(line.qty));
   });
 

@@ -10,9 +10,12 @@ import { MiniNav } from "@/components/sections/MiniNav";
 import { Footer } from "@/components/sections/Footer";
 import { CartDrawer } from "@/components/sections/CartDrawer";
 import { ClayButton } from "@/components/ui/ClayButton";
+import { VariantPicker } from "@/components/ui/VariantPicker";
 import {
-  PRODUCTS,
+  PRODUCT_FAMILIES,
+  getProductFamilyId,
   getProductCategory,
+  getProductName,
   type Product,
 } from "@/lib/products";
 import { productPath } from "@/lib/config";
@@ -39,12 +42,12 @@ export function ProductDetail({ product }: { product: Product }) {
   const { consent } = useConsent();
   const announce = useAnnouncer();
 
-  const name = product.name[locale];
+  const name = getProductName(product, locale);
   const qty = lines.find((l) => l.id === product.id)?.qty ?? 0;
   const category = getProductCategory(product.category);
   // Keep recommendations useful as the catalog grows: siblings first, then a
   // small cross-collection sample instead of rendering the entire catalog.
-  const others = PRODUCTS.filter((p) => p.id !== product.id)
+  const others = PRODUCT_FAMILIES.filter((p) => p.id !== getProductFamilyId(product))
     .sort((a, b) => {
       const aSame = a.category === product.category ? 0 : 1;
       const bSame = b.category === product.category ? 0 : 1;
@@ -118,6 +121,7 @@ export function ProductDetail({ product }: { product: Product }) {
                   {category.badge[locale]}
                 </span>
                 <h1 className="text-3xl sm:text-4xl">{name}</h1>
+                <VariantPicker product={product} />
                 <p className="text-lg leading-relaxed text-ink-muted">
                   {product.blurb[locale]}
                 </p>

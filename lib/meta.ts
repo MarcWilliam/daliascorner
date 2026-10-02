@@ -27,6 +27,7 @@ import {
 import {
   getProduct,
   getProductCategory,
+  getProductName,
   type Product,
   type ProductId,
 } from "./products";
@@ -276,7 +277,7 @@ export function trackViewContent(product: Product) {
   track("ViewContent", {
     content_type: "product",
     content_ids: [product.id],
-    content_name: product.name.en,
+    content_name: getProductName(product, "en"),
     content_category: category.name.en,
     value: product.price ?? 0,
     currency: PRICE_CURRENCY,
@@ -290,7 +291,7 @@ export function trackAddToCart(id: ProductId) {
   track("AddToCart", {
     content_type: "product",
     content_ids: [id],
-    content_name: product.name.en,
+    content_name: getProductName(product, "en"),
     content_category: category.name.en,
     value: product.price ?? 0,
     currency: PRICE_CURRENCY,

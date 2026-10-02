@@ -19,6 +19,9 @@ import {
   POT_MATERIAL,
   PRODUCTS,
   getProductCategory,
+  getProductName,
+  getProductFamilyId,
+  getProductVariants,
   type Product,
 } from "./products";
 import { asset } from "./asset";
@@ -119,9 +122,13 @@ function product(p: Product) {
     "@context": "https://schema.org",
     "@type": "Product",
     "@id": `${SITE}/#product-${p.id}`,
-    name: p.name.en,
-    alternateName: p.name.ar,
+    name: getProductName(p, "en"),
+    alternateName: getProductName(p, "ar"),
     sku: p.id,
+    ...(getProductVariants(p).length > 1
+      ? { inProductGroupWithID: getProductFamilyId(p) }
+      : {}),
+    ...(p.color ? { color: p.color.en } : {}),
     description: `${p.blurb.en} ${p.alt.en}`,
     // p.image is already basePath-prefixed by asset(); just prepend the origin.
     image: `${SITE}${p.image}`,
@@ -198,7 +205,7 @@ export function productJsonLd(p: Product): object[] {
           name: category.name.en,
           item: `${SITE}/#collection-${category.id}`,
         },
-        { "@type": "ListItem", position: 3, name: p.name.en },
+        { "@type": "ListItem", position: 3, name: getProductName(p, "en") },
       ],
     },
   ];

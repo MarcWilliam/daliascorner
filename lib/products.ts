@@ -1,5 +1,5 @@
 import { asset } from "./asset";
-import type { LocalizedText } from "./i18n/types";
+import type { Locale, LocalizedText } from "./i18n/types";
 import catalog from "./products.json";
 
 export type ProductId =
@@ -12,7 +12,12 @@ export type ProductId =
   | "bondoq"
   | "farawla"
   | "suzy"
-  | "bahloul";
+  | "bahloul"
+  | "bahloul-green"
+  | "semsem"
+  | "semsem-yellow"
+  | "zooba"
+  | "azza";
 
 export type ProductCategoryId = "signature" | "ultra-small";
 
@@ -39,6 +44,12 @@ export const PRODUCT_CATEGORIES: ProductCategory[] =
 
 export interface Product {
   id: ProductId;
+  /** Another sellable version of this family's original product. IDs stay stable. */
+  variantOf?: ProductId;
+  /** Short bilingual choice label; names, photos, descriptions and prices stay per item. */
+  variantLabel?: LocalizedText;
+  /** Optional actual colour, separate from a design/name option, for catalog feeds. */
+  color?: LocalizedText;
   category: ProductCategoryId;
   name: LocalizedText;
   blurb: LocalizedText;
@@ -74,11 +85,11 @@ export interface Product {
 /**
  * Single source of truth for the catalog. The raw data lives in
  * products.json (like the i18n dictionaries in lib/i18n/*.json) so a character
- * can be added or edited without touching UI code — this module is just the
- * typed loader. To add a product: add an entry to products.json and its id to
- * the ProductId union above. The category sections, the per-
- * character pages, the cart, the JSON-LD and the Meta catalog feed all read
- * from this array, so it appears everywhere without touching layout.
+ * can be added or edited without touching UI code. To add a product: add an
+ * entry to products.json and its id to ProductId above. Additional versions
+ * point variantOf at the original ID; each version has its own name, price,
+ * photos and variantLabel. Collections render PRODUCT_FAMILIES once each;
+ * pages, carts, JSON-LD and feeds retain every sellable entry in PRODUCTS.
  *
  * Bahira, Bahgat and Zaghloul are the three duckling siblings; their blurbs
  * reference each other, so keep that trio in sync if you rename one.
@@ -97,6 +108,25 @@ export function getProduct(id: ProductId): Product | undefined {
   return PRODUCTS.find((p) => p.id === id);
 }
 
+/** One card per family, while every version keeps its own URL and cart identity. */
+export const PRODUCT_FAMILIES = PRODUCTS.filter((p) => !p.variantOf);
+
+export function getProductFamilyId(product: Product): ProductId {
+  return product.variantOf ?? product.id;
+}
+
+export function getProductVariants(product: Product): Product[] {
+  const familyId = getProductFamilyId(product);
+  return PRODUCTS.filter((p) => getProductFamilyId(p) === familyId);
+}
+
+/** Use the explicit choice everywhere an order or a product is identified. */
+export function getProductName(product: Product, locale: Locale): string {
+  return product.variantLabel
+    ? `${product.name[locale]} — ${product.variantLabel[locale]}`
+    : product.name[locale];
+}
+
 export function getProductCategory(
   id: ProductCategoryId,
 ): ProductCategory {
@@ -107,6 +137,10 @@ export function getProductCategory(
 
 export function getProductsByCategory(id: ProductCategoryId): Product[] {
   return PRODUCTS.filter((p) => p.category === id);
+}
+
+export function getProductFamiliesByCategory(id: ProductCategoryId): Product[] {
+  return PRODUCT_FAMILIES.filter((p) => p.category === id);
 }
 
 /** Hero image — the real lifestyle shot. */

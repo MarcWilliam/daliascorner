@@ -159,6 +159,7 @@
     "decline": "No thanks"
   },
   "product": {
+    "chooseVariant": "Choose your version",
     "back": "All characters",
     "backToCollection": "Back to {collection}",
     "viewCart": "View cart",

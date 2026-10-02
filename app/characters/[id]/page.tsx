@@ -3,12 +3,12 @@ import { notFound } from "next/navigation";
 import { ProductDetail } from "@/components/sections/ProductDetail";
 import { JsonLd } from "@/components/ui/JsonLd";
 import { productJsonLd } from "@/lib/jsonld";
-import { getProduct, PRODUCTS, type ProductId } from "@/lib/products";
+import { getProduct, getProductName, PRODUCTS, type ProductId } from "@/lib/products";
 import { DEFAULT_LOCALE, productPath } from "@/lib/config";
 import { asset } from "@/lib/asset";
 
 /**
- * Three characters, three pages. Nothing else is ever emitted, so there is no
+ * Every sellable variant has its own page. Nothing else is emitted, so there is no
  * need for `dynamicParams = false` — and setting it breaks `next dev`, which
  * reads that as fallbackMode:false and refuses to render the route at all
  * (see base-server.js: `fallbackMode !== "static"` → throw). The production
@@ -29,7 +29,7 @@ export function generateMetadata({
   // The static HTML of every page is pre-rendered in DEFAULT_LOCALE, so the
   // metadata a crawler reads must be written in that language too.
   const loc = DEFAULT_LOCALE;
-  const title = `${product.name[loc]} — Dalia's Corner`;
+  const title = `${getProductName(product, loc)} — Dalia's Corner`;
   const path = asset(productPath(product.id));
 
   return {
