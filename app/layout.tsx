@@ -1,6 +1,5 @@
 import { isSaleActive } from "@/lib/promotion";
 import type { Metadata, Viewport } from "next";
-import { Baloo_2, Baloo_Bhaijaan_2, Cairo } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/providers/Providers";
 import {
@@ -16,39 +15,6 @@ import { asset } from "@/lib/asset";
 
 const def = dictionaries[DEFAULT_LOCALE];
 const initialDir = DEFAULT_LOCALE === "ar" ? "rtl" : "ltr";
-
-// Self-hosted via next/font: the woff2 ship same-origin (no render-blocking
-// fonts.googleapis.com round-trip) and each family gets a metric-matched
-// fallback (adjustFontFallback default) so the swap doesn't reflow. Display
-// faces only carry the weights actually used (600/700/800); 400/500 dropped.
-// CSS vars are consumed by --font-display / --font-body in globals.css.
-//
-// Baloo 2 is the *Latin* display face — only used once the visitor switches to
-// English. The default render is Arabic (Baloo Bhaijaan 2 + Cairo), so this
-// file is dead weight on the first paint. preload:false keeps it self-hosted
-// but drops its <link rel=preload>, so its 34KB no longer competes with the
-// hero (the LCP element) for the throttled mobile pipe. It still loads on
-// demand via font-display:swap, and the metric-matched fallback means no CLS.
-const baloo2 = Baloo_2({
-  subsets: ["latin"],
-  weight: ["600", "700", "800"],
-  variable: "--font-baloo2",
-  display: "swap",
-  preload: false,
-});
-const balooBhaijaan2 = Baloo_Bhaijaan_2({
-  subsets: ["arabic"],
-  weight: ["600", "700", "800"],
-  variable: "--font-baloo-bhaijaan2",
-  display: "swap",
-});
-const cairo = Cairo({
-  subsets: ["arabic", "latin"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-cairo",
-  display: "swap",
-});
-const fontVars = `${baloo2.variable} ${balooBhaijaan2.variable} ${cairo.variable}`;
 
 // Deploy target. Production serves from the custom apex domain at root (basePath
 // empty); asset() prefixes /public URLs for any non-root subpath preview deploy.
@@ -125,8 +91,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang={DEFAULT_LOCALE} dir={initialDir} className={fontVars} suppressHydrationWarning>
+    <html lang={DEFAULT_LOCALE} dir={initialDir} suppressHydrationWarning>
       <head>
+        {/* Local copies of the same fonts; no Google Fonts requests at build time. */}
+        <link rel="stylesheet" href={asset("/fonts/fonts.css")} />
+        <link rel="preload" href={asset("/fonts/baloo-bhaijaan-2-arabic.woff2")} as="font" type="font/woff2" crossOrigin="anonymous" />
+        <link rel="preload" href={asset("/fonts/cairo-arabic.woff2")} as="font" type="font/woff2" crossOrigin="anonymous" />
+        <link rel="preload" href={asset("/fonts/cairo-latin.woff2")} as="font" type="font/woff2" crossOrigin="anonymous" />
         <meta
           name="facebook-domain-verification"
           content="b0rtkp89r6ftq9hbp5qls5j8q8aa4q"
