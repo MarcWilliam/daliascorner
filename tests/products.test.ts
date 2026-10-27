@@ -1,7 +1,7 @@
 import { strict as assert } from "node:assert";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { test } from "node:test";
+import { test, beforeEach, afterEach, mock } from "node:test";
 import {
   PRODUCTS,
   getProduct,
@@ -16,6 +16,9 @@ import { productJsonLd } from "../lib/jsonld";
 import { buildLlmsTxt } from "../lib/llms";
 import { dictionaries } from "../lib/i18n/dictionaries";
 import { productUrl } from "../lib/config";
+
+beforeEach(() => { mock.method(Date, "now", () => Date.parse("2026-10-28T12:00:00+03:00")); });
+afterEach(() => mock.restoreAll());
 
 test("every sellable item has a unique ID, bilingual copy, and real photo assets", () => {
   assert.equal(new Set(PRODUCTS.map((p) => p.id)).size, PRODUCTS.length);
@@ -65,11 +68,11 @@ test("WhatsApp orders keep two colours and quantities separate in both languages
   const en = buildOrderMessage(lines, "en", dictionaries.en);
   assert.ok(en.includes("Semsem — White × 2"));
   assert.ok(en.includes("Semsem — Yellow × 1"));
-  assert.ok(en.includes("840 EGP"));
+  assert.ok(en.includes("672 EGP"));
   const ar = buildOrderMessage(lines, "ar", dictionaries.ar);
   assert.ok(ar.includes("سمسم — أبيض × 2"));
   assert.ok(ar.includes("سمسم — أصفر × 1"));
-  assert.ok(ar.includes("840 جنيه"));
+  assert.ok(ar.includes("672 جنيه"));
 });
 
 test("the Meta feed retains distinct variant IDs, landing pages, group and colour", () => {
@@ -96,7 +99,9 @@ test("the Meta feed retains distinct variant IDs, landing pages, group and colou
     assert.equal(item.link, productUrl(id));
     assert.equal(item.title, getProductName(getProduct(id)!, "en"));
     assert.equal(item.color, id === "semsem" ? "White" : "Yellow");
-    assert.equal(item.sale_price, "");
+    assert.equal(item.price, "280.00 EGP");
+    assert.equal(item.sale_price, "224.00 EGP");
+    assert.equal(item.sale_price_effective_date, "2026-10-27T00:00:00+03:00/2026-11-03T00:00:00+02:00");
   }
   assert.equal(feed.find((p) => p.id === "azza")!.price, "450.00 EGP");
   assert.equal(feed.find((p) => p.id === "azza")!.item_group_id, "");
@@ -108,7 +113,7 @@ test("structured data and the text catalog identify the exact colour and price",
   assert.equal(schema.sku, p.id);
   assert.equal(schema.name, "Bahloul — Green");
   assert.equal(schema.inProductGroupWithID, "bahloul");
-  assert.equal(schema.offers.price, "320");
+  assert.equal(schema.offers.price, "256");
   assert.equal(schema.offers.url, productUrl(p.id));
   const text = buildLlmsTxt();
   assert.ok(text.includes(`[Bahloul — Green](${productUrl(p.id)})`));

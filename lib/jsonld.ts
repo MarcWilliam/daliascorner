@@ -1,3 +1,4 @@
+import { salePricing, SALE_END } from "./promotion";
 /**
  * Structured data (schema.org JSON-LD).
  *
@@ -116,7 +117,8 @@ const website = {
  * the whole stack, because a content_id mismatch is the classic way a Meta
  * catalog silently stops matching events to items.
  */
-function product(p: Product) {
+function product(base: Product) {
+  const p = salePricing(base);
   const category = getProductCategory(p.category);
   return {
     "@context": "https://schema.org",
@@ -154,6 +156,7 @@ function product(p: Product) {
             "@type": "Offer",
             priceCurrency: PRICE_CURRENCY,
             price: String(p.price),
+            ...(p.originalPrice ? { priceValidUntil: "2026-11-02", validThrough: SALE_END } : {}),
             availability: "https://schema.org/InStock",
             itemCondition: "https://schema.org/NewCondition",
             url: productUrl(p.id),

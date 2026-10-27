@@ -1,5 +1,8 @@
 "use client";
 
+import { useSaleActive } from "@/components/providers/PromotionProvider";
+
+import { salePricing } from "@/lib/promotion";
 import { useEffect, useRef, useState } from "react";
 import { m, useMotionValue, useReducedMotion, useSpring } from "framer-motion";
 import type { PointerEvent as ReactPointerEvent } from "react";
@@ -26,7 +29,9 @@ const accentDot: Record<Product["accent"], string> = {
 };
 
 export function CharacterCard({ product: initialProduct }: { product: Product }) {
-  const [product, setProduct] = useState(initialProduct);
+  const [selectedProduct, setProduct] = useState(initialProduct);
+  const active = useSaleActive();
+  const product = salePricing(selectedProduct, active);
   const { t, locale, messages } = useLocale();
   const { add, buyNow, increment, decrement, lines } = useCart();
   const announce = useAnnouncer();

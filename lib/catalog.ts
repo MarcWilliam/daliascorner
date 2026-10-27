@@ -14,6 +14,7 @@
  * - `link` must be "the specific product page for the item", which is why
  *   /characters/<id>/ exists at all.
  */
+import { salePricing, SALE_START, SALE_END } from "./promotion";
 import {
   PRODUCTS,
   getProductCategory,
@@ -40,6 +41,7 @@ const COLUMNS = [
   "condition",
   "price",
   "sale_price",
+  "sale_price_effective_date",
   "link",
   "image_link",
   "brand",
@@ -63,6 +65,7 @@ function row(p: Product): string[] {
     "new",
     money(regular),
     sale != null ? money(sale) : "",
+    sale != null ? `${SALE_START}/${SALE_END}` : "",
     productUrl(p.id),
     // p.image is already basePath-prefixed by asset(); prepend the origin.
     `${SITE_ORIGIN}${p.image}`,
@@ -78,7 +81,7 @@ export function buildCatalogCsv(): string {
   const priced = PRODUCTS.filter((p) => p.price != null);
   const lines = [
     COLUMNS.join(","),
-    ...priced.map((p) => row(p).map(csvCell).join(",")),
+    ...priced.map((p) => row(salePricing(p)).map(csvCell).join(",")),
   ];
   // Trailing newline: some feed parsers drop the final record without it.
   return `${lines.join("\n")}\n`;

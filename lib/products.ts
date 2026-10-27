@@ -1,3 +1,4 @@
+import { salePricing, isSaleActive } from "./promotion";
 import { asset } from "./asset";
 import type { Locale, LocalizedText } from "./i18n/types";
 import catalog from "./products.json";
@@ -104,8 +105,9 @@ export const PRODUCTS: Product[] = (catalog.products as Product[]).map((p) => ({
   thumb: asset(p.thumb),
 }));
 
-export function getProduct(id: ProductId): Product | undefined {
-  return PRODUCTS.find((p) => p.id === id);
+export function getProduct(id: ProductId, active = isSaleActive()): Product | undefined {
+  const product = PRODUCTS.find((p) => p.id === id);
+  return product ? salePricing(product, active) : undefined;
 }
 
 /** One card per family, while every version keeps its own URL and cart identity. */
@@ -136,7 +138,7 @@ export function getProductCategory(
 }
 
 export function getProductsByCategory(id: ProductCategoryId): Product[] {
-  return PRODUCTS.filter((p) => p.category === id);
+  return PRODUCTS.filter((p) => p.category === id).map((p) => salePricing(p));
 }
 
 export function getProductFamiliesByCategory(id: ProductCategoryId): Product[] {

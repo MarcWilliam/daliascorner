@@ -1,5 +1,7 @@
 "use client";
 
+import { useSaleActive } from "@/components/providers/PromotionProvider";
+
 import {
   createContext,
   useCallback,
@@ -100,6 +102,7 @@ interface CartContextValue {
 const CartContext = createContext<CartContextValue | null>(null);
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
+  const active = useSaleActive();
   const [lines, dispatch] = useReducer(reducer, []);
   const [isOpen, setIsOpen] = useState(false);
   const [hydrated, setHydrated] = useState(false);
@@ -145,14 +148,14 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     let any = false;
     let sum = 0;
     for (const l of lines) {
-      const p = getProduct(l.id);
+      const p = getProduct(l.id, active);
       if (p?.price != null) {
         any = true;
         sum += p.price * l.qty;
       }
     }
     return { hasPrices: any, subtotal: sum };
-  }, [lines]);
+  }, [lines, active]);
 
   // Every cart mutation funnels through here, which makes it the one honest
   // place to fire Meta's AddToCart / InitiateCheckout. All track* helpers are

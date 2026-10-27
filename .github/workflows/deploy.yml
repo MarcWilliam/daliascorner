@@ -3,6 +3,9 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: [main]
+  # Refresh static HTML and text exports at the campaign end (midnight Cairo).
+  schedule:
+    - cron: "0 22 2 11 *"
   workflow_dispatch:
 
 # Allow the workflow to publish to GitHub Pages via OIDC.

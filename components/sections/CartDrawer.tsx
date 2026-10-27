@@ -1,5 +1,7 @@
 "use client";
 
+import { useSaleActive } from "@/components/providers/PromotionProvider";
+
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Minus, Plus, ShoppingBag, Trash2, X } from "lucide-react";
 import { useCart } from "@/components/providers/CartProvider";
@@ -13,6 +15,7 @@ import { STORAGE_CUSTOMER } from "@/lib/config";
 import { trackCheckoutLead } from "@/lib/meta";
 
 export function CartDrawer() {
+  const active = useSaleActive();
   const { lines, count, isOpen, close, increment, decrement, remove, hasPrices, subtotal } =
     useCart();
   const { t, locale, dir, messages } = useLocale();
@@ -67,11 +70,11 @@ export function CartDrawer() {
   const savings = useMemo(
     () =>
       lines.reduce((sum, l) => {
-        const p = getProduct(l.id);
+        const p = getProduct(l.id, active);
         if (p?.price == null || p.originalPrice == null) return sum;
         return sum + Math.max(0, p.originalPrice - p.price) * l.qty;
       }, 0),
-    [lines],
+    [lines, active],
   );
 
   const panelRef = useRef<HTMLDivElement | null>(null);
@@ -144,7 +147,7 @@ export function CartDrawer() {
   // on every keystroke while the form is still being filled in.
   const checkoutHref = useMemo(
     () => (canCheckout ? buildOrderLink(lines, locale, messages, customer) : ""),
-    [canCheckout, lines, locale, messages, customer],
+    [canCheckout, lines, locale, messages, customer, active],
   );
 
   // The handoff to chat is the only conversion this site can honestly report:
@@ -224,7 +227,7 @@ export function CartDrawer() {
         ) : (
           <ul className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
             {lines.map((line) => {
-              const product = getProduct(line.id);
+              const product = getProduct(line.id, active);
               if (!product) return null;
               const name = getProductName(product, locale);
               return (

@@ -1,3 +1,4 @@
+import { isSaleActive } from "@/lib/promotion";
 import type { Metadata, Viewport } from "next";
 import { Baloo_2, Baloo_Bhaijaan_2, Cairo } from "next/font/google";
 import "./globals.css";
@@ -144,7 +145,7 @@ export default function RootLayout({
         </noscript>
       </head>
       <body>
-        <Providers>{children}</Providers>
+        <Providers saleActive={isSaleActive()}>{children}</Providers>
       </body>
     </html>
   );

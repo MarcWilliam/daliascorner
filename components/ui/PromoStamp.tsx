@@ -1,8 +1,10 @@
 "use client";
 
+import { useSaleActive } from "@/components/providers/PromotionProvider";
+
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, m, useReducedMotion } from "framer-motion";
-import { ArrowRight, Tag, Truck, X } from "lucide-react";
+import { ArrowRight, Tag, X } from "lucide-react";
 import { useLocale } from "@/components/providers/LocaleProvider";
 import { useConsent } from "@/components/providers/ConsentProvider";
 import { ClayButton } from "@/components/ui/ClayButton";
@@ -12,8 +14,8 @@ import { EASE_OUT, SPRING_SOFT, sealFloat } from "@/lib/motion";
 /**
  * Floating promo seal — a clay "sale sticker" that bobs in the bottom inline-start
  * corner (mirrors in RTL, clears BackToTop on the inline-end). Collapsed it's a
- * compact 20%-off seal; tapped, it opens a small popover that presents BOTH live
- * offers (the 20% sale and free delivery) so a phone screen never carries two
+ * compact 20%-off seal; tapped, it opens a small popover that presents the current
+ * storewide sale so a phone screen never carries two
  * competing bobbing badges. Non-modal: it never traps focus or blocks the page.
  *
  * It shows on the home page only (its CTA scrolls to #characters) and:
@@ -23,11 +25,8 @@ import { EASE_OUT, SPRING_SOFT, sealFloat } from "@/lib/motion";
  *  • can be hidden for the session; and honours prefers-reduced-motion throughout.
  */
 
-// Sale ends 15 August 2026, end of day Cairo (UTC+3 in summer). After this the whole
-// seal stops rendering — edit this one date (or lift the gate) to re-run a promo.
-const SALE_ENDS = new Date("2026-08-16T00:00:00+03:00").getTime();
-
 export function PromoStamp() {
+  const active = useSaleActive();
   const { t, dir } = useLocale();
   const { bannerOpen } = useConsent();
   const reduce = useReducedMotion();
@@ -91,13 +90,12 @@ export function PromoStamp() {
 
   // Nothing to show: before mount, after the sale ends, once dismissed, or while
   // the consent banner owns the bottom band.
-  if (!mounted || Date.now() > SALE_ENDS || dismissed || bannerOpen) return null;
+  if (!mounted || !active || dismissed || bannerOpen) return null;
 
   const baseTilt = dir === "rtl" ? 7 : -7; // lean the seal toward the screen centre
 
   const offers = [
     { Icon: Tag, title: t("promo.saleTitle"), note: t("promo.saleNote") },
-    { Icon: Truck, title: t("promo.deliveryTitle"), note: t("promo.deliveryNote") },
   ];
 
   return (

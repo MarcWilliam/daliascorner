@@ -1,5 +1,6 @@
 "use client";
 
+import { PromotionProvider } from "./PromotionProvider";
 import { LazyMotion, domAnimation } from "framer-motion";
 import { LocaleProvider } from "./LocaleProvider";
 import { AnnouncerProvider } from "./Announcer";
@@ -17,16 +18,18 @@ import { ConsentBanner } from "@/components/ui/ConsentBanner";
  * ConsentProvider wraps CartProvider because the cart fires Meta Pixel events,
  * and those must stay no-ops until the visitor has opted in.
  */
-export function Providers({ children }: { children: React.ReactNode }) {
+export function Providers({ children, saleActive }: { children: React.ReactNode; saleActive: boolean }) {
   return (
     <LazyMotion features={domAnimation} strict>
       <LocaleProvider>
         <AnnouncerProvider>
           <ConsentProvider>
-            <CartProvider>
-              <DeviceTiltProvider>{children}</DeviceTiltProvider>
-              <ConsentBanner />
-            </CartProvider>
+            <PromotionProvider initialActive={saleActive}>
+              <CartProvider>
+                <DeviceTiltProvider>{children}</DeviceTiltProvider>
+                <ConsentBanner />
+              </CartProvider>
+            </PromotionProvider>
           </ConsentProvider>
         </AnnouncerProvider>
       </LocaleProvider>

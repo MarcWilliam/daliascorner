@@ -1,6 +1,9 @@
 "use client";
 
-import { useEffect } from "react";
+import { useSaleActive } from "@/components/providers/PromotionProvider";
+
+import { salePricing } from "@/lib/promotion";
+import { useEffect, useMemo } from "react";
 import { ArrowLeft, Leaf, Minus, Plus, Ruler, Truck } from "lucide-react";
 import { useCart } from "@/components/providers/CartProvider";
 import { useConsent } from "@/components/providers/ConsentProvider";
@@ -36,7 +39,9 @@ const accentTint: Record<Product["accent"], string> = {
  * than a one-pager. Deliberately small — everything it shows already lives in
  * lib/products.ts, so there is no second copy of anything to keep in sync.
  */
-export function ProductDetail({ product }: { product: Product }) {
+export function ProductDetail({ product: initialProduct }: { product: Product }) {
+  const active = useSaleActive();
+  const product = useMemo(() => salePricing(initialProduct, active), [initialProduct, active]);
   const { t, locale, messages } = useLocale();
   const { add, buyNow, increment, decrement, lines } = useCart();
   const { consent } = useConsent();
@@ -53,7 +58,7 @@ export function ProductDetail({ product }: { product: Product }) {
       const bSame = b.category === product.category ? 0 : 1;
       return aSame - bSame;
     })
-    .slice(0, 4);
+    .slice(0, 4).map((p) => salePricing(p, active));
 
   const onSale =
     product.price != null &&

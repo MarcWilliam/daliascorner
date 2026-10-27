@@ -59,7 +59,7 @@ export const PRICE_CURRENCY = "EGP";
  * the component, copy, and campaign-specific expiry gate remain available for
  * the next promotion.
  */
-export const PROMO_ENABLED = false;
+export const PROMO_ENABLED = true;
 
 /** i18n defaults */
 export const DEFAULT_LOCALE: Locale = "ar"; // flip to "en" here to change the default
@@ -81,7 +81,7 @@ export const STORAGE_CART = "dalias-corner.cart";
 export const STORAGE_CUSTOMER = "dalias-corner.customer";
 export const STORAGE_CONSENT = "dalias-corner.consent";
 /** Session-only: the visitor hid the floating promo seal (resets next visit). */
-export const STORAGE_PROMO_DISMISSED = "dalias-corner.promo-dismissed";
+export const STORAGE_PROMO_DISMISSED = "dalias-corner.promo-dismissed.2026-10-27";
 /** Random per-browser id sent to Meta as external_id. Pseudonymous, never PII. */
 export const STORAGE_EXTERNAL_ID = "dalias-corner.eid";
 
