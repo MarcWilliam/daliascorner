@@ -83,7 +83,7 @@ export function PrivacyContent() {
               )}
 
               <div className="mt-10 rounded-clay-lg border border-line bg-surface p-6 shadow-clay-sm">
-                <h2 className="text-xl sm:text-2xl">{t("privacy.contactTitle")}</h2>
+                <h2 id="account-deletion" className="text-xl sm:text-2xl">{t("privacy.contactTitle")}</h2>
                 <p className="mt-3 leading-relaxed text-ink-muted">
                   {t("privacy.contactBody")}
                 </p>

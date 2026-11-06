@@ -177,8 +177,8 @@
     "updated": "Last updated: 6 November 2026",
     "intro": "Dalia's Corner is a small family pottery studio in Cairo. This page is the plain, honest version of what happens to your information when you visit the site or place an order.",
     "backHome": "Back to the shop",
-    "contactTitle": "Questions, or want your data deleted?",
-    "contactBody": "Message us on WhatsApp or Instagram and we'll sort it out. It's just us running this place, so the person reading your message is the same person who can actually fix things.",
+    "contactTitle": "Request account and data deletion",
+    "contactBody": "To request deletion of your account and personal data, use the support button below. Include your sign-in email and say that you are requesting account deletion. Do not send passwords or login codes. We will verify account ownership and explain what will be deleted and any order information needed for outstanding orders. You can also remove the app connection in Google or Facebook settings; disconnecting a provider alone does not delete your store data.",
     "sections": [
       {
         "h": "Who's responsible",
@@ -192,6 +192,11 @@
           "Clearing browser data removes local details, but does not delete an order already saved. Contact us to request deletion.",
           "Cloudflare Turnstile checks checkout requests to help prevent automated abuse."
         ]
+      },
+      {
+        "h": "Social sign-in",
+        "p": "When you choose Google or Facebook sign-in, we use the basic profile, email address and provider account identifier supplied by that provider to create and authenticate your account and associate your orders with it. Supabase manages authentication, and your browser stores session information. You can continue as a guest without connecting a social account.",
+        "items": []
       },
       {
         "h": "The Meta Pixel, only if you say yes",
