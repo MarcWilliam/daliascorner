@@ -242,11 +242,10 @@ function StockCard({
           {ar ? "متاح للشراء على الموقع" : "Available for website orders"}
         </label>
         {costAvailable && (
-          <details className="border-t border-line pt-3">
-            <summary className="min-h-11 cursor-pointer text-sm font-semibold">
-              {ar ? "تكلفة القطعة للربح" : "Unit cost for profit tracking"} ·{" "}
-              {cost == null ? (ar ? "غير محددة" : "Not set") : `${cost} EGP`}
-            </summary>
+          <section className="border-t border-line pt-3">
+            <h3 className="text-sm font-semibold">
+              {ar ? "تكلفة القطعة للربح" : "Unit cost for profit tracking"}
+            </h3>
             <form
               className="mt-2 flex items-end gap-2"
               onSubmit={(e) => {
@@ -259,7 +258,7 @@ function StockCard({
                 });
               }}
             >
-              <label className="flex-1 text-sm">
+              <label className="min-w-0 flex-1 text-sm">
                 {ar
                   ? "تكلفة القطعة EGP (اختياري)"
                   : "Cost per piece EGP (optional)"}
@@ -282,7 +281,7 @@ function StockCard({
                 ? "للطلبيات الجديدة فقط. اتركها فارغة إذا كانت غير معروفة."
                 : "Applies to new orders. Leave blank when unknown."}
             </p>
-          </details>
+          </section>
         )}
       </fieldset>
       {message && (

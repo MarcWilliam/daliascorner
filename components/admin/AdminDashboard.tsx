@@ -4,6 +4,7 @@ import { FinancePanel } from "./FinancePanel";
 import { CheckoutSettings } from "./CheckoutSettings";
 import { InventoryPanel, type Stock, type Movement } from "./InventoryPanel";
 import { ManualOrderForm } from "./ManualOrderForm";
+import { OrderPaymentField } from "./OrderPaymentField";
 import { PRODUCTS } from "@/lib/products";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useCustomerAuth } from "@/components/providers/CustomerAuthProvider";
@@ -129,6 +130,7 @@ export function AdminDashboard() {
     setMovements([]);
     setShowManualOrder(false);
     setPush(false);
+    setBusy(false);
   }, [session?.user.id, admin]);
   const refresh = useCallback(async () => {
     if (!admin || !session) return;
@@ -749,87 +751,49 @@ export function AdminDashboard() {
                               : "This order is cancelled and payment is still marked received. Record a refund after returning the money; cancellation does not refund it automatically."}
                           </p>
                         )}
-                      <div className="mt-5 flex flex-wrap items-end gap-3">
-                        <form
-                          className="flex flex-wrap items-end gap-2"
-                          onSubmit={(e) => {
-                            e.preventDefault();
-                            const value = String(
-                              new FormData(e.currentTarget).get("payment"),
-                            );
-                            if (value === o.payment_status) return;
-                            void action(() =>
-                              rpc("set_order_payment", {
-                                p_id: o.id,
-                                p_payment: value,
-                              }),
-                            );
-                          }}
-                        >
-                          <label>
-                            {c.payment}
-                            <select
-                              key={o.payment_status}
-                              name="payment"
-                              className={field}
+                      <div className="mt-5 grid gap-3 sm:flex sm:flex-wrap sm:items-start">
+                        <OrderPaymentField
+                          orderId={o.id}
+                          payment={o.payment_status}
+                          disabled={busy}
+                          onSaved={refresh}
+                          onSavingChange={setBusy}
+                        />
+                        <div className="flex flex-wrap gap-3 sm:pt-6">
+                          {o.status === "pending" && (
+                            <ClayButton
                               disabled={busy}
-                              defaultValue={o.payment_status}
+                              onClick={() => changeStatus(o, "confirmed")}
                             >
-                              {(["unpaid", "paid", "refunded"] as const)
-                                .filter(
-                                  (p) =>
-                                    p !== "refunded" ||
-                                    o.payment_status === "paid" ||
-                                    o.payment_status === "refunded",
-                                )
-                                .map((p) => (
-                                  <option key={p} value={p}>
-                                    {c[p]}
-                                  </option>
-                                ))}
-                            </select>
-                          </label>
-                          <ClayButton
-                            disabled={busy}
-                            type="submit"
-                            variant="outline"
-                          >
-                            {locale === "ar" ? "حفظ الدفع" : "Save payment"}
-                          </ClayButton>
-                        </form>
-                        {o.status === "pending" && (
-                          <ClayButton
-                            disabled={busy}
-                            onClick={() => changeStatus(o, "confirmed")}
-                          >
-                            {c.confirm}
-                          </ClayButton>
-                        )}
-                        {o.status === "confirmed" && (
-                          <ClayButton
-                            disabled={busy}
-                            onClick={() => changeStatus(o, "shipped")}
-                          >
-                            {c.ship}
-                          </ClayButton>
-                        )}
-                        {o.status === "shipped" && (
-                          <ClayButton
-                            disabled={busy}
-                            onClick={() => changeStatus(o, "delivered")}
-                          >
-                            {c.deliver}
-                          </ClayButton>
-                        )}
-                        {["pending", "confirmed"].includes(o.status) && (
-                          <ClayButton
-                            variant="outline"
-                            disabled={busy}
-                            onClick={() => changeStatus(o, "cancelled")}
-                          >
-                            {c.cancel}
-                          </ClayButton>
-                        )}
+                              {c.confirm}
+                            </ClayButton>
+                          )}
+                          {o.status === "confirmed" && (
+                            <ClayButton
+                              disabled={busy}
+                              onClick={() => changeStatus(o, "shipped")}
+                            >
+                              {c.ship}
+                            </ClayButton>
+                          )}
+                          {o.status === "shipped" && (
+                            <ClayButton
+                              disabled={busy}
+                              onClick={() => changeStatus(o, "delivered")}
+                            >
+                              {c.deliver}
+                            </ClayButton>
+                          )}
+                          {["pending", "confirmed"].includes(o.status) && (
+                            <ClayButton
+                              variant="outline"
+                              disabled={busy}
+                              onClick={() => changeStatus(o, "cancelled")}
+                            >
+                              {c.cancel}
+                            </ClayButton>
+                          )}
+                        </div>
                       </div>
                     </article>
                   ))}
