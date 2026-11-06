@@ -372,6 +372,7 @@ export function InventoryPanel({
         shipped: "شحن طلب",
         cancelled: "إلغاء طلب",
         expired: "انتهاء حجز",
+        past_order_deducted: "خصم مخزون طلب سابق",
       }
     : {
         restocked: "Stock added",
@@ -383,6 +384,7 @@ export function InventoryPanel({
         shipped: "Order shipped",
         cancelled: "Order cancelled",
         expired: "Reservation expired",
+        past_order_deducted: "Past order stock deducted",
       };
   return (
     <section

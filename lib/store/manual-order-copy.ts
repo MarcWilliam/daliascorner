@@ -1,5 +1,46 @@
 export const manualOrderCopy = {
   en: {
+    reloadPrices: "Reload prices & fees",
+    newPaused:
+      "Some selected products are paused. Remove them for a new order, or choose Past delivered order for an earlier sale.",
+    mode: "Order type",
+    newMode: "New order",
+    pastMode: "Past delivered order",
+    pastIntro:
+      "Record a delivered sale using its original dates. No delivery reservation or new-order alert is created.",
+    history: "Original sale details",
+    orderedOn: "Original order date (Cairo)",
+    paidOn: "Original payment received date (Cairo)",
+    originalDatesHint:
+      "Use the dates from the original sale. The payment date determines when income appears in Finance.",
+    stockHandling: "How should this past sale affect current stock?",
+    accounted: "Already accounted for — keep current stock",
+    deductNow: "Deduct tracked stock now — unlimited items unchanged",
+    stockHint:
+      "Keep current stock if these pieces were already removed from your count. Deduct now only if they are still included in current stock.",
+    originalCost: "Original unit cost (optional)",
+    costHint:
+      "Leave blank if unknown. Enter 0 only for a known zero cost. Today's cost is never used for past sales.",
+    confirmOriginal:
+      "The displayed catalog prices and delivery fee match the original sale.",
+    originalPriceHint:
+      "Use this mode only when the displayed prices and fee match what the customer originally owed.",
+    datesError:
+      "Enter the original order date and, if paid, the payment date. Dates cannot be in the future; payment cannot precede the order.",
+    costError:
+      "Original unit costs must be blank (unknown) or non-negative amounts with at most two decimal places.",
+    totalChanged:
+      "The catalog total or delivery fee changed. Reload the options and confirm that the displayed total matches the original sale before retrying.",
+    confirmationRequired:
+      "Confirm that catalog prices and the delivery fee match the original sale.",
+    pastSavedNotice:
+      "This delivered chat order is recorded on its original dates. Income and known original costs appear in Finance; unknown costs remain marked as missing.",
+    pastNoProducts: "No catalog products are available to record this sale.",
+    pastNoDelivery:
+      "Add the original sale's delivery area and fee in Delivery & payments first.",
+    pastStatus:
+      "Saved as delivered. No stock is reserved and no new-order alert is sent. Deducting tracked stock may trigger a low-stock alert.",
+    paused: "Paused",
     title: "Add a chat order",
     intro:
       "Record an order received by message, using catalog prices and your delivery settings.",
@@ -75,6 +116,47 @@ export const manualOrderCopy = {
     currency: "EGP",
   },
   ar: {
+    reloadPrices: "تحديث الأسعار ورسوم التوصيل",
+    newPaused:
+      "بعض المنتجات المحددة متوقفة. احذفها للطلب الجديد، أو اختر طلبًا سابقًا تم تسليمه لتسجيل بيع قديم.",
+    mode: "نوع الطلب",
+    newMode: "طلب جديد",
+    pastMode: "طلب سابق تم تسليمه",
+    pastIntro:
+      "سجّل عملية بيع تم تسليمها بتواريخها الأصلية، دون حجز توصيل أو إرسال تنبيه طلب جديد.",
+    history: "تفاصيل البيع الأصلي",
+    orderedOn: "تاريخ الطلب الأصلي (القاهرة)",
+    paidOn: "تاريخ استلام المبلغ الأصلي (القاهرة)",
+    originalDatesHint:
+      "استخدم تواريخ عملية البيع الأصلية. تاريخ استلام المبلغ يحدد وقت ظهور الدخل في الحسابات.",
+    stockHandling: "كيف يؤثر هذا البيع السابق على المخزون الحالي؟",
+    accounted: "محسوب بالفعل — اترك المخزون الحالي كما هو",
+    deductNow: "اخصم المخزون المتتبع الآن — غير المحدود لا يتغير",
+    stockHint:
+      "اترك المخزون كما هو إذا كانت القطع خُصمت من العدد بالفعل. اختر الخصم الآن فقط إذا كانت ما زالت ضمن العدد الحالي.",
+    originalCost: "تكلفة القطعة الأصلية (اختياري)",
+    costHint:
+      "اتركها فارغة إذا كانت غير معروفة. أدخل ٠ فقط إذا كانت التكلفة الأصلية صفرًا فعلًا. لا تُستخدم تكلفة اليوم للطلبات السابقة.",
+    confirmOriginal:
+      "أسعار المنتجات ورسوم التوصيل المعروضة تطابق عملية البيع الأصلية.",
+    originalPriceHint:
+      "استخدم هذا الوضع فقط عندما تطابق الأسعار والرسوم المعروضة ما كان مستحقًا على العميل وقت البيع.",
+    datesError:
+      "أدخل تاريخ الطلب الأصلي وتاريخ استلام المبلغ إن كان مدفوعًا. لا يمكن اختيار تاريخ مستقبلي أو تاريخ دفع يسبق الطلب.",
+    costError:
+      "اترك التكلفة الأصلية فارغة إن لم تكن معروفة، أو أدخل مبلغًا غير سالب بخانتين عشريتين كحد أقصى.",
+    totalChanged:
+      "تغير إجمالي المنتجات أو رسوم التوصيل. حدّث الخيارات وتأكد من مطابقة الإجمالي المعروض للبيع الأصلي قبل المحاولة مجددًا.",
+    confirmationRequired:
+      "أكد أن أسعار المنتجات ورسوم التوصيل تطابق البيع الأصلي.",
+    pastSavedNotice:
+      "سُجّل طلب المحادثة كطلب سابق تم تسليمه بتواريخه الأصلية. يظهر الدخل والتكلفة الأصلية المعروفة في الحسابات، وتظل التكاليف المجهولة موضحة كبيانات ناقصة.",
+    pastNoProducts: "لا توجد منتجات في الكتالوج لتسجيل عملية البيع.",
+    pastNoDelivery:
+      "أضف منطقة التوصيل ورسوم البيع الأصلي في التوصيل والدفع أولًا.",
+    pastStatus:
+      "يُحفظ كطلب تم تسليمه دون حجز مخزون أو تنبيه طلب جديد. قد يرسل خصم المخزون المتتبع تنبيه انخفاض المخزون.",
+    paused: "متوقف",
     title: "إضافة طلب من المحادثات",
     intro:
       "سجّل طلبًا وصلك برسالة، بأسعار المنتجات ورسوم التوصيل المحددة في المتجر.",

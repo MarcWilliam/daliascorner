@@ -20,6 +20,9 @@ import { MiniNav } from "@/components/sections/MiniNav";
 import { ClayButton } from "@/components/ui/ClayButton";
 import { CartDrawer } from "@/components/sections/CartDrawer";
 type Order = {
+  created_at?: string;
+  ordered_at?: string;
+  is_historical?: boolean;
   order_number: number;
   status: string;
   payment_status: string;
@@ -124,9 +127,10 @@ export function CustomerPortal() {
             const { data, error } = await db
               .from("orders")
               .select(
-                "order_number,status,payment_status,subtotal,delivery_fee,delivery_zone,payment_method,transfer_instructions,order_items(name_en,name_ar,quantity,unit_price)",
+                "order_number,status,payment_status,subtotal,delivery_fee,delivery_zone,payment_method,transfer_instructions,created_at,ordered_at,is_historical,order_items(name_en,name_ar,quantity,unit_price)",
               )
               .eq("customer_id", session!.user.id)
+              .order("ordered_at", { ascending: false })
               .order("created_at", { ascending: false })
               .limit(100)
               .abortSignal(request.signal);
@@ -402,6 +406,15 @@ export function CustomerPortal() {
                 className="rounded-clay-lg border border-line bg-surface p-5 space-y-3"
               >
                 <h2 className="text-xl">DC-{o.order_number}</h2>
+                {(o.ordered_at || o.created_at) && (
+                  <p className="text-sm text-ink-muted">
+                    {ar ? "تاريخ الطلب" : "Order date"}:{" "}
+                    {new Date(o.ordered_at ?? o.created_at!).toLocaleDateString(
+                      ar ? "ar-EG" : "en-GB",
+                      { timeZone: "Africa/Cairo", dateStyle: "medium" },
+                    )}
+                  </p>
+                )}
                 {session && !adminPreview && (
                   <button
                     className="min-h-12 text-brand underline"

@@ -93,7 +93,7 @@ export const financeCopy = {
     legacyRefunds:
       "Refunds that predate tracking are excluded because their original payment and refund dates are unknown:",
     methodology:
-      "The payment date is when an admin marks an order paid, not its delivery date. This is a paid-order estimate, not an accrual or tax report. Record carrier fees and other business costs as expenses. Refunds reverse receipts in the refund period; product costs remain because a refund does not establish that returned goods are reusable. Partial refunds and resale recovery are not modeled.",
+      "Ordinary payments use the time an admin marks the order paid. Imported past orders use the original payment date entered in Cairo time; the recording time stays in the audit history. This is a paid-order estimate, not an accrual or tax report. Record carrier fees and other business costs as expenses. Refunds reverse receipts in the refund period; product costs remain because a refund does not establish that returned goods are reusable. Partial refunds and resale recovery are not modeled.",
     history: "Recent expenses",
     emptyExpenses: "No expenses recorded yet.",
     void: "Void entry",
@@ -187,7 +187,7 @@ export const financeCopy = {
     legacyRefunds:
       "استردادات سابقة غير محسوبة لعدم معرفة تاريخ الدفع والاسترداد الأصلي:",
     methodology:
-      "تاريخ الدفع هو وقت تسجيل المسؤول للطلب كمدفوع، وليس تاريخ التوصيل. هذا تقدير للطلبات المدفوعة وليس تقريراً ضريبياً أو محاسبياً على أساس الاستحقاق. سجّل رسوم شركة الشحن وباقي التكاليف كمصروفات. الاسترداد يخصم المقبوضات في فترة الاسترداد، مع الاحتفاظ بتكلفة المنتجات لأن الاسترداد لا يثبت صلاحية المرتجعات لإعادة البيع. الاسترداد الجزئي واستعادة تكلفة المرتجعات غير محسوبين.",
+      "تستخدم المدفوعات العادية وقت تسجيل المسؤول للطلب كمدفوع. أما الطلبات السابقة فتستخدم تاريخ الدفع الأصلي الذي أُدخل بتوقيت القاهرة، مع حفظ وقت التسجيل في السجل. هذا تقدير للطلبات المدفوعة وليس تقريراً ضريبياً أو محاسبياً على أساس الاستحقاق. سجّل رسوم شركة الشحن وباقي التكاليف كمصروفات. الاسترداد يخصم المقبوضات في فترة الاسترداد، مع الاحتفاظ بتكلفة المنتجات لأن الاسترداد لا يثبت صلاحية المرتجعات لإعادة البيع. الاسترداد الجزئي واستعادة تكلفة المرتجعات غير محسوبين.",
     history: "المصروفات الأخيرة",
     emptyExpenses: "لم تُسجّل مصروفات بعد.",
     void: "إلغاء القيد",

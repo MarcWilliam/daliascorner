@@ -7,6 +7,12 @@ import { ClayButton } from "@/components/ui/ClayButton";
 import { storeClient } from "@/lib/store/client";
 import { PRODUCTS, PRODUCT_CATEGORIES } from "@/lib/products";
 import { manualOrderCopy } from "@/lib/store/manual-order-copy";
+import {
+  cairoDay,
+  pastOrderDates,
+  originalUnitCost,
+  manualOrderPricePreview,
+} from "@/lib/store/manual-order-history";
 import { storeCopy } from "@/lib/store/copy";
 import { parseOrder } from "@/lib/store/validation";
 import {
@@ -15,8 +21,14 @@ import {
 } from "@/lib/store/manual-order-attempt";
 import type { Stock } from "./InventoryPanel";
 
-type Zone = { id: string; name_en: string; name_ar: string; fee: number };
-type Line = { id: string; qty: number };
+type Zone = {
+  id: string;
+  name_en: string;
+  name_ar: string;
+  fee: number;
+  active: boolean;
+};
+type Line = { id: string; qty: number; unitCost?: string };
 type Receipt = {
   order_number: number;
   total: number;
@@ -30,6 +42,9 @@ type Receipt = {
     | "cancelled"
     | "expired";
   payment_status: "unpaid" | "paid" | "refunded";
+  ordered_at?: string;
+  is_historical?: boolean;
+  stock_handling?: "already_accounted" | "deduct_now";
 };
 const field = "store-field mt-1";
 const panel =
@@ -51,6 +66,17 @@ export function ManualOrderForm({
   const { locale } = useLocale();
   const ar = locale === "ar";
   const c = manualOrderCopy[locale];
+  const [mode, setMode] = useState<"new" | "past">("new");
+  const isPast = mode === "past";
+  const modeRef = useRef(mode);
+  modeRef.current = mode;
+  const [orderedOn, setOrderedOn] = useState("");
+  const [paidOn, setPaidOn] = useState("");
+  const [stockHandling, setStockHandling] = useState<
+    "already_accounted" | "deduct_now"
+  >("already_accounted");
+  const [confirmedPriceKey, setConfirmedPriceKey] = useState("");
+  const today = cairoDay();
   const [customer, setCustomer] = useState({
     name: "",
     phone: "",
@@ -84,8 +110,7 @@ export function ManualOrderForm({
       const [z, s] = await Promise.all([
         db
           .from("delivery_zones")
-          .select("id,name_en,name_ar,fee")
-          .eq("active", true)
+          .select("id,name_en,name_ar,fee,active")
           .order("name_en"),
         db
           .from("checkout_settings")
@@ -95,7 +120,12 @@ export function ManualOrderForm({
       if (z.error || s.error || !s.data) throw Error();
       setZones(z.data);
       setZoneId((value) =>
-        z.data.some((item) => item.id === value) ? value : "",
+        z.data.some(
+          (item) =>
+            item.id === value && (modeRef.current === "past" || item.active),
+        )
+          ? value
+          : "",
       );
       const enabled = {
         cash: !!s.data.cash_enabled,
@@ -104,13 +134,15 @@ export function ManualOrderForm({
       };
       setMethods(enabled);
       setPayment((value) =>
-        value === "cash" && enabled.cash
-          ? "cash"
-          : value === "transfer" && enabled.transfer
-            ? "transfer"
-            : enabled.cash
-              ? "cash"
-              : "transfer",
+        modeRef.current === "past"
+          ? value
+          : value === "cash" && enabled.cash
+            ? "cash"
+            : value === "transfer" && enabled.transfer
+              ? "transfer"
+              : enabled.cash
+                ? "cash"
+                : "transfer",
       );
       setOptions("ready");
     } catch {
@@ -123,7 +155,35 @@ export function ManualOrderForm({
   useEffect(() => {
     if (receipt) savedHeading.current?.focus();
   }, [receipt]);
-  const activeProducts = stock.filter((product) => product.active);
+  const activeProducts = stock.filter((product) => isPast || product.active);
+  const availableZones = zones.filter((zone) => isPast || zone.active);
+  const newHasPausedProducts =
+    !isPast &&
+    lines.some(
+      (line) =>
+        !stock.find((product) => product.product_id === line.id)?.active,
+    );
+  function changeMode(value: "new" | "past") {
+    setMode(value);
+    setPaid(value === "past");
+    setProductId("");
+    setConfirmedPriceKey("");
+    setError("");
+    if (value === "new") {
+      setZoneId((current) =>
+        zones.some((zone) => zone.id === current && zone.active) ? current : "",
+      );
+      setPayment((current) =>
+        current === "cash" && methods.cash
+          ? "cash"
+          : current === "transfer" && methods.transfer
+            ? "transfer"
+            : methods.cash
+              ? "cash"
+              : "transfer",
+      );
+    }
+  }
   const productGroups = [
     ...PRODUCT_CATEGORIES.map((category) => ({
       id: category.id,
@@ -142,20 +202,24 @@ export function ManualOrderForm({
       ),
     },
   ];
-  const selectedZone = zones.find((zone) => zone.id === zoneId);
-  const subtotal = lines.reduce(
-    (sum, line) =>
-      sum +
-      Number(
-        stock.find((product) => product.product_id === line.id)?.price ?? 0,
-      ) *
-        line.qty,
-    0,
+  const selectedZone = availableZones.find((zone) => zone.id === zoneId);
+  const preview = manualOrderPricePreview(
+    lines,
+    Object.fromEntries(
+      stock.map((product) => [product.product_id, Number(product.price)]),
+    ),
+    selectedZone,
   );
+  const subtotal = preview.subtotal;
+  const originalConfirmed = confirmedPriceKey === preview.confirmationKey;
+  // A changed item, quantity, zone or current price needs a fresh acknowledgement.
+  useEffect(() => {
+    setConfirmedPriceKey("");
+  }, [preview.confirmationKey]);
   const configured =
     options === "ready" &&
-    zones.length > 0 &&
-    (methods.cash || methods.transfer);
+    availableZones.length > 0 &&
+    (isPast || methods.cash || methods.transfer);
   function addProduct() {
     if (!productId) return;
     setLines((current) =>
@@ -171,7 +235,11 @@ export function ManualOrderForm({
     setLines([]);
     setZoneId("");
     setReceipt(null);
-    setPaid(false);
+    setPaid(isPast);
+    setOrderedOn("");
+    setPaidOn("");
+    setStockHandling("already_accounted");
+    setConfirmedPriceKey("");
     setTrackingToken("");
     setCopyMessage("");
     attempt.current = null;
@@ -200,13 +268,35 @@ export function ManualOrderForm({
         lines,
         locale,
       });
+      if (isPast && !originalConfirmed)
+        throw Error("ORIGINAL_CONFIRMATION_REQUIRED");
+      const history = isPast
+        ? pastOrderDates(orderedOn, paid, paidOn, today)
+        : null;
+      const orderLines = canonical.lines.map((line) => {
+        const cost = isPast
+          ? originalUnitCost(
+              lines.find((item) => item.id === line.id)?.unitCost ?? "",
+            )
+          : undefined;
+        return { ...line, ...(cost !== undefined ? { unit_cost: cost } : {}) };
+      });
       const payload = {
         customer: canonical.customer,
-        lines: canonical.lines,
+        lines: orderLines,
         locale: canonical.locale,
         zone: zoneId,
         payment,
         paid,
+        ...(history
+          ? {
+              mode: "past",
+              orderedOn: history.orderedOn,
+              paidOn: history.paidOn,
+              stockHandling,
+              expectedTotal: preview.total,
+            }
+          : {}),
       };
       const hash = await crypto.subtle.digest(
         "SHA-256",
@@ -231,16 +321,27 @@ export function ManualOrderForm({
       try {
         sessionStorage.setItem(storageKey, JSON.stringify(currentAttempt));
       } catch {}
+      const common = {
+        p_key: currentAttempt.key,
+        p_token: currentAttempt.token,
+        p_customer: payload.customer,
+        p_lines: payload.lines,
+        p_locale: payload.locale,
+        p_zone: payload.zone,
+        p_payment: payload.payment,
+        p_paid: payload.paid,
+      };
       const result = await storeClient()
-        .rpc("create_chat_order", {
-          p_key: currentAttempt.key,
-          p_token: currentAttempt.token,
-          p_customer: payload.customer,
-          p_lines: payload.lines,
-          p_locale: payload.locale,
-          p_zone: payload.zone,
-          p_payment: payload.payment,
-          p_paid: payload.paid,
+        .rpc(isPast ? "create_past_chat_order" : "create_chat_order", {
+          ...common,
+          ...(history
+            ? {
+                p_ordered_on: history.orderedOn,
+                p_paid_on: history.paidOn,
+                p_stock_handling: stockHandling,
+                p_expected_total: preview.total,
+              }
+            : {}),
         })
         .abortSignal(AbortSignal.timeout(25000));
       if (result.error) throw result.error;
@@ -264,19 +365,28 @@ export function ManualOrderForm({
         typeof error === "object" && error && "message" in error
           ? String(error.message)
           : "";
+      if (message.includes("TOTAL_MISMATCH")) setConfirmedPriceKey("");
       setError(
-        message.includes("OUT_OF_STOCK")
-          ? c.stockError
-          : message.includes("INVALID_DELIVERY") ||
-              message.includes("INVALID_PAYMENT")
-            ? c.optionsChanged
-            : message.includes("INVALID_ORDER")
-              ? c.validation
-              : /FORBIDDEN|ADMIN_REQUIRED|permission denied|JWT|SIGN_IN/i.test(
-                    message,
-                  )
-                ? c.forbidden
-                : c.saveError,
+        message.includes("INVALID_DATE")
+          ? c.datesError
+          : message.includes("INVALID_COST")
+            ? c.costError
+            : message.includes("TOTAL_MISMATCH")
+              ? c.totalChanged
+              : message.includes("ORIGINAL_CONFIRMATION_REQUIRED")
+                ? c.confirmationRequired
+                : message.includes("OUT_OF_STOCK")
+                  ? c.stockError
+                  : message.includes("INVALID_DELIVERY") ||
+                      message.includes("INVALID_PAYMENT")
+                    ? c.optionsChanged
+                    : message.includes("INVALID_ORDER")
+                      ? c.validation
+                      : /FORBIDDEN|ADMIN_REQUIRED|permission denied|JWT|SIGN_IN/i.test(
+                            message,
+                          )
+                        ? c.forbidden
+                        : c.saveError,
       );
     } finally {
       submitting.current = false;
@@ -296,7 +406,27 @@ export function ManualOrderForm({
         <h2 ref={savedHeading} tabIndex={-1} className="text-2xl">
           {c.saved} · DC-{receipt.order_number}
         </h2>
-        <p className="mt-3 text-sm leading-6 text-ink-muted">{c.savedNotice}</p>
+        <p className="mt-3 text-sm leading-6 text-ink-muted">
+          {receipt.is_historical ? c.pastSavedNotice : c.savedNotice}
+        </p>
+        {receipt.is_historical && (
+          <div className="mt-4 space-y-2 text-sm text-ink-muted">
+            {receipt.ordered_at && (
+              <p>
+                {c.orderedOn}:{" "}
+                {new Intl.DateTimeFormat(ar ? "ar-EG" : "en-GB", {
+                  timeZone: "Africa/Cairo",
+                  dateStyle: "medium",
+                }).format(new Date(receipt.ordered_at))}
+              </p>
+            )}
+            <p>
+              {receipt.stock_handling === "deduct_now"
+                ? c.deductNow
+                : c.accounted}
+            </p>
+          </div>
+        )}
         <div className="mt-3 flex flex-wrap gap-2">
           <span className="rounded-full bg-leaf-soft px-3 py-1 text-sm font-semibold text-brand">
             {storeCopy[locale][receipt.status]}
@@ -402,9 +532,88 @@ export function ManualOrderForm({
     >
       <h2 className="text-2xl">{c.title}</h2>
       <p className="mt-2 max-w-2xl text-sm leading-6 text-ink-muted">
-        {c.intro}
+        {isPast ? c.pastIntro : c.intro}
       </p>
       <fieldset disabled={busy} className="mt-6 space-y-6">
+        <fieldset className="border-0 p-0">
+          <legend className="mb-2 text-sm font-semibold">{c.mode}</legend>
+          <div className="grid grid-cols-1 gap-2 rounded-2xl bg-canvas-sunk p-1.5 sm:grid-cols-2">
+            {(
+              [
+                { value: "new", label: c.newMode },
+                { value: "past", label: c.pastMode },
+              ] as const
+            ).map((item) => (
+              <label
+                key={item.value}
+                className={`flex min-h-12 cursor-pointer items-center gap-3 rounded-xl border px-3 py-3 text-sm font-semibold ${mode === item.value ? "border-brand/40 bg-surface text-brand shadow-clay-sm" : "border-transparent text-ink-muted"}`}
+              >
+                <input
+                  type="radio"
+                  name="manual-order-mode"
+                  value={item.value}
+                  checked={mode === item.value}
+                  className="h-4 w-4 shrink-0 accent-brand"
+                  onChange={() => changeMode(item.value)}
+                />
+                {item.label}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+        {isPast && (
+          <fieldset className="space-y-3 rounded-2xl border border-line bg-canvas/40 p-4">
+            <legend className="px-1 font-display text-lg font-semibold">
+              {c.history}
+            </legend>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="text-sm">
+                {c.orderedOn}
+                <input
+                  type="date"
+                  className={field}
+                  required
+                  max={today}
+                  value={orderedOn}
+                  onChange={(event) => setOrderedOn(event.target.value)}
+                />
+              </label>
+              {paid && (
+                <label className="text-sm">
+                  {c.paidOn}
+                  <input
+                    type="date"
+                    className={field}
+                    required
+                    min={orderedOn || undefined}
+                    max={today}
+                    value={paidOn}
+                    onChange={(event) => setPaidOn(event.target.value)}
+                  />
+                </label>
+              )}
+            </div>
+            <p className="text-xs leading-5 text-ink-muted">
+              {c.originalDatesHint}
+            </p>
+            <label className="block text-sm">
+              {c.stockHandling}
+              <select
+                className={field}
+                value={stockHandling}
+                onChange={(event) =>
+                  setStockHandling(
+                    event.target.value as "already_accounted" | "deduct_now",
+                  )
+                }
+              >
+                <option value="already_accounted">{c.accounted}</option>
+                <option value="deduct_now">{c.deductNow}</option>
+              </select>
+            </label>
+            <p className="text-xs leading-5 text-ink-muted">{c.stockHint}</p>
+          </fieldset>
+        )}
         <fieldset className="space-y-4 border-0 p-0">
           <legend className="mb-3 font-display text-lg font-semibold">
             {c.products}
@@ -436,6 +645,7 @@ export function ManualOrderForm({
                           >
                             {ar ? product.name_ar : product.name_en} ·{" "}
                             {product.price} {c.currency}
+                            {!product.active ? ` · ${c.paused}` : ""}
                           </option>
                         ))}
                     </optgroup>
@@ -453,7 +663,14 @@ export function ManualOrderForm({
             </ClayButton>
           </div>
           {!activeProducts.length && (
-            <p className="text-sm text-ink-muted">{c.noProducts}</p>
+            <p className="text-sm text-ink-muted">
+              {isPast ? c.pastNoProducts : c.noProducts}
+            </p>
+          )}
+          {newHasPausedProducts && (
+            <p role="status" className="rounded-xl bg-orange/15 p-3 text-sm">
+              {c.newPaused}
+            </p>
           )}
           {lines.length > 0 && (
             <ul className="space-y-3">
@@ -519,6 +736,30 @@ export function ManualOrderForm({
                         }
                       />
                     </label>
+                    {isPast && (
+                      <label className="w-full text-sm sm:w-40">
+                        {c.originalCost}
+                        <input
+                          type="number"
+                          className={field}
+                          min={0}
+                          max={9999999999.99}
+                          step="0.01"
+                          inputMode="decimal"
+                          value={line.unitCost ?? ""}
+                          aria-label={`${c.originalCost} — ${ar ? product.name_ar : product.name_en}`}
+                          onChange={(event) =>
+                            setLines((current) =>
+                              current.map((item) =>
+                                item.id === line.id
+                                  ? { ...item, unitCost: event.target.value }
+                                  : item,
+                              ),
+                            )
+                          }
+                        />
+                      </label>
+                    )}
                     <button
                       type="button"
                       className="grid h-11 w-11 shrink-0 place-items-center rounded-xl text-destructive hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive"
@@ -535,6 +776,9 @@ export function ManualOrderForm({
                 );
               })}
             </ul>
+          )}
+          {isPast && (
+            <p className="text-xs leading-5 text-ink-muted">{c.costHint}</p>
           )}
         </fieldset>
         <fieldset className="space-y-3 border-0 border-t border-line pt-5">
@@ -611,16 +855,19 @@ export function ManualOrderForm({
               </button>
             </div>
           )}
-          {options === "ready" && !zones.length && (
+          {options === "ready" && !availableZones.length && (
             <p role="status" className="text-sm text-ink-muted">
-              {c.noDelivery}
+              {isPast ? c.pastNoDelivery : c.noDelivery}
             </p>
           )}
-          {options === "ready" && !methods.cash && !methods.transfer && (
-            <p role="status" className="text-sm text-ink-muted">
-              {c.noPayment}
-            </p>
-          )}
+          {options === "ready" &&
+            !isPast &&
+            !methods.cash &&
+            !methods.transfer && (
+              <p role="status" className="text-sm text-ink-muted">
+                {c.noPayment}
+              </p>
+            )}
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="text-sm">
               {c.area}
@@ -628,13 +875,14 @@ export function ManualOrderForm({
                 className={field}
                 required
                 value={zoneId}
-                disabled={options !== "ready" || !zones.length}
+                disabled={options !== "ready" || !availableZones.length}
                 onChange={(event) => setZoneId(event.target.value)}
               >
                 <option value="">{c.chooseArea}</option>
-                {zones.map((zone) => (
+                {availableZones.map((zone) => (
                   <option key={zone.id} value={zone.id}>
                     {ar ? zone.name_ar : zone.name_en} · {zone.fee} {c.currency}
+                    {!zone.active ? ` · ${c.paused}` : ""}
                   </option>
                 ))}
               </select>
@@ -646,12 +894,15 @@ export function ManualOrderForm({
                 required
                 value={payment}
                 disabled={
-                  options !== "ready" || (!methods.cash && !methods.transfer)
+                  options !== "ready" ||
+                  (!isPast && !methods.cash && !methods.transfer)
                 }
                 onChange={(event) => setPayment(event.target.value)}
               >
-                {methods.cash && <option value="cash">{c.cash}</option>}
-                {methods.transfer && (
+                {(isPast || methods.cash) && (
+                  <option value="cash">{c.cash}</option>
+                )}
+                {(isPast || methods.transfer) && (
                   <option value="transfer">{c.transfer}</option>
                 )}
               </select>
@@ -662,7 +913,10 @@ export function ManualOrderForm({
               type="checkbox"
               className="mt-1 h-5 w-5 shrink-0 accent-brand"
               checked={paid}
-              onChange={(event) => setPaid(event.target.checked)}
+              onChange={(event) => {
+                setPaid(event.target.checked);
+                if (!event.target.checked) setPaidOn("");
+              }}
             />
             <span>
               <span className="block text-sm font-semibold">{c.paid}</span>
@@ -688,17 +942,40 @@ export function ManualOrderForm({
             </div>
             <div className="flex justify-between gap-4 border-t border-line pt-3 text-lg font-semibold">
               <dt>{c.total}</dt>
-              <dd>
-                {selectedZone
-                  ? `${subtotal + Number(selectedZone.fee)} ${c.currency}`
-                  : "—"}
-              </dd>
+              <dd>{selectedZone ? `${preview.total} ${c.currency}` : "—"}</dd>
             </div>
           </dl>
           <p className="mt-3 text-xs leading-5 text-ink-muted">
-            {selectedZone ? (paid ? c.statusPaid : c.status) : c.selectArea}
+            {selectedZone
+              ? isPast
+                ? c.pastStatus
+                : paid
+                  ? c.statusPaid
+                  : c.status
+              : c.selectArea}
           </p>
         </div>
+        {isPast && (
+          <div className="rounded-2xl border border-line bg-canvas/40 p-4">
+            <label className="flex min-h-12 items-start gap-3">
+              <input
+                type="checkbox"
+                required
+                className="mt-1 h-5 w-5 shrink-0 accent-brand"
+                checked={originalConfirmed}
+                onChange={(event) =>
+                  setConfirmedPriceKey(
+                    event.target.checked ? preview.confirmationKey : "",
+                  )
+                }
+              />
+              <span className="text-sm font-semibold">{c.confirmOriginal}</span>
+            </label>
+            <p className="mt-2 text-xs leading-5 text-ink-muted">
+              {c.originalPriceHint}
+            </p>
+          </div>
+        )}
         {error && (
           <p
             role="alert"
@@ -707,10 +984,31 @@ export function ManualOrderForm({
             {error}
           </p>
         )}
+        {error === c.totalChanged && (
+          <button
+            type="button"
+            disabled={busy || options === "loading"}
+            className="min-h-11 rounded-lg px-2 text-sm font-semibold text-brand underline"
+            onClick={async () => {
+              setConfirmedPriceKey("");
+              await Promise.all([
+                loadOptions(),
+                onSaved().catch(() => setWarning(c.loadError)),
+              ]);
+            }}
+          >
+            {c.reloadPrices}
+          </button>
+        )}
         <div className="flex flex-wrap gap-3">
           <ClayButton
             type="submit"
-            disabled={busy || !configured || !activeProducts.length}
+            disabled={
+              busy ||
+              !configured ||
+              !activeProducts.length ||
+              newHasPausedProducts
+            }
           >
             {busy ? c.saving : c.save}
           </ClayButton>

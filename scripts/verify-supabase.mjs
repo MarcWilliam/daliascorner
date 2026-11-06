@@ -51,6 +51,12 @@ const chat = await fetch(`${base}/rest/v1/rpc/create_chat_order`, {
 });
 if (![401, 403].includes(chat.status))
   throw new Error(`Unexpected public chat-order response: ${chat.status}`);
+const pastChat = await fetch(`${base}/rest/v1/rpc/create_past_chat_order`, {
+  method: "POST", headers,
+  body: JSON.stringify({ p_key: crypto.randomUUID(), p_token: crypto.randomUUID(), p_customer: {}, p_lines: [], p_locale: "en", p_zone: crypto.randomUUID(), p_payment: "cash", p_ordered_on: "2026-01-01", p_paid: false, p_paid_on: null, p_stock_handling: "already_accounted", p_expected_total: 0 }),
+});
+if (![401, 403].includes(pastChat.status))
+  throw new Error(`Unexpected public past-order response: ${pastChat.status}`);
 const rejected = await fetch(`${base}/functions/v1/place-order`, {
   method: "POST",
   headers: { ...headers, Origin: "https://untrusted.example" },

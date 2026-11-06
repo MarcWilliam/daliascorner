@@ -45,6 +45,9 @@ type Order = {
   delivery_zone: string;
   payment_method: string;
   created_at: string;
+  ordered_at?: string;
+  is_historical?: boolean;
+  stock_handling?: "already_accounted" | "deduct_now" | null;
   expires_at: string;
   source: "website" | "chat";
   order_items: {
@@ -566,7 +569,7 @@ export function AdminDashboard() {
                 <p className="text-sm text-ink-muted" role="status">
                   {loading
                     ? c.loading
-                    : `${orders.length} ${locale === "ar" ? "طلبات محملة · الأحدث أولاً" : "orders loaded · newest first"}`}
+                    : `${orders.length} ${locale === "ar" ? "طلبات محملة · آخر ما تم تسجيله أولاً" : "orders loaded · latest recorded first"}`}
                 </p>
                 {!loading && !orders.length && (
                   <p className={panel}>{c.empty}</p>
@@ -596,13 +599,40 @@ export function AdminDashboard() {
                         <div>
                           <h2 className="text-xl">DC-{o.order_number}</h2>
                           <p className="mt-1 text-sm text-ink-muted">
-                            {date(o.created_at)}
+                            {o.is_historical
+                              ? new Date(
+                                  o.ordered_at ?? o.created_at,
+                                ).toLocaleDateString(
+                                  locale === "ar" ? "ar-EG" : "en-GB",
+                                  {
+                                    timeZone: "Africa/Cairo",
+                                    dateStyle: "medium",
+                                  },
+                                )
+                              : date(o.ordered_at ?? o.created_at)}
                           </p>
+                          {o.is_historical && (
+                            <p className="mt-1 text-xs text-ink-muted">
+                              {locale === "ar" ? "تم التسجيل" : "Recorded"}:{" "}
+                              {date(o.created_at)} ·{" "}
+                              {o.stock_handling === "already_accounted"
+                                ? locale === "ar"
+                                  ? "المخزون محسوب مسبقًا"
+                                  : "Stock already accounted for"
+                                : locale === "ar"
+                                  ? "تم خصم المخزون عند التسجيل"
+                                  : "Stock deducted when recorded"}
+                            </p>
+                          )}
                           <p className="mt-2 text-xs font-semibold text-brand">
                             {o.source === "chat"
                               ? locale === "ar"
-                                ? "طلب من المحادثات"
-                                : "Chat order"
+                                ? o.is_historical
+                                  ? "طلب سابق من المحادثات"
+                                  : "طلب من المحادثات"
+                                : o.is_historical
+                                  ? "Past chat order"
+                                  : "Chat order"
                               : locale === "ar"
                                 ? "طلب من الموقع"
                                 : "Website order"}
