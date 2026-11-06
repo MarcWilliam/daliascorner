@@ -9,6 +9,7 @@ Implementation branch: `codex/supabase-store-admin`. The existing GitHub Pages d
 - `create-order`, `notify-admin` and `product-catalog` Edge Functions have been deployed.
 - All inventory starts at **zero**. Enter actual stock in the admin page before accepting orders.
 - `.env.local` contains the project's public URL and publishable key. It is ignored by Git.
+- Notification secrets and encrypted Vault scheduler configuration are installed. Both cron jobs are active; the worker configuration check returned HTTP 200.
 - `ALLOWED_ORIGINS` has been set to the apex domain, www domain and `http://localhost:3000`. Add the exact Cloudflare preview origin when available. This is a CORS allowlist, not an authentication mechanism.
 
 ## Admin account
@@ -47,8 +48,8 @@ The admin app uses standard Web Push; no native app or paid notification service
    - `NOTIFY_SECRET`
 
    Enter secrets directly in the dashboard; do not paste them into chat or commit them. Alternatively, after authenticating the Supabase CLI, use its documented secrets-set command with `--env-file .env.push.local` and the explicit project reference. Use `supabase secrets set --help` first; CLI v3 changes hosted-operation flags.
-3. In Supabase **Vault**, create `store_function_url` with `https://yevttogvgoubjxolqkpy.supabase.co/functions/v1/notify-admin` and `store_notify_secret` with the same value as `NOTIFY_SECRET`.
-4. Execute `supabase/setup-notification-cron.sql` once. It schedules a check every minute but only invokes the Edge Function when there are unsent events. One call per minute is about 43,200 monthly calls at most, within the current Free allowance of 500,000 calls/month before other functions.
+3. Vault and the scheduler are already configured for the connected project. For a new project, in Supabase **Vault**, create `store_function_url` with `https://yevttogvgoubjxolqkpy.supabase.co/functions/v1/notify-admin` and `store_notify_secret` with the same value as `NOTIFY_SECRET`.
+4. For a new project, apply the notification cron migration after setting the Vault entries (or run `supabase/setup-notification-cron.sql`). It schedules a check every minute but only invokes the Edge Function when there are unsent events. One call per minute is about 43,200 monthly calls at most, within the current Free allowance of 500,000 calls/month before other functions.
 5. Add `NEXT_PUBLIC_VAPID_PUBLIC_KEY` to the Cloudflare build environment and rebuild.
 6. On an iPhone running iOS 16.4+, add `/admin/` to the Home Screen, open it from there, sign in and choose **Notifications → Enable phone notifications**. Android supports Web Push in compatible browsers. Enrollment requires a user gesture and permission.
 7. The local **test notification** button checks the device permission/service-worker path. A real test order is still needed to verify the entire server-to-phone path.
@@ -113,5 +114,6 @@ Do not call the store live until these account-dependent checks pass.
 - Live synthetic order/retry/expiry assertions passed inside a rolled-back transaction; no fixture products or orders were retained.
 - Live catalog returned 15 out-of-stock variants matching initial inventory.
 - The supplied Auth account was granted admin membership; no password was read or stored by the agent.
+- The notification worker returned HTTP 200 with its configured secret. A server-side pg_net request using the encrypted Vault secret also returned HTTP 200, and both cron jobs were confirmed active. This verifies dispatch configuration, not delivery to a physical phone.
 - English and Arabic login layouts checked at phone width. Signed-in screens, password recovery and server-to-phone push still need account/device acceptance.
 - Security advisor warnings for the intentionally public availability RPC and admin-checked SECURITY DEFINER functions were reviewed. The platform's internal `rls_auto_enable` helper was revoked from API roles. `admin_users` deliberately has RLS and no client policies (deny-all). See [Supabase privileged function advisory](https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable). Unused-index notices are expected on a new empty store.
