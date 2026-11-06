@@ -33,6 +33,7 @@ for (const table of [
   "order_item_costs",
   "finance_entries",
   "finance_payment_events",
+  "customer_profiles",
 ]) {
   const response = await fetch(`${base}/rest/v1/${table}?select=*`, {
     headers,
@@ -57,6 +58,16 @@ const pastChat = await fetch(`${base}/rest/v1/rpc/create_past_chat_order`, {
 });
 if (![401, 403].includes(pastChat.status))
   throw new Error(`Unexpected public past-order response: ${pastChat.status}`);
+for (const [name, body] of [
+  ["save_customer_profile", { p_full_name: "Public TEST" }],
+  ["skip_customer_onboarding", {}],
+]) {
+  const response = await fetch(`${base}/rest/v1/rpc/${name}`, {
+    method: "POST", headers, body: JSON.stringify(body),
+  });
+  if (![401, 403].includes(response.status))
+    throw new Error(`Unexpected public profile response: ${name} ${response.status}`);
+}
 const rejected = await fetch(`${base}/functions/v1/place-order`, {
   method: "POST",
   headers: { ...headers, Origin: "https://untrusted.example" },

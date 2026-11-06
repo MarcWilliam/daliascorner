@@ -1,21 +1,17 @@
 "use client";
 import Script from "next/script";
 import { createPortal } from "react-dom";
-import {
-  Banknote,
-  Landmark,
-  ShieldCheck,
-  UserRound,
-  Info,
-} from "lucide-react";
+import { Banknote, Landmark, ShieldCheck, UserRound, Info } from "lucide-react";
 import { receiptExpired } from "@/lib/store/order-receipt";
 import { checkoutIssue } from "@/lib/store/checkout-readiness";
 import { useCustomerAuth } from "@/components/providers/CustomerAuthProvider";
 import { checkoutCopy, checkoutFieldClass } from "@/lib/store/checkout-copy";
 import {
-  restoreCheckoutAttempt,
-  type CheckoutAttempt,
-} from "@/lib/store/checkout-attempt";
+  checkoutAttemptForOwner,
+  restoreOwnedCheckoutAttempt,
+  checkoutRequestScope,
+  type OwnedCheckoutAttempt,
+} from "@/lib/store/checkout-identity";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useCart } from "@/components/providers/CartProvider";
 import { useInventory } from "@/components/providers/InventoryProvider";
@@ -59,7 +55,22 @@ export function StoreCheckout({
   const [zones, setZones] = useState<
     { id: string; name_en: string; name_ar: string; fee: number }[]
   >([]);
-  const [zone, setZone] = useState("");
+  const {
+    session,
+    signIn,
+    ready: authReady,
+    profile,
+    profileReady,
+  } = useCustomerAuth();
+  const zoneOwner = session?.user.id ?? "guest";
+  const currentZoneOwner = useRef(zoneOwner);
+  currentZoneOwner.current = zoneOwner;
+  const [zoneDraft, setZoneDraft] = useState({
+    owner: zoneOwner,
+    value: "",
+    touched: false,
+  });
+  const zone = zoneDraft.owner === zoneOwner ? zoneDraft.value : "";
   const [payment, setPayment] = useState("cash");
   const [settings, setSettings] = useState({
     cash_enabled: false,
@@ -69,7 +80,6 @@ export function StoreCheckout({
   const [configStatus, setConfigStatus] = useState<
     "loading" | "ready" | "error"
   >("loading");
-  const { session, signIn } = useCustomerAuth();
   const signedIn = !!session;
   const loadOptions = useCallback(async () => {
     if (!STORE_CONFIGURED) return;
@@ -81,9 +91,17 @@ export function StoreCheckout({
       ]);
       if (z.error || s.error || !s.data) throw Error();
       setZones(z.data ?? []);
-      setZone((current) =>
-        z.data?.some((item) => item.id === current) ? current : "",
-      );
+      setZoneDraft((current) => {
+        const owner = currentZoneOwner.current;
+        return current.owner === owner
+          ? {
+              ...current,
+              value: z.data?.some((item) => item.id === current.value)
+                ? current.value
+                : "",
+            }
+          : { owner, value: "", touched: false };
+      });
       setSettings(s.data);
       setPayment((current) =>
         current === "cash" && s.data.cash_enabled
@@ -104,6 +122,42 @@ export function StoreCheckout({
   useEffect(() => {
     if (visible) void loadOptions();
   }, [visible, loadOptions]);
+  useEffect(() => {
+    setZoneDraft((current) =>
+      current.owner === zoneOwner
+        ? current
+        : { owner: zoneOwner, value: "", touched: false },
+    );
+  }, [zoneOwner]);
+  useEffect(() => {
+    if (
+      !authReady ||
+      !profileReady ||
+      !session ||
+      profile?.user_id !== session.user.id ||
+      !profile.completed_at ||
+      configStatus !== "ready"
+    )
+      return;
+    setZoneDraft((current) =>
+      current.owner !== zoneOwner || current.touched
+        ? current
+        : {
+            ...current,
+            value: zones.some((item) => item.id === profile.delivery_zone_id)
+              ? profile.delivery_zone_id!
+              : "",
+          },
+    );
+  }, [
+    authReady,
+    profileReady,
+    profile,
+    session?.user.id,
+    zoneOwner,
+    configStatus,
+    zones,
+  ]);
   const { locale, messages } = useLocale();
   const { refresh } = useInventory();
   const c = storeCopy[locale];
@@ -116,20 +170,75 @@ export function StoreCheckout({
   const verificationAvailable =
     configStatus === "ready" && zones.length > 0 && paymentAvailable;
 
-  const [token, setToken] = useState("");
+  const [tokenState, setTokenState] = useState({ owner: zoneOwner, value: "" });
+  const token = tokenState.owner === zoneOwner ? tokenState.value : "";
+  const setToken = useCallback(
+    (value: string) => {
+      if (currentZoneOwner.current === zoneOwner)
+        setTokenState({ owner: zoneOwner, value });
+    },
+    [zoneOwner],
+  );
   const [verificationRequested, setVerificationRequested] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const [saved, setSaved] = useState<{
+  const [busyState, setBusyState] = useState({
+    owner: zoneOwner,
+    value: false,
+  });
+  const busy = busyState.owner === zoneOwner && busyState.value;
+  const setBusy = useCallback(
+    (value: boolean) => {
+      if (currentZoneOwner.current === zoneOwner)
+        setBusyState({ owner: zoneOwner, value });
+    },
+    [zoneOwner],
+  );
+  const [errorState, setErrorState] = useState({ owner: zoneOwner, value: "" });
+  const error = errorState.owner === zoneOwner ? errorState.value : "";
+  const setError = useCallback(
+    (value: string) => {
+      if (currentZoneOwner.current === zoneOwner)
+        setErrorState({ owner: zoneOwner, value });
+    },
+    [zoneOwner],
+  );
+  const [savedState, setSaved] = useState<{
+    owner: string;
     order: SavedOrder;
     href: string;
   } | null>(null);
+  const saved =
+    authReady && savedState?.owner === zoneOwner ? savedState : null;
   const [scriptReady, setScriptReady] = useState(false);
   const widget = useRef<HTMLDivElement>(null);
   const widgetId = useRef<string>();
-  const guard = useRef(false);
+  const submissions = useRef(checkoutRequestScope());
   const receipt = useRef<HTMLHeadingElement>(null);
-  const attempt = useRef<CheckoutAttempt | null>(null);
+  const attempt = useRef<OwnedCheckoutAttempt | null>(null);
+  useEffect(() => {
+    if (!authReady) return;
+    submissions.current.invalidateOwner(zoneOwner);
+    setBusyState((current) =>
+      current.owner === zoneOwner
+        ? current
+        : { owner: zoneOwner, value: false },
+    );
+    setErrorState((current) =>
+      current.owner === zoneOwner ? current : { owner: zoneOwner, value: "" },
+    );
+    setSaved((current) => (current?.owner === zoneOwner ? current : null));
+    setVerificationRequested(false);
+    attempt.current = checkoutAttemptForOwner(attempt.current, zoneOwner);
+    try {
+      const persisted = checkoutAttemptForOwner(
+        JSON.parse(localStorage.getItem(storageKey) ?? "null"),
+        zoneOwner,
+      );
+      if (persisted)
+        localStorage.setItem(storageKey, JSON.stringify(persisted));
+      else localStorage.removeItem(storageKey);
+    } catch {}
+  }, [zoneOwner, authReady]);
+  useEffect(() => () => submissions.current.cancel(), []);
   const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
   useEffect(() => {
     if (
@@ -164,6 +273,9 @@ export function StoreCheckout({
     };
   }, [
     visible,
+    zoneOwner,
+    setToken,
+    setError,
     verificationRequested,
     verificationAvailable,
     scriptReady,
@@ -176,7 +288,7 @@ export function StoreCheckout({
     if (saved) receipt.current?.focus();
   }, [saved]);
   const submit = useCallback(async () => {
-    if (guard.current) return;
+    if (submissions.current.busy(zoneOwner) || !authReady || !visible) return;
     const issue = checkoutIssue(customer, selectedZone?.id ?? "");
     if (issue) {
       setError(ui[`${issue}Required`]);
@@ -193,11 +305,16 @@ export function StoreCheckout({
       widget.current?.scrollIntoView({ block: "center", behavior: "smooth" });
       return;
     }
-    guard.current = true;
+    const request = submissions.current.begin(zoneOwner);
+    const current = () => request.current(currentZoneOwner.current);
+    let timeout: ReturnType<typeof setTimeout> | undefined;
     setBusy(true);
     setError("");
     try {
       const session = (await storeClient().auth.getSession()).data.session;
+      if (!current()) return;
+      if ((session?.user.id ?? "guest") !== zoneOwner)
+        throw Error("SIGN_IN_AGAIN");
       const canonical = parseOrder({
         key: crypto.randomUUID(),
         customer,
@@ -216,6 +333,7 @@ export function StoreCheckout({
           }),
         ),
       );
+      if (!current()) return;
       const fingerprint = Array.from(new Uint8Array(bytes), (b) =>
         b.toString(16).padStart(2, "0"),
       ).join("");
@@ -223,10 +341,11 @@ export function StoreCheckout({
       try {
         persisted = JSON.parse(localStorage.getItem(storageKey) ?? "null");
       } catch {}
-      const nextAttempt = restoreCheckoutAttempt(
+      const nextAttempt = restoreOwnedCheckoutAttempt(
         attempt.current,
         persisted,
         fingerprint,
+        zoneOwner,
         () => crypto.randomUUID(),
       );
       const { key, orderToken } = nextAttempt;
@@ -237,6 +356,8 @@ export function StoreCheckout({
           JSON.stringify({ ...attempt.current, orderToken }),
         );
       } catch {}
+      if (!current()) return;
+      timeout = setTimeout(request.abort, 25000);
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/place-order`,
         {
@@ -270,10 +391,12 @@ export function StoreCheckout({
               : {}),
             turnstileToken: token,
           }),
-          signal: AbortSignal.timeout(25000),
+          signal: request.signal,
         },
       );
+      if (!current()) return;
       const result = await response.json();
+      if (!current()) return;
       if (!response.ok) throw new Error(result.error);
       const order = result as SavedOrder;
       if (receiptExpired(order)) throw new Error("ORDER_EXPIRED");
@@ -282,10 +405,15 @@ export function StoreCheckout({
       } catch {
         /* Receipt link remains usable without storage. */
       }
-      setSaved({ order, href: "/order/#order=" + orderToken });
+      setSaved({
+        owner: zoneOwner,
+        order,
+        href: "/order/#order=" + orderToken,
+      });
       // Submitted-order Lead is sent once by the server; Purchase waits for paid status.
       void refresh();
     } catch (e) {
+      if (!current()) return;
       const code = e instanceof Error ? e.message : "";
       setError(
         code === "ORDER_NOT_AVAILABLE"
@@ -310,12 +438,20 @@ export function StoreCheckout({
                         : c.saveError,
       );
     } finally {
-      setBusy(false);
-      guard.current = false;
-      setToken("");
-      if (widgetId.current) window.turnstile?.reset(widgetId.current);
+      clearTimeout(timeout);
+      if (request.finish(currentZoneOwner.current)) {
+        setBusy(false);
+        setToken("");
+        if (widgetId.current) window.turnstile?.reset(widgetId.current);
+      }
     }
   }, [
+    authReady,
+    visible,
+    zoneOwner,
+    setBusy,
+    setError,
+    setToken,
     selectedZone,
     ui,
     token,
@@ -448,6 +584,7 @@ export function StoreCheckout({
       )}
       <ClayButton
         disabled={
+          !authReady ||
           busy ||
           !siteKey ||
           !zones.length ||
@@ -529,7 +666,7 @@ export function StoreCheckout({
         <div className="relative !mt-1.5">
           <select
             id="checkout-zone"
-            disabled={configStatus !== "ready" || !zones.length}
+            disabled={!authReady || configStatus !== "ready" || !zones.length}
             aria-describedby={
               configStatus === "error" ||
               (configStatus === "ready" && !zones.length)
@@ -539,7 +676,11 @@ export function StoreCheckout({
             className={checkoutFieldClass}
             value={zone}
             onChange={(e) => {
-              setZone(e.target.value);
+              setZoneDraft({
+                owner: zoneOwner,
+                value: e.target.value,
+                touched: true,
+              });
               setError("");
             }}
           >

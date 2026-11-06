@@ -9,8 +9,25 @@ import {
   useState,
 } from "react";
 import type { Session } from "@supabase/supabase-js";
+import { accountRequestScope } from "@/lib/store/customer-account";
+import {
+  loadVerifiedRole,
+  oauthCallbackIssue,
+  type CustomerAuthIssue,
+} from "@/lib/store/customer-auth";
+import {
+  profileForUser,
+  customerProfileArgs,
+  type CustomerProfile,
+  type CustomerProfileDraft,
+} from "@/lib/store/customer-profile";
+import { customerCopy } from "@/lib/store/customer-copy";
 import { X, UserRound } from "lucide-react";
 import { storeClient, STORE_CONFIGURED } from "@/lib/store/client";
+import {
+  CHECKOUT_GUEST_TRANSFER_KEY,
+  deliveryDraftKey,
+} from "@/lib/store/checkout-profile";
 import { AUTH_RETURN_KEY, parseAuthReturn } from "@/lib/store/auth-return";
 import { useCart } from "./CartProvider";
 import { useLocale } from "./LocaleProvider";
@@ -20,6 +37,19 @@ type CustomerAuth = {
   session: Session | null;
   ready: boolean;
   signIn: () => void;
+  isAdmin: boolean;
+  roleReady: boolean;
+  roleError: boolean;
+  refreshRole: () => Promise<boolean>;
+  authIssue: CustomerAuthIssue;
+  clearAuthIssue: () => void;
+  profile: CustomerProfile | null;
+  profileReady: boolean;
+  profileError: boolean;
+  refreshProfile: () => Promise<void>;
+  clearProfile: () => void;
+  saveProfile: (draft: CustomerProfileDraft) => Promise<CustomerProfile>;
+  skipProfile: () => Promise<CustomerProfile>;
 };
 const Context = createContext<CustomerAuth | null>(null);
 export function useCustomerAuth() {
@@ -35,45 +65,249 @@ export function CustomerAuthProvider({
   const { isOpen, close: closeCart, open: openCart } = useCart();
   const { locale, dir } = useLocale();
   const ar = locale === "ar";
+  const c = customerCopy[locale];
   const [session, setSession] = useState<Session | null>(null);
   const [ready, setReady] = useState(!STORE_CONFIGURED);
   const [shown, setShown] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState(false);
+  const [authIssue, setAuthIssue] = useState<CustomerAuthIssue>(null);
+  const [role, setRole] = useState({
+    userId: "",
+    admin: false,
+    ready: !STORE_CONFIGURED,
+    error: false,
+  });
+  const userId = session?.user.id ?? "";
+  const currentUser = useRef(userId);
+  currentUser.current = userId;
+  const roleRequests = useRef(accountRequestScope());
+  const clearAuthIssue = useCallback(() => setAuthIssue(null), []);
+  const refreshRole = useCallback(async () => {
+    const identity = currentUser.current;
+    const request = roleRequests.current.begin();
+    const current = () => request.current() && currentUser.current === identity;
+    if (!identity || !STORE_CONFIGURED) {
+      setRole({ userId: identity, admin: false, ready: true, error: false });
+      return false;
+    }
+    setRole((previous) =>
+      previous.userId === identity && previous.ready
+        ? previous
+        : { userId: identity, admin: false, ready: false, error: false },
+    );
+    const timeout = setTimeout(() => {
+      if (current()) {
+        setRole({ userId: identity, admin: false, ready: true, error: true });
+        roleRequests.current.cancel();
+      }
+    }, 15000);
+    try {
+      const admin = await loadVerifiedRole(async () => {
+        const { data, error } = await storeClient()
+          .rpc("is_admin")
+          .abortSignal(request.signal);
+        return { data, error };
+      }, current);
+      if (admin !== null && current()) {
+        setRole({ userId: identity, admin, ready: true, error: false });
+        return admin;
+      }
+    } catch {
+      if (current())
+        setRole({ userId: identity, admin: false, ready: true, error: true });
+    } finally {
+      clearTimeout(timeout);
+    }
+    return false;
+  }, []);
+  useEffect(() => {
+    void refreshRole();
+    return () => roleRequests.current.cancel();
+  }, [userId, refreshRole]);
+  const [profileState, setProfileState] = useState<{
+    userId: string;
+    value: CustomerProfile | null;
+    ready: boolean;
+    error: boolean;
+  }>({ userId: "", value: null, ready: !STORE_CONFIGURED, error: false });
+  const profileRequests = useRef(accountRequestScope());
+  const clearProfile = useCallback(() => {
+    profileRequests.current.cancel();
+    setProfileState({ userId: "", value: null, ready: true, error: false });
+  }, []);
+  const refreshProfile = useCallback(async () => {
+    const identity = currentUser.current;
+    const request = profileRequests.current.begin();
+    const current = () => request.current() && currentUser.current === identity;
+    if (!identity || !STORE_CONFIGURED) {
+      setProfileState({
+        userId: identity,
+        value: null,
+        ready: true,
+        error: false,
+      });
+      return;
+    }
+    setProfileState((previous) => ({
+      userId: identity,
+      value: profileForUser(previous.value, identity),
+      ready: false,
+      error: false,
+    }));
+    const timeout = setTimeout(() => {
+      if (current()) {
+        setProfileState({
+          userId: identity,
+          value: null,
+          ready: true,
+          error: true,
+        });
+        profileRequests.current.cancel();
+      }
+    }, 15000);
+    try {
+      const { data, error } = await storeClient()
+        .from("customer_profiles")
+        .select(
+          "user_id,full_name,phone,delivery_address,delivery_zone_id,completed_at,skipped_at,updated_at",
+        )
+        .eq("user_id", identity)
+        .abortSignal(request.signal)
+        .maybeSingle();
+      if (!current()) return;
+      if (error || (data && data.user_id !== identity))
+        throw error ?? Error("PROFILE_IDENTITY_MISMATCH");
+      setProfileState({
+        userId: identity,
+        value: data as CustomerProfile | null,
+        ready: true,
+        error: false,
+      });
+    } catch {
+      if (current())
+        setProfileState({
+          userId: identity,
+          value: null,
+          ready: true,
+          error: true,
+        });
+    } finally {
+      clearTimeout(timeout);
+    }
+  }, []);
+  useEffect(() => {
+    void refreshProfile();
+    return () => profileRequests.current.cancel();
+  }, [userId, refreshProfile]);
+  const writeProfile = useCallback(
+    async (name: string, args: Record<string, unknown>) => {
+      const identity = currentUser.current;
+      if (!identity) throw Error("SIGN_IN_REQUIRED");
+      const request = profileRequests.current.begin();
+      const { data, error } = await storeClient()
+        .rpc(name, args)
+        .abortSignal(AbortSignal.timeout(15000));
+      if (!request.current() || currentUser.current !== identity)
+        throw Error("ACCOUNT_CHANGED");
+      if (error) throw error;
+      if (!data || data.user_id !== identity)
+        throw Error("PROFILE_IDENTITY_MISMATCH");
+      const value = data as CustomerProfile;
+      setProfileState({ userId: identity, value, ready: true, error: false });
+      return value;
+    },
+    [],
+  );
+  const saveProfile = useCallback(
+    (draft: CustomerProfileDraft) =>
+      writeProfile("save_customer_profile", customerProfileArgs(draft)),
+    [writeProfile],
+  );
+  const skipProfile = useCallback(
+    () => writeProfile("skip_customer_onboarding", {}),
+    [writeProfile],
+  );
   const dialog = useRef<HTMLDialogElement>(null);
   const resumeCart = useRef(false);
   const trigger = useRef<HTMLElement | null>(null);
   useEffect(() => {
     if (!STORE_CONFIGURED) return;
+    const callback = oauthCallbackIssue(location.href);
+    if (callback.issue) {
+      setAuthIssue(callback.issue);
+      try {
+        localStorage.removeItem(AUTH_RETURN_KEY);
+      } catch {}
+      try {
+        sessionStorage.removeItem(CHECKOUT_GUEST_TRANSFER_KEY);
+      } catch {}
+      history.replaceState(null, "", callback.cleanPath);
+    }
     let active = true;
-    void storeClient()
-      .auth.getSession()
-      .then(({ data, error }) => {
-        if (active) {
-          setSession(data.session);
-          setReady(true);
-          if (error)
-            setError(
-              ar
-                ? "تعذر تحميل الحساب. حاول مرة أخرى."
-                : "Could not load your account. Please try again.",
+    let authEventSeen = false;
+    const db = storeClient();
+    const { data } = db.auth.onAuthStateChange((event, next) => {
+      if (!active) return;
+      authEventSeen = true;
+      if (event === "SIGNED_OUT") {
+        try {
+          if (currentUser.current)
+            localStorage.removeItem(
+              deliveryDraftKey(`user:${currentUser.current}`),
             );
-        }
-      });
-    const { data } = storeClient().auth.onAuthStateChange((_event, next) => {
+        } catch {}
+        try {
+          sessionStorage.removeItem(CHECKOUT_GUEST_TRANSFER_KEY);
+        } catch {}
+      }
+      const nextUser = next?.user.id ?? "";
+      if (currentUser.current !== nextUser) {
+        roleRequests.current.cancel();
+        profileRequests.current.cancel();
+        setRole({
+          userId: nextUser,
+          admin: false,
+          ready: !nextUser,
+          error: false,
+        });
+        setProfileState({
+          userId: nextUser,
+          value: null,
+          ready: !nextUser,
+          error: false,
+        });
+      }
+      currentUser.current = nextUser;
       setSession(next);
       setReady(true);
     });
+    void db.auth
+      .getSession()
+      .then(({ data, error }) => {
+        if (!active || authEventSeen) return;
+        currentUser.current = data.session?.user.id ?? "";
+        setSession(data.session);
+        setReady(true);
+        if (error) setAuthIssue("session");
+      })
+      .catch(() => {
+        if (active && !authEventSeen) {
+          setReady(true);
+          setAuthIssue("session");
+        }
+      });
     return () => {
       active = false;
       data.subscription.unsubscribe();
     };
-  }, [ar]);
+  }, []);
   const signIn = useCallback(() => {
     trigger.current = document.activeElement as HTMLElement;
     resumeCart.current = isOpen;
     closeCart();
-    setError("");
+    setError(false);
+    setAuthIssue(null);
     setShown(true);
   }, [isOpen, closeCart]);
   const dismiss = useCallback(() => {
@@ -103,7 +337,7 @@ export function CustomerAuthProvider({
   async function social(provider: "google" | "facebook") {
     if (busy) return;
     setBusy(true);
-    setError("");
+    setError(false);
     try {
       const destination = parseAuthReturn({
         path: location.pathname,
@@ -115,6 +349,16 @@ export function CustomerAuthProvider({
       } catch {
         /* Sign-in still returns to the account page when storage is blocked. */
       }
+      try {
+        if (resumeCart.current && !currentUser.current)
+          sessionStorage.setItem(
+            CHECKOUT_GUEST_TRANSFER_KEY,
+            JSON.stringify({ at: Date.now() }),
+          );
+        else sessionStorage.removeItem(CHECKOUT_GUEST_TRANSFER_KEY);
+      } catch {
+        /* A blocked marker prevents transferring a guest draft; sign-in still works. */
+      }
       const { error } = await storeClient().auth.signInWithOAuth({
         provider,
         options: {
@@ -124,18 +368,41 @@ export function CustomerAuthProvider({
       });
       if (error) throw error;
     } catch {
-      setError(
-        ar
-          ? "تعذر بدء تسجيل الدخول. حاول مرة أخرى، أو تابع كضيف."
-          : "Could not start sign-in. Try again, or continue as a guest.",
-      );
+      setError(true);
+      try {
+        localStorage.removeItem(AUTH_RETURN_KEY);
+      } catch {}
+      try {
+        sessionStorage.removeItem(CHECKOUT_GUEST_TRANSFER_KEY);
+      } catch {}
       setBusy(false);
     }
   }
   const google = process.env.NEXT_PUBLIC_GOOGLE_LOGIN_ENABLED === "true";
   const facebook = process.env.NEXT_PUBLIC_FACEBOOK_LOGIN_ENABLED === "true";
   return (
-    <Context.Provider value={{ session, ready, signIn }}>
+    <Context.Provider
+      value={{
+        session,
+        ready,
+        signIn,
+        isAdmin: role.userId === userId && role.ready && role.admin,
+        roleReady: !userId || (role.userId === userId && role.ready),
+        roleError: !!userId && role.userId === userId && role.error,
+        refreshRole,
+        authIssue,
+        clearAuthIssue,
+        profile: profileForUser(profileState.value, userId),
+        profileReady:
+          !userId || (profileState.userId === userId && profileState.ready),
+        profileError:
+          !!userId && profileState.userId === userId && profileState.error,
+        refreshProfile,
+        clearProfile,
+        saveProfile,
+        skipProfile,
+      }}
+    >
       {children}
       <dialog
         ref={dialog}
@@ -177,15 +444,16 @@ export function CustomerAuthProvider({
           id="customer-signin-title"
           className="font-display text-2xl font-bold"
         >
-          {ar ? "أهلًا بك في دالياز كورنر" : "Welcome to Dalia’s Corner"}
+          {c.authTitle}
         </h2>
         <p
           id="customer-signin-description"
           className="mt-3 text-sm leading-6 text-ink-muted"
         >
-          {ar
-            ? "سجّل الدخول أو أنشئ حسابًا لمتابعة طلباتك. يمكنك أيضًا إكمال الطلب كضيف."
-            : "Sign in or create an account to keep your orders together. You can also check out as a guest."}
+          {c.authDescription}
+        </p>
+        <p className="mt-2 text-sm leading-6 text-ink-muted">
+          {c.authOptional}
         </p>
         <div className="mt-6 space-y-3">
           {google && (
@@ -226,7 +494,7 @@ export function CustomerAuthProvider({
               role="alert"
               className="rounded-xl bg-destructive/10 p-3 text-sm text-destructive"
             >
-              {error}
+              {c.failed}
             </p>
           )}
           <button

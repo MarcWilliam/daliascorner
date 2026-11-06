@@ -16,6 +16,8 @@ import {
 import { storeClient, STORE_CONFIGURED } from "@/lib/store/client";
 import { storeCopy } from "@/lib/store/copy";
 import { useLocale } from "@/components/providers/LocaleProvider";
+import { CustomerProfile } from "./CustomerProfile";
+import { customerCopy } from "@/lib/store/customer-copy";
 import { MiniNav } from "@/components/sections/MiniNav";
 import { ClayButton } from "@/components/ui/ClayButton";
 import { CartDrawer } from "@/components/sections/CartDrawer";
@@ -44,7 +46,20 @@ export function CustomerPortal() {
   const { locale } = useLocale();
   const ar = locale === "ar";
   const c = storeCopy[locale];
-  const { session, ready, signIn } = useCustomerAuth();
+  const {
+    session,
+    ready,
+    signIn,
+    isAdmin,
+    roleReady,
+    roleError,
+    refreshRole,
+    authIssue,
+    clearAuthIssue,
+    clearProfile,
+    refreshProfile,
+  } = useCustomerAuth();
+  const accountCopy = customerCopy[locale];
   const [loading, setLoading] = useState(true);
   const [signingOut, setSigningOut] = useState(false);
   const [guestReady, setGuestReady] = useState(false);
@@ -205,6 +220,31 @@ export function CustomerPortal() {
     <>
       <MiniNav />
       <main className="container-page max-w-4xl space-y-6 py-8 sm:py-12">
+        {authIssue && (
+          <section
+            role="alert"
+            className="rounded-2xl border border-line bg-surface p-4"
+          >
+            <p className="text-sm leading-6">{accountCopy[authIssue]}</p>
+            <div className="mt-2 flex flex-wrap gap-3">
+              <button
+                type="button"
+                className="min-h-11 rounded-lg font-semibold text-brand underline"
+                onClick={signIn}
+              >
+                {accountCopy.retrySignIn}
+              </button>
+              <button
+                type="button"
+                className="min-h-11 rounded-lg px-2 text-sm text-ink-muted"
+                onClick={clearAuthIssue}
+              >
+                {accountCopy.dismiss}
+              </button>
+            </div>
+          </section>
+        )}
+
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="mb-2 text-sm font-semibold text-brand">
@@ -256,6 +296,7 @@ export function CustomerPortal() {
               disabled={signingOut}
               onClick={async () => {
                 requests.current.cancel();
+                clearProfile();
                 setSigningOut(true);
                 setLoadedIdentity("");
                 setOrders([]);
@@ -269,6 +310,7 @@ export function CustomerPortal() {
                   return;
                 if (error) {
                   setError(c.error);
+                  void refreshProfile();
                   return;
                 }
                 setOrders([]);
@@ -285,6 +327,32 @@ export function CustomerPortal() {
             </button>
           </div>
         )}
+        {session && roleReady && isAdmin && (
+          <a
+            href="/admin/"
+            className="inline-flex min-h-12 items-center rounded-xl border border-brand/30 bg-leaf-soft/50 px-4 font-semibold text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+          >
+            {accountCopy.admin}
+          </a>
+        )}
+        {session && roleError && (
+          <p
+            role="status"
+            className="rounded-xl bg-canvas-sunk px-4 py-2 text-sm text-ink-muted"
+          >
+            {accountCopy.roleError}{" "}
+            <button
+              type="button"
+              onClick={() => void refreshRole()}
+              className="min-h-11 rounded-lg px-2 font-semibold text-brand underline"
+            >
+              {accountCopy.retry}
+            </button>
+          </p>
+        )}
+        {session &&
+          (!guest || loadedIdentity === identity) &&
+          !adminPreview && <CustomerProfile key={session.user.id} />}
         {!STORE_CONFIGURED ? (
           <p>{c.setup}</p>
         ) : (

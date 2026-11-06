@@ -6,6 +6,8 @@ Latest integrated evidence: [end-to-end order verification](e2e-order-verificati
 
 Admins can also [record orders received in chat](manual-chat-orders.md), using catalog prices and delivery fees with the same stock and finance lifecycle.
 
+Customer registration/profile steps and the verified guest/customer/admin boundaries are documented in [the account and access review](customer-account-access-review.md).
+
 ## Customer journey
 
 1. Add products to the cart. Sign in via an enabled Google/Facebook provider before checkout, or continue as a guest.

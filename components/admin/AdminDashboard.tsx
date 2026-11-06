@@ -6,7 +6,8 @@ import { InventoryPanel, type Stock, type Movement } from "./InventoryPanel";
 import { ManualOrderForm } from "./ManualOrderForm";
 import { PRODUCTS } from "@/lib/products";
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { Session } from "@supabase/supabase-js";
+import { useCustomerAuth } from "@/components/providers/CustomerAuthProvider";
+import { accountRequestScope } from "@/lib/store/customer-account";
 import {
   Package,
   ShoppingBag,
@@ -72,12 +73,19 @@ const panel =
 export function AdminDashboard() {
   const { locale, dir } = useLocale();
   const c = storeCopy[locale];
-  const authError = useRef(c.error);
-  authError.current = c.error;
-  const [session, setSession] = useState<Session | null>(null);
-  const [authReady, setAuthReady] = useState(false);
-  const [admin, setAdmin] = useState(false);
-  const [checking, setChecking] = useState(false);
+  const {
+    session,
+    ready: authReady,
+    isAdmin,
+    roleReady,
+    roleError,
+    refreshRole,
+  } = useCustomerAuth();
+  const admin = !!session && roleReady && isAdmin;
+  const checking = !!session && !roleReady;
+  const viewer = useRef<string | null>(null);
+  viewer.current = session?.user.id ?? null;
+  const dataRequests = useRef(accountRequestScope());
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [recovery, setRecovery] = useState(false);
@@ -105,58 +113,32 @@ export function AdminDashboard() {
       timeStyle: "short",
     });
   useEffect(() => {
-    if (!STORE_CONFIGURED) {
-      setAuthReady(true);
-      return;
-    }
-    let active = true;
-    const db = storeClient();
-    void db.auth.getSession().then(({ data, error }) => {
-      if (active) {
-        setSession(data.session);
-        setAuthReady(true);
-        if (error) setError(authError.current);
-      }
-    });
-    const { data } = db.auth.onAuthStateChange((event, next) => {
-      setSession(next);
-      setAuthReady(true);
+    if (!STORE_CONFIGURED) return;
+    const { data } = storeClient().auth.onAuthStateChange((event) => {
       if (event === "PASSWORD_RECOVERY") setRecovery(true);
+      else if (event === "SIGNED_OUT" || event === "SIGNED_IN")
+        setRecovery(false);
     });
-    return () => {
-      active = false;
-      data.subscription.unsubscribe();
-    };
+    return () => data.subscription.unsubscribe();
   }, []);
   useEffect(() => {
-    setAdmin(false);
+    dataRequests.current.cancel();
     setOrders([]);
     setStock([]);
     setNotices([]);
     setMovements([]);
-    if (!session) {
-      setChecking(false);
-      return;
-    }
-    let active = true;
-    setChecking(true);
-    void storeClient()
-      .rpc("is_admin")
-      .then(({ data, error }) => {
-        if (active) {
-          setAdmin(data === true && !error);
-          setChecking(false);
-          if (error) setError(authError.current);
-        }
-      });
-    return () => {
-      active = false;
-    };
-  }, [session?.user.id]);
+    setShowManualOrder(false);
+    setPush(false);
+  }, [session?.user.id, admin]);
   const refresh = useCallback(async () => {
-    if (!admin) return;
+    if (!admin || !session) return;
+    const userId = session.user.id;
+    const request = dataRequests.current.begin();
+    const current = () => request.current() && viewer.current === userId;
     setLoading(true);
     try {
+      const allowed = await refreshRole();
+      if (!current() || !allowed) return;
       const db = storeClient();
       let q = db
         .from("orders")
@@ -166,38 +148,53 @@ export function AdminDashboard() {
       if (filter !== "all") q = q.eq("status", filter);
       if (source !== "all") q = q.eq("source", source);
       const results = await Promise.all([
-        q,
-        db.from("inventory").select("*").order("product_id"),
+        q.abortSignal(request.signal),
+        db
+          .from("inventory")
+          .select("*")
+          .order("product_id")
+          .abortSignal(request.signal),
         db
           .from("admin_notifications")
           .select("id,kind,read_at,created_at,product_id")
           .order("created_at", { ascending: false })
-          .limit(100),
+          .limit(100)
+          .abortSignal(request.signal),
         db
           .from("stock_movements")
           .select(
             "id,product_id,on_hand_delta,reserved_delta,reason,created_at",
           )
           .order("id", { ascending: false })
-          .limit(30),
+          .limit(30)
+          .abortSignal(request.signal),
       ]);
+      if (!current()) return;
       if (results.some((r) => r.error)) throw new Error();
       setOrders(results[0].data as unknown as Order[]);
       setStock(results[1].data as unknown as Stock[]);
       setNotices(results[2].data as unknown as Notice[]);
       setMovements(results[3].data as unknown as Movement[]);
     } catch {
-      setError(c.error);
+      if (current()) setError(c.error);
     } finally {
-      setLoading(false);
+      if (current()) setLoading(false);
     }
-  }, [admin, limit, filter, source, c.error]);
+  }, [admin, session?.user.id, refreshRole, limit, filter, source, c.error]);
   useEffect(() => {
     void refresh();
     const timer = setInterval(() => {
       if (document.visibilityState === "visible") void refresh();
     }, 60000);
-    return () => clearInterval(timer);
+    const focus = () => {
+      void refresh();
+    };
+    window.addEventListener("focus", focus);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener("focus", focus);
+      dataRequests.current.cancel();
+    };
   }, [refresh]);
   useEffect(() => {
     if (!admin || !("serviceWorker" in navigator)) return;
@@ -256,8 +253,6 @@ export function AdminDashboard() {
       }
       const { error } = await storeClient().auth.signOut();
       if (error) throw error;
-      setAdmin(false);
-      setSession(null);
       setPush(false);
     });
   const rpc = async (name: string, args: Record<string, unknown>) => {
@@ -322,7 +317,7 @@ export function AdminDashboard() {
           </section>
         ) : !authReady || checking ? (
           <p role="status">{c.loading}</p>
-        ) : recovery && session ? (
+        ) : recovery && session && admin ? (
           <form
             className={`${panel} max-w-md space-y-4`}
             onSubmit={(e) => {
@@ -404,9 +399,38 @@ export function AdminDashboard() {
               {c.reset}
             </button>
           </form>
+        ) : roleError ? (
+          <section className={`${panel} space-y-4`}>
+            <p role="alert">
+              {locale === "ar"
+                ? "تعذر التحقق من صلاحيات الإدارة. لم يتم فتح لوحة الإدارة."
+                : "Admin access could not be verified. The admin panel has not been opened."}
+            </p>
+            <ClayButton onClick={() => void refreshRole()}>
+              {locale === "ar" ? "إعادة التحقق" : "Check access again"}
+            </ClayButton>
+            <a
+              className="block min-h-11 text-brand underline"
+              href={asset("/account/")}
+            >
+              {locale === "ar" ? "حسابي وطلباتي" : "My account & orders"}
+            </a>
+          </section>
         ) : !admin ? (
           <section className={panel}>
             <p role="alert">{c.denied}</p>
+            <p className="mt-3 text-sm text-ink-muted">
+              {locale === "ar"
+                ? "تسجيل الدخول أو إنشاء حساب عميل لا يمنح صلاحيات الإدارة."
+                : "Signing in or creating a customer account does not grant admin access."}
+            </p>
+            <ClayButton
+              className="mt-4"
+              href={asset("/account/")}
+              variant="outline"
+            >
+              {locale === "ar" ? "حسابي وطلباتي" : "My account & orders"}
+            </ClayButton>
           </section>
         ) : (
           <>

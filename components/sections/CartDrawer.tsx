@@ -9,10 +9,20 @@ import { useLocale } from "@/components/providers/LocaleProvider";
 import { useAnnouncer } from "@/components/providers/Announcer";
 import { getProduct, getProductName } from "@/lib/products";
 import { type Customer } from "@/lib/whatsapp";
-import { STORAGE_CUSTOMER } from "@/lib/config";
 import { StoreCheckout } from "@/components/ui/StoreCheckout";
 import { checkoutFieldClass } from "@/lib/store/checkout-copy";
 import { ClayButton } from "@/components/ui/ClayButton";
+import { useCustomerAuth } from "@/components/providers/CustomerAuthProvider";
+import {
+  applyProfileDelivery,
+  deliveryDraftKey,
+  deliveryEdits,
+  emptyCustomer,
+  readDeliveryDraft,
+  restoreDeliveryDraft,
+  untouchedDelivery,
+  type DeliveryTouched,
+} from "@/lib/store/checkout-profile";
 
 export function CartDrawer() {
   const active = useSaleActive();
@@ -21,12 +31,29 @@ export function CartDrawer() {
   const { t, locale, dir, messages } = useLocale();
   const announce = useAnnouncer();
 
-  const [customer, setCustomer] = useState<Customer>({
-    name: "",
-    phone: "",
-    address: "",
+  const {
+    session,
+    ready: authReady,
+    profile,
+    profileReady,
+  } = useCustomerAuth();
+  const scope = session ? `user:${session.user.id}` : "guest";
+  const previousScope = useRef<string | null>(null);
+  const resumedCheckout = useRef(false);
+  const [draft, setDraft] = useState<{
+    scope: string | null;
+    customer: Customer;
+    touched: DeliveryTouched;
+    loaded: boolean;
+  }>({
+    scope: null,
+    customer: emptyCustomer(),
+    touched: untouchedDelivery(),
+    loaded: false,
   });
-  const [loaded, setLoaded] = useState(false);
+  const customer =
+    authReady && draft.scope === scope ? draft.customer : emptyCustomer();
+  const loaded = authReady && draft.scope === scope && draft.loaded;
   const [checkoutFooter, setCheckoutFooter] = useState<HTMLDivElement | null>(
     null,
   );
@@ -35,30 +62,62 @@ export function CartDrawer() {
   useEffect(() => {
     const url = new URL(location.href);
     if (url.searchParams.get("checkout") !== "1") return;
+    resumedCheckout.current = true;
     url.searchParams.delete("checkout");
     history.replaceState(null, "", url.pathname + url.search + url.hash);
     open();
   }, [open]);
 
-  // Load any saved delivery details once on mount.
+  // Delivery drafts are account-scoped. Unowned legacy data must not appear in another account.
   useEffect(() => {
+    if (!authReady) return;
+    let restored = readDeliveryDraft(null);
     try {
-      const raw = window.localStorage.getItem(STORAGE_CUSTOMER);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (parsed && typeof parsed === "object") {
-          setCustomer({
-            name: String(parsed.name ?? ""),
-            phone: String(parsed.phone ?? ""),
-            address: String(parsed.address ?? ""),
-          });
-        }
-      }
+      if (
+        previousScope.current?.startsWith("user:") &&
+        previousScope.current !== scope
+      )
+        localStorage.removeItem(deliveryDraftKey(previousScope.current));
+      restored = restoreDeliveryDraft(
+        scope,
+        location.pathname,
+        resumedCheckout.current ? "?checkout=1" : location.search,
+        localStorage,
+        sessionStorage,
+      );
     } catch {
-      /* ignore corrupt storage */
+      /* Missing or blocked storage must not prevent checkout. */
     }
-    setLoaded(true);
-  }, []);
+    previousScope.current = scope;
+    setDraft((current) =>
+      current.scope === scope && current.loaded
+        ? current
+        : { scope, ...restored, loaded: true },
+    );
+  }, [authReady, scope, session?.user.id]);
+
+  useEffect(() => {
+    if (
+      !loaded ||
+      !profileReady ||
+      !session ||
+      profile?.user_id !== session.user.id
+    )
+      return;
+    setDraft((current) =>
+      current.scope === scope
+        ? {
+            ...current,
+            customer: applyProfileDelivery(
+              current.customer,
+              current.touched,
+              profile,
+              session.user.id,
+            ),
+          }
+        : current,
+    );
+  }, [loaded, profileReady, profile, session?.user.id, scope]);
 
   // Persist details so returning customers don't retype them. Gated on `loaded`
   // so the initial empty default never overwrites saved details before the load
@@ -66,16 +125,30 @@ export function CartDrawer() {
   useEffect(() => {
     if (!loaded) return;
     try {
-      window.localStorage.setItem(STORAGE_CUSTOMER, JSON.stringify(customer));
+      window.localStorage.setItem(
+        deliveryDraftKey(scope),
+        JSON.stringify(deliveryEdits(draft.customer, draft.touched)),
+      );
     } catch {
       /* ignore */
     }
-  }, [customer, loaded]);
+  }, [draft, loaded, scope]);
 
   const updateField =
     (key: keyof Customer) =>
     (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
-      setCustomer((c) => ({ ...c, [key]: e.target.value }));
+      setDraft((current) => ({
+        scope,
+        loaded: true,
+        customer: {
+          ...(current.scope === scope ? current.customer : emptyCustomer()),
+          [key]: e.target.value,
+        },
+        touched: {
+          ...(current.scope === scope ? current.touched : untouchedDelivery()),
+          [key]: true,
+        },
+      }));
 
   const detailsComplete =
     customer.name.trim() !== "" &&
@@ -353,10 +426,35 @@ export function CartDrawer() {
                 visible={isOpen}
                 footerTarget={checkoutFooter}
               >
-                <fieldset className="space-y-3 border-0 p-0">
+                <fieldset className="space-y-3 border-0 p-0" disabled={!loaded}>
                   <legend className="font-display text-lg font-semibold text-ink">
                     {t("cart.detailsTitle")}
                   </legend>
+                  {session &&
+                    profile?.user_id === session.user.id &&
+                    profile.completed_at && (
+                      <button
+                        type="button"
+                        className="min-h-11 rounded-lg text-sm font-semibold text-brand underline"
+                        onClick={() =>
+                          setDraft({
+                            scope,
+                            loaded: true,
+                            customer: applyProfileDelivery(
+                              emptyCustomer(),
+                              untouchedDelivery(),
+                              profile,
+                              session.user.id,
+                            ),
+                            touched: untouchedDelivery(),
+                          })
+                        }
+                      >
+                        {locale === "ar"
+                          ? "استخدام بياناتي المحفوظة"
+                          : "Use my saved details"}
+                      </button>
+                    )}
                   <div className="grid gap-3 sm:grid-cols-2">
                     <label
                       htmlFor="cart-name"

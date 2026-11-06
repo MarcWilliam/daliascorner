@@ -195,7 +195,7 @@
       },
       {
         "h": "Social sign-in",
-        "p": "When you choose Google or Facebook sign-in, we use the basic profile, email address and provider account identifier supplied by that provider to create and authenticate your account and associate your orders with it. Supabase manages authentication, and your browser stores session information. You can continue as a guest without connecting a social account.",
+        "p": "When you choose Google or Facebook sign-in, we use the basic profile, email address and account identifier returned by that provider to create or verify your customer account and attach your orders. Supabase manages the session, with session data stored in your browser. You can optionally save your name, phone number, delivery address and area in your profile to reuse at checkout, or skip this step and keep shopping.",
         "items": []
       },
       {
@@ -214,7 +214,7 @@
       },
       {
         "h": "Where your information goes",
-        "p": "Supabase stores order and admin account data in our configured project region. Cloudflare hosts the site and provides checkout abuse protection. These providers may process data outside Egypt. Meta may also process tracking data outside Egypt, including in Ireland and the United States, when you accept tracking.",
+        "p": "Supabase stores orders, customer profiles and account data in our configured project region. Cloudflare hosts the site and provides checkout abuse protection. These providers may process data outside Egypt. Meta may also process tracking data outside Egypt, including in Ireland and the United States, when you accept tracking.",
         "items": []
       },
       {
@@ -224,7 +224,7 @@
       },
       {
         "h": "Once you message us",
-        "p": "When your order moves into WhatsApp, that conversation is covered by Meta's own privacy policy as well as this one. We keep your order details, meaning your name, phone number, and address, for as long as we need them to deliver your order and help if something goes wrong. After that, we delete them.",
+        "p": "If you contact us on WhatsApp, that conversation is covered by Meta's own privacy policy as well as this one. We keep your order details, meaning your name, phone number, and address, for as long as we need them to deliver your order and help if something goes wrong. After that, we delete them.",
         "items": []
       },
       {
