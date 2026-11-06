@@ -45,11 +45,21 @@ export function CustomerPortal() {
       return;
     }
     const fragment = new URLSearchParams(location.hash.slice(1)).get("order");
+    let guestToken = "";
     if (fragment && /^[0-9a-f-]{36}$/i.test(fragment)) {
-      localStorage.setItem("dc.guest.order", fragment);
-      history.replaceState(null, "", location.pathname);
+      guestToken = fragment;
+      try {
+        localStorage.setItem("dc.guest.order", fragment);
+        history.replaceState(null, "", location.pathname);
+      } catch {
+        /* Keep the private fragment for refresh when storage is blocked. */
+      }
+    } else {
+      try {
+        guestToken = localStorage.getItem("dc.guest.order") ?? "";
+      } catch {}
     }
-    setGuest(localStorage.getItem("dc.guest.order") ?? "");
+    setGuest(guestToken);
     const db = storeClient();
     void db.auth.getSession().then(({ data }) => {
       setSession(data.session);
@@ -69,8 +79,16 @@ export function CustomerPortal() {
         if (guest) {
           const result = await db.rpc("claim_order", { p_token: guest });
           if (!result.error) {
-            localStorage.removeItem("dc.guest.order");
+            try {
+              localStorage.removeItem("dc.guest.order");
+            } catch {}
             setGuest("");
+          } else {
+            setMessage(
+              ar
+                ? "تعذر ربط الطلب بهذا الحساب. استخدم الحساب الأصلي إن كان مرتبطًا بالفعل."
+                : "Could not attach this order. Use the original account if it is already linked.",
+            );
           }
         }
         const { data, error } = await db
@@ -110,7 +128,10 @@ export function CustomerPortal() {
     setError("");
     const { error } = await storeClient().auth.signInWithOAuth({
       provider,
-      options: { redirectTo: location.origin + "/account/" },
+      options: {
+        redirectTo: location.origin + "/account/",
+        ...(provider === "facebook" ? { scopes: "email" } : {}),
+      },
     });
     if (error) {
       setError(c.error);
@@ -125,6 +146,7 @@ export function CustomerPortal() {
         <h1 className="text-3xl">
           {ar ? "حسابي وطلباتي" : "My account & orders"}
         </h1>
+        {session && <p className="text-sm text-ink-muted">{ar ? "مسجل الدخول باسم" : "Signed in as"}: {session.user.email ?? (ar ? "حسابك" : "your account")}</p>}
         {!STORE_CONFIGURED ? (
           <p>{c.setup}</p>
         ) : (
@@ -226,7 +248,8 @@ export function CustomerPortal() {
                       : "Manual transfer — payment is verified by our team"}
                 </p>
                 {o.payment_method === "transfer" &&
-                  o.payment_status === "unpaid" && ["pending","confirmed"].includes(o.status) && (
+                  o.payment_status === "unpaid" &&
+                  ["pending", "confirmed"].includes(o.status) && (
                     <p className="whitespace-pre-wrap">
                       {o.transfer_instructions}
                     </p>
@@ -244,7 +267,9 @@ export function CustomerPortal() {
                     await storeClient().auth.signOut();
                     setOrders([]);
                     setGuest("");
-                    localStorage.removeItem("dc.guest.order");
+                    try {
+                      localStorage.removeItem("dc.guest.order");
+                    } catch {}
                   }}
                 >
                   {c.logout}

@@ -122,7 +122,7 @@ function injectPixel() {
  * first-party cookies it set. The script itself cannot be un-executed, so a
  * revoking visitor keeps a dormant fbevents.js until their next page load.
  */
-export function setTrackingEnabled(next: boolean) {
+export function setTrackingEnabled(next: boolean, clearCookies = true) {
   if (!PIXEL_CONFIGURED) return;
   enabled = next;
 
@@ -133,6 +133,7 @@ export function setTrackingEnabled(next: boolean) {
   }
 
   if (scriptInjected) window.fbq?.("consent", "revoke");
+  if (!clearCookies) return;
   for (const name of ["_fbp", "_fbc"]) {
     document.cookie = `${name}=; Max-Age=0; path=/`;
     document.cookie = `${name}=; Max-Age=0; path=/; domain=.${location.hostname}`;
@@ -150,7 +151,8 @@ function track(event: string, params?: Record<string, unknown>) {
 /* -------------------------------------------------------------------------- */
 
 async function sha256(value: string): Promise<string | undefined> {
-  if (!value || typeof crypto === "undefined" || !crypto.subtle) return undefined;
+  if (!value || typeof crypto === "undefined" || !crypto.subtle)
+    return undefined;
   const bytes = new TextEncoder().encode(value);
   const digest = await crypto.subtle.digest("SHA-256", bytes);
   return Array.from(new Uint8Array(digest))
@@ -250,7 +252,8 @@ function cartParams(lines: CartLine[]) {
   const priced = lines
     .map((l) => ({ line: l, product: getProduct(l.id) }))
     .filter(
-      (x): x is { line: CartLine; product: Product } => x.product?.price != null,
+      (x): x is { line: CartLine; product: Product } =>
+        x.product?.price != null,
     );
 
   return {
@@ -258,7 +261,10 @@ function cartParams(lines: CartLine[]) {
     content_ids: priced.map((x) => x.line.id),
     contents: priced.map((x) => ({ id: x.line.id, quantity: x.line.qty })),
     num_items: priced.reduce((n, x) => n + x.line.qty, 0),
-    value: priced.reduce((sum, x) => sum + (x.product.price ?? 0) * x.line.qty, 0),
+    value: priced.reduce(
+      (sum, x) => sum + (x.product.price ?? 0) * x.line.qty,
+      0,
+    ),
     currency: PRICE_CURRENCY,
   };
 }

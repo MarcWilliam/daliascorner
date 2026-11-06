@@ -61,3 +61,16 @@ Verified: the saved Dataset Quality-enabled token returned five event types for 
 Google setup: the Web OAuth client is configured in the dedicated DaliasCorner Google project, with the exact Supabase callback. Google audience is In production; Supabase Google provider and exact /account/ frontend redirects are enabled. Only basic login identity is requested. Full customer sign-in acceptance remains to be observed. Facebook is still hidden until its provider is configured.
 
 Facebook setup: app `1642675637558570` (Dalias Corner) was created under the shop business portfolio. Public profile and email are selected for login testing; the strict HTTPS Supabase callback, website platform, privacy/deletion-instructions URLs, Shopping category and existing brand icon are configured. Meta explicitly requires business verification and App Review before public login. Do not enable the public Facebook button before approval and successful testing. App secret connection is a separate step from the Conversions API token.
+
+
+## Facebook review handoff
+
+Meta app: `1642675637558570`, business portfolio: `1295256528744394`. The provider can be enabled in Supabase for app-role testing while the normal customer Facebook button remains hidden. Meta's Publish screen explicitly lists the portfolio as Unverified and disables Publish.
+
+Reviewer/tester entry point: `https://dalias-corner.pages.dev/review/facebook/`. This uses the same Supabase Facebook OAuth flow, requests only basic profile/email, and returns to `/account/`. Meta still enforces app-role and review eligibility; the page does not bypass those restrictions and never grants store-admin access.
+
+Suggested review steps: open the review URL, select Continue with Facebook, approve the basic profile/email prompt with an eligible Meta test/reviewer account, verify return to My account & orders, and sign out. For an order-attachment demonstration, first configure real delivery rules and stock, submit a test guest order, and then use Facebook sign-in from the same browser. Cancel the test order afterward. Record actual results; do not claim completion before performing the test.
+
+The owner must complete business/identity verification using genuine details and documents, and review any data-handling declarations before submitting App Review. Google login and guest orders can operate while Facebook waits for approval. Do not switch on `NEXT_PUBLIC_FACEBOOK_LOGIN_ENABLED` until Meta approves public access and a sign-in has been verified.
+
+Workflow hardening: in-memory checkout retries now retain both idempotency and guest-access identifiers if browser storage is blocked. Private account/review pages suspend Pixel activity without deleting existing consented attribution cookies; explicit consent withdrawal still clears them. Regression suite: 20 tests passed, plus production build.

@@ -1,5 +1,9 @@
 "use client";
 import Script from "next/script";
+import {
+  checkoutAttempt,
+  type CheckoutAttempt,
+} from "@/lib/store/checkout-attempt";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useCart } from "@/components/providers/CartProvider";
 import { useInventory } from "@/components/providers/InventoryProvider";
@@ -77,7 +81,7 @@ export function StoreCheckout({
   const widgetId = useRef<string>();
   const guard = useRef(false);
   const receipt = useRef<HTMLHeadingElement>(null);
-  const attempt = useRef<{ fingerprint: string; key: string } | null>(null);
+  const attempt = useRef<CheckoutAttempt | null>(null);
   const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
   useEffect(() => {
     if (
@@ -145,19 +149,11 @@ export function StoreCheckout({
         previous =
           JSON.parse(localStorage.getItem(storageKey) ?? "null") ?? previous;
       } catch {}
-      let orderToken: string;
-      try {
-        orderToken =
-          JSON.parse(localStorage.getItem(storageKey) ?? "null")?.orderToken ??
-          crypto.randomUUID();
-      } catch {
-        orderToken = crypto.randomUUID();
-      }
-      const key =
-        previous?.fingerprint === fingerprint ? previous.key : canonical.key;
-      if (previous?.fingerprint !== fingerprint)
-        orderToken = crypto.randomUUID();
-      attempt.current = { fingerprint, key };
+      const nextAttempt = checkoutAttempt(previous, fingerprint, () =>
+        crypto.randomUUID(),
+      );
+      const { key, orderToken } = nextAttempt;
+      attempt.current = nextAttempt;
       try {
         localStorage.setItem(
           storageKey,
@@ -209,7 +205,11 @@ export function StoreCheckout({
           Date.parse(order.expires_at) <= Date.now())
       )
         throw new Error("ORDER_EXPIRED");
-      localStorage.setItem("dc.guest.order", orderToken);
+      try {
+        localStorage.setItem("dc.guest.order", orderToken);
+      } catch {
+        /* Receipt link remains usable without storage. */
+      }
       setSaved({ order, href: "/order/#order=" + orderToken });
       // Submitted-order Lead is sent once by the server; Purchase waits for paid status.
       void refresh();
@@ -266,7 +266,16 @@ export function StoreCheckout({
         <p className="font-bold">
           {c.subtotal}: {saved.order.subtotal} EGP
         </p>
-        <ClayButton href={saved.href} onClick={() => {clear();localStorage.removeItem(storageKey);}} className="w-full">
+        <ClayButton
+          href={saved.href}
+          onClick={() => {
+            clear();
+            try {
+              localStorage.removeItem(storageKey);
+            } catch {}
+          }}
+          className="w-full"
+        >
           {locale === "ar"
             ? "عرض طلبي وإنشاء حساب"
             : "View my order & create an account"}
@@ -278,7 +287,9 @@ export function StoreCheckout({
             setSaved(null);
             attempt.current = null;
             try {
-              localStorage.removeItem(storageKey);
+              try {
+                localStorage.removeItem(storageKey);
+              } catch {}
             } catch {}
           }}
         >
@@ -374,7 +385,9 @@ export function StoreCheckout({
           onClick={() => {
             attempt.current = null;
             try {
-              localStorage.removeItem(storageKey);
+              try {
+                localStorage.removeItem(storageKey);
+              } catch {}
             } catch {}
             setError("");
           }}

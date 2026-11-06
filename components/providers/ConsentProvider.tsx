@@ -63,7 +63,7 @@ function persist(value: Consent) {
  */
 export function ConsentProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const isAdmin = ["/admin", "/account", "/order"].some(
+  const isPrivateRoute = ["/admin", "/account", "/order", "/review"].some(
     (path) => pathname === path || pathname.startsWith(path + "/"),
   );
   const [consent, setConsent] = useState<Consent | null>(null);
@@ -73,8 +73,10 @@ export function ConsentProvider({ children }: { children: React.ReactNode }) {
   // Adopt the stored choice on mount. A returning "granted" visitor loads the
   // pixel here and gets their PageView; everyone else loads nothing.
   useEffect(() => {
-    if (isAdmin || !PIXEL_CONFIGURED) {
-      setTrackingEnabled(false);
+    if (isPrivateRoute || !PIXEL_CONFIGURED) {
+      // Visiting a private page suspends the Pixel; it does not revoke consent.
+      setConsent(read());
+      setTrackingEnabled(false, false);
       setHydrated(true);
       return;
     }
@@ -85,7 +87,7 @@ export function ConsentProvider({ children }: { children: React.ReactNode }) {
     }
     setConsent(stored);
     setHydrated(true);
-  }, [isAdmin]);
+  }, [isPrivateRoute]);
 
   const grant = useCallback(() => {
     persist("granted");
@@ -105,7 +107,10 @@ export function ConsentProvider({ children }: { children: React.ReactNode }) {
   const reopen = useCallback(() => setReopened(true), []);
 
   const bannerOpen =
-    !isAdmin && PIXEL_CONFIGURED && hydrated && (reopened || consent === null);
+    !isPrivateRoute &&
+    PIXEL_CONFIGURED &&
+    hydrated &&
+    (reopened || consent === null);
 
   const value = useMemo<ConsentContextValue>(
     () => ({ consent, hydrated, bannerOpen, grant, deny, reopen }),
