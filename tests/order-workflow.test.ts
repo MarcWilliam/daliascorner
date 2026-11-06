@@ -106,11 +106,109 @@ async function totals(db: PGlite) {
     )
   ).rows[0].result;
 }
-async function transition(db: PGlite, id: string, status: string) {
-  await db.query("select transition_order($1,$2)", [id, status]);
+
+const cairoToday = () =>
+  new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Africa/Cairo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+async function managedDetail(db: PGlite, id: string): Promise<any> {
+  return (await db.query<{ v: any }>("select admin_order_detail($1) v", [id]))
+    .rows[0].v;
 }
+async function managedAction(
+  db: PGlite,
+  id: string,
+  action: string,
+  payload: unknown = {},
+  key: string = crypto.randomUUID(),
+  revision?: number,
+) {
+  const detail = await managedDetail(db, id);
+  return db.query(
+    "select admin_order_action($1,$2,$3,$4,$5::jsonb,'Workflow TEST action')",
+    [
+      id,
+      revision ?? detail.order.revision,
+      key,
+      action,
+      JSON.stringify(payload),
+    ],
+  );
+}
+async function managedShip(db: PGlite, id: string) {
+  const d = await managedDetail(db, id);
+  await managedAction(db, id, "ship", {
+    lines: d.items
+      .map((i: any) => ({
+        item_id: i.id,
+        quantity: i.quantity - i.removed_quantity - i.shipped_quantity,
+      }))
+      .filter((i: any) => i.quantity > 0),
+    courier: "TEST carrier",
+    tracking_number: "TEST reference",
+    dispatched_on: cairoToday(),
+    expected_on: null,
+  });
+}
+
+async function transition(db: PGlite, id: string, status: string) {
+  if (status === "shipped") return managedShip(db, id);
+  if (status === "delivered") {
+    const d = await managedDetail(db, id);
+    for (const shipment of d.shipments.filter(
+      (s: any) => !s.voided_at && !s.delivered_on && !s.legacy_delivered,
+    ))
+      await managedAction(db, id, "deliver", {
+        shipment_id: shipment.id,
+        delivered_on: cairoToday(),
+      });
+    return;
+  }
+  return managedAction(db, id, status === "confirmed" ? "confirm" : "cancel");
+}
+const paymentAttempts = new Map<
+  string,
+  { kind: string; key: string; revision: number; payload: unknown }
+>();
 async function pay(db: PGlite, id: string, status = "paid") {
-  await db.query("select set_order_payment($1,$2)", [id, status]);
+  const d = await managedDetail(db, id);
+  const kind = status === "paid" ? "payment" : "refund";
+  const previous = paymentAttempts.get(id);
+  if (
+    previous?.kind === kind &&
+    ((kind === "payment" && d.order.balance_due === 0) ||
+      (kind === "refund" &&
+        d.order.amount_received - d.order.amount_refunded === 0))
+  ) {
+    await managedAction(
+      db,
+      id,
+      kind,
+      previous.payload,
+      previous.key,
+      previous.revision,
+    );
+    return;
+  }
+  const payload = {
+    amount:
+      kind === "payment"
+        ? d.order.balance_due
+        : d.order.amount_received - d.order.amount_refunded,
+    date: cairoToday(),
+    reference: "Workflow TEST receipt",
+  };
+  const attempt = {
+    kind,
+    key: crypto.randomUUID(),
+    revision: d.order.revision,
+    payload,
+  };
+  paymentAttempts.set(id, attempt);
+  await managedAction(db, id, kind, payload, attempt.key, attempt.revision);
 }
 
 test("website order integrates inventory, account ownership, costs, payments and notification leases", async () => {
@@ -204,12 +302,16 @@ test("website order integrates inventory, account ownership, costs, payments and
         [event.id, event.lease_token],
       );
 
+    await assert.rejects(
+      db.query("select set_order_payment($1,'paid')", [id]),
+      /USE_ORDER_ACTION/,
+    );
     await pay(db, id);
     await pay(db, id); // Repeated admin save has no second financial receipt.
     let t = await totals(db);
     assert.equal(t.net_collected, 860);
-    assert.equal(t.known_product_cost, 210); // Original 2 × 30 + 3 × 50 snapshots.
-    assert.equal(t.gross_profit, 650);
+    assert.equal(t.known_product_cost, 0); // Original cost snapshots wait for shipment.
+    assert.equal(t.gross_profit, 860);
     await db.query(
       "update orders set expires_at=now()-interval '1 minute' where id=$1",
       [id],
@@ -234,8 +336,8 @@ test("website order integrates inventory, account ownership, costs, payments and
       [expense],
     );
     assert.equal((await totals(db)).operating_result, 630);
-    // A corrected, unsent sale can be re-armed without a new Meta event identity.
-    await pay(db, id, "unpaid");
+    // An actual refund and repayment re-arm an unsent sale without changing its identity.
+    await pay(db, id, "refunded");
     await db.query(
       "update meta_events set attempts=8,locked_until=now()+interval '5 minutes',lease_token=gen_random_uuid() where order_id=$1 and event_name='Purchase'",
       [id],
@@ -254,7 +356,7 @@ test("website order integrates inventory, account ownership, costs, payments and
     await pay(db, id, "refunded");
     t = await totals(db);
     assert.equal(t.net_collected, 0);
-    assert.equal(t.refunded, 860);
+    assert.equal(t.refunded, 1720); // Two actual full refunds surround the repayment.
     assert.equal(t.known_product_cost, 210); // Refund does not imply goods were recovered.
     assert.equal(t.operating_result, -230);
     await db.query("select void_finance_entry($1)", [expense]);

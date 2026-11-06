@@ -20,7 +20,7 @@ export async function dispatchMeta(db: SupabaseClient) {
       const { data, error } = await db
         .from("orders")
         .select(
-          "source_url,marketing_consent,customer_phone,subtotal,delivery_fee,status,payment_status,meta_context,order_items(product_id,quantity,unit_price)",
+          "source_url,marketing_consent,customer_phone,subtotal,delivery_fee,status,payment_status,meta_context,order_items(product_id,quantity,unit_price,removed_quantity,returned_quantity)",
         )
         .eq("id", id)
         .single();

@@ -17,6 +17,8 @@ export type MetaOrder = {
   order_items: {
     product_id: string;
     quantity: number;
+    removed_quantity?: number;
+    returned_quantity?: number;
     unit_price: number | string;
   }[];
 };
@@ -46,7 +48,21 @@ export async function dispatchMetaEvents(
     try {
       // Load current state immediately before sending; a queued paid flag may have been reversed.
       const order = await deps.loadOrder(event.order_id);
-      if (!metaEventEligible(event.event_name, order)) {
+      const activeItems = order.order_items
+        .map((item) => ({
+          ...item,
+          quantity:
+            item.quantity -
+            (item.removed_quantity ?? 0) -
+            (item.returned_quantity ?? 0),
+        }))
+        .filter((item) => item.quantity > 0);
+      if (
+        !metaEventEligible(event.event_name, order) ||
+        !activeItems.length ||
+        (event.event_name === "Purchase" &&
+          Number(order.subtotal) + Number(order.delivery_fee) <= 0)
+      ) {
         await deps.stop(event);
         totals.skipped++;
         continue;
@@ -74,7 +90,7 @@ export async function dispatchMetaEvents(
           currency: "EGP",
           value: Number(order.subtotal) + Number(order.delivery_fee),
           content_type: "product",
-          contents: order.order_items.map((item) => ({
+          contents: activeItems.map((item) => ({
             id: item.product_id,
             quantity: item.quantity,
             item_price: item.unit_price,

@@ -21,7 +21,14 @@ import { customerCopy } from "@/lib/store/customer-copy";
 import { MiniNav } from "@/components/sections/MiniNav";
 import { ClayButton } from "@/components/ui/ClayButton";
 import { InstaPayDetails } from "@/components/ui/InstaPayDetails";
+import { PRODUCTS } from "@/lib/products";
 import { CartDrawer } from "@/components/sections/CartDrawer";
+import {
+  orderItemProgress,
+  orderProgressState,
+  progressStateLabel,
+  type ProgressItem,
+} from "@/lib/store/order-progress";
 type Order = {
   created_at?: string;
   ordered_at?: string;
@@ -29,6 +36,11 @@ type Order = {
   order_number: number;
   status: string;
   payment_status: string;
+  payment_state?: string;
+  amount_received?: number;
+  amount_refunded?: number;
+  balance_due?: number;
+  refund_due?: number;
   subtotal: number;
   delivery_fee: number;
   delivery_zone: string;
@@ -39,7 +51,8 @@ type Order = {
   items?: Item[];
   order_items?: Item[];
 };
-type Item = {
+type Item = ProgressItem & {
+  product_id?: string;
   name_en: string;
   name_ar: string;
   quantity: number;
@@ -145,7 +158,7 @@ export function CustomerPortal() {
             const { data, error } = await db
               .from("orders")
               .select(
-                "order_number,status,payment_status,subtotal,delivery_fee,delivery_zone,payment_method,transfer_instructions,instapay_link,instapay_number,created_at,ordered_at,is_historical,order_items(name_en,name_ar,quantity,unit_price)",
+                "order_number,status,payment_status,payment_state,amount_received,amount_refunded,balance_due,refund_due,subtotal,delivery_fee,delivery_zone,payment_method,transfer_instructions,instapay_link,instapay_number,created_at,ordered_at,is_historical,order_items(product_id,name_en,name_ar,quantity,unit_price,shipped_quantity,delivered_quantity,removed_quantity,returned_quantity,returned_after_delivery_quantity)",
               )
               .eq("customer_id", session!.user.id)
               .order("ordered_at", { ascending: false })
@@ -509,17 +522,72 @@ export function CustomerPortal() {
                   </button>
                 )}
                 <p>
-                  {(c as Record<string, string>)[o.status] ?? o.status} ·{" "}
-                  {(c as Record<string, string>)[o.payment_status] ??
-                    o.payment_status}
+                  {progressStateLabel(
+                    orderProgressState(
+                      o.items ?? o.order_items ?? [],
+                      o.status,
+                    ),
+                    ar,
+                  ) ??
+                    (c as Record<string, string>)[o.status] ??
+                    o.status}{" "}
+                  ·{" "}
+                  {o.payment_state === "partial"
+                    ? ar
+                      ? "مدفوع جزئيًا"
+                      : "Partially paid"
+                    : o.payment_state === "overpaid"
+                      ? ar
+                        ? "رصيد زائد"
+                        : "Overpaid"
+                      : ((c as Record<string, string>)[
+                          o.payment_state ?? o.payment_status
+                        ] ?? o.payment_status)}
                 </p>
                 <ul>
-                  {(o.items ?? o.order_items ?? []).map((i, n) => (
-                    <li key={n}>
-                      {ar ? i.name_ar : i.name_en} × {i.quantity} —{" "}
-                      {i.unit_price * i.quantity} EGP
-                    </li>
-                  ))}
+                  {(o.items ?? o.order_items ?? []).map((i, n) => {
+                    const progress = orderItemProgress(i);
+                    const variant = PRODUCTS.find((p) => p.id === i.product_id)
+                      ?.variantLabel?.[locale];
+                    const originalName = ar ? i.name_ar : i.name_en;
+                    const itemName =
+                      variant &&
+                      !originalName
+                        .toLowerCase()
+                        .includes(variant.toLowerCase())
+                        ? `${originalName} — ${variant}`
+                        : originalName;
+                    return (
+                      <li key={n} className="py-2">
+                        {itemName} × {progress.billable} —{" "}
+                        {i.unit_price * progress.billable} EGP
+                        {(progress.shipped > 0 ||
+                          progress.removed > 0 ||
+                          progress.returned > 0) && (
+                          <p className="text-xs text-ink-muted">
+                            {ar ? "تم شحن" : "Shipped"}: {progress.shipped} ·{" "}
+                            {ar ? "تم تسليم" : "Delivered"}:{" "}
+                            {progress.delivered} · {ar ? "متبقي" : "Remaining"}:{" "}
+                            {progress.remaining}
+                            {progress.removed > 0 && (
+                              <>
+                                {" "}
+                                · {ar ? "تمت إزالته" : "Removed"}:{" "}
+                                {progress.removed}
+                              </>
+                            )}
+                            {progress.returned > 0 && (
+                              <>
+                                {" "}
+                                · {ar ? "مرتجع" : "Returned"}:{" "}
+                                {progress.returned}
+                              </>
+                            )}
+                          </p>
+                        )}
+                      </li>
+                    );
+                  })}
                 </ul>
                 <p>
                   {ar ? "التوصيل" : "Delivery"}: {o.delivery_zone} ·{" "}
@@ -529,6 +597,22 @@ export function CustomerPortal() {
                   {ar ? "الإجمالي" : "Total"}:{" "}
                   {Number(o.subtotal) + Number(o.delivery_fee)} EGP
                 </p>
+                {o.amount_received !== undefined && (
+                  <dl className="grid grid-cols-2 gap-2 text-sm">
+                    <dt>{ar ? "المقبوض" : "Received"}</dt>
+                    <dd>{o.amount_received} EGP</dd>
+                    <dt>{ar ? "المسترد" : "Refunded"}</dt>
+                    <dd>{o.amount_refunded ?? 0} EGP</dd>
+                    <dt>{ar ? "المتبقي للدفع" : "Amount due"}</dt>
+                    <dd>{o.balance_due ?? 0} EGP</dd>
+                    {Number(o.refund_due) > 0 && (
+                      <>
+                        <dt>{ar ? "مبلغ مستحق لك" : "Refund due to you"}</dt>
+                        <dd>{o.refund_due} EGP</dd>
+                      </>
+                    )}
+                  </dl>
+                )}
                 <p>
                   {o.payment_method === "cash"
                     ? ar
@@ -539,8 +623,12 @@ export function CustomerPortal() {
                       : "InstaPay — payment is confirmed by the shop"}
                 </p>
                 {o.payment_method === "transfer" &&
-                  o.payment_status === "unpaid" &&
-                  ["pending", "confirmed"].includes(o.status) && (
+                  (o.payment_state === undefined
+                    ? o.payment_status === "unpaid"
+                    : Number(o.balance_due) > 0) &&
+                  ["pending", "confirmed", "shipped", "delivered"].includes(
+                    o.status,
+                  ) && (
                     <InstaPayDetails
                       details={o}
                       orderNumber={o.order_number}

@@ -1,7 +1,7 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 export const STORE_CONFIGURED = Boolean(
   process.env.NEXT_PUBLIC_SUPABASE_URL &&
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
 );
 let client: SupabaseClient | undefined;
 export function storeClient() {
@@ -24,6 +24,7 @@ export type SavedOrder = {
   transfer_instructions?: string | null;
   expires_at: string;
   items: {
+    line_id?: number;
     id: string;
     name_en: string;
     name_ar: string;

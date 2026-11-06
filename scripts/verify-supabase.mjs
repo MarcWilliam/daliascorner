@@ -39,27 +39,57 @@ for (const table of [
     headers,
   });
   if (![401, 403].includes(response.status))
-    throw new Error(`Unexpected private-table response: ${table} ${response.status}`);
+    throw new Error(
+      `Unexpected private-table response: ${table} ${response.status}`,
+    );
 }
 const finance = await fetch(`${base}/rest/v1/rpc/finance_overview`, {
-  method: "POST", headers, body: "{}",
+  method: "POST",
+  headers,
+  body: "{}",
 });
 if (![401, 403].includes(finance.status))
   throw new Error(`Unexpected public finance response: ${finance.status}`);
 const expenses = await fetch(`${base}/rest/v1/rpc/expense_page`, {
-  method: "POST", headers, body: "{}",
+  method: "POST",
+  headers,
+  body: "{}",
 });
 if (![401, 403].includes(expenses.status))
   throw new Error(`Unexpected public expenses response: ${expenses.status}`);
 const chat = await fetch(`${base}/rest/v1/rpc/create_chat_order`, {
-  method: "POST", headers,
-  body: JSON.stringify({ p_key: crypto.randomUUID(), p_token: crypto.randomUUID(), p_customer: {}, p_lines: [], p_locale: "en", p_zone: crypto.randomUUID(), p_payment: "cash", p_paid: false }),
+  method: "POST",
+  headers,
+  body: JSON.stringify({
+    p_key: crypto.randomUUID(),
+    p_token: crypto.randomUUID(),
+    p_customer: {},
+    p_lines: [],
+    p_locale: "en",
+    p_zone: crypto.randomUUID(),
+    p_payment: "cash",
+    p_paid: false,
+  }),
 });
 if (![401, 403].includes(chat.status))
   throw new Error(`Unexpected public chat-order response: ${chat.status}`);
 const pastChat = await fetch(`${base}/rest/v1/rpc/create_past_chat_order`, {
-  method: "POST", headers,
-  body: JSON.stringify({ p_key: crypto.randomUUID(), p_token: crypto.randomUUID(), p_customer: {}, p_lines: [], p_locale: "en", p_zone: crypto.randomUUID(), p_payment: "cash", p_ordered_on: "2026-01-01", p_paid: false, p_paid_on: null, p_stock_handling: "already_accounted", p_expected_total: 0 }),
+  method: "POST",
+  headers,
+  body: JSON.stringify({
+    p_key: crypto.randomUUID(),
+    p_token: crypto.randomUUID(),
+    p_customer: {},
+    p_lines: [],
+    p_locale: "en",
+    p_zone: crypto.randomUUID(),
+    p_payment: "cash",
+    p_ordered_on: "2026-01-01",
+    p_paid: false,
+    p_paid_on: null,
+    p_stock_handling: "already_accounted",
+    p_expected_total: 0,
+  }),
 });
 if (![401, 403].includes(pastChat.status))
   throw new Error(`Unexpected public past-order response: ${pastChat.status}`);
@@ -68,10 +98,39 @@ for (const [name, body] of [
   ["skip_customer_onboarding", {}],
 ]) {
   const response = await fetch(`${base}/rest/v1/rpc/${name}`, {
-    method: "POST", headers, body: JSON.stringify(body),
+    method: "POST",
+    headers,
+    body: JSON.stringify(body),
   });
   if (![401, 403].includes(response.status))
-    throw new Error(`Unexpected public profile response: ${name} ${response.status}`);
+    throw new Error(
+      `Unexpected public profile response: ${name} ${response.status}`,
+    );
+}
+for (const [name, body] of [
+  ["admin_order_detail", { p_id: crypto.randomUUID() }],
+  [
+    "admin_order_action",
+    {
+      p_id: crypto.randomUUID(),
+      p_revision: 0,
+      p_key: crypto.randomUUID(),
+      p_action: "note",
+      p_payload: { text: "TEST denied request" },
+      p_reason: "TEST denied request",
+    },
+  ],
+  ["finance_recent_payments", { p_limit: 1 }],
+]) {
+  const response = await fetch(`${base}/rest/v1/rpc/${name}`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(body),
+  });
+  if (![401, 403].includes(response.status))
+    throw new Error(
+      `Unexpected public order-operation response: ${name} ${response.status}`,
+    );
 }
 const rejected = await fetch(`${base}/functions/v1/place-order`, {
   method: "POST",

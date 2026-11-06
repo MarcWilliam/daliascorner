@@ -34,7 +34,7 @@ export const financeCopy = {
   en: {
     title: "Financial report",
     intro:
-      "See recorded money in, money out, and an estimate of profit on paid orders.",
+      "Compare recorded cash receipts, product costs and business expenses.",
     from: "From",
     to: "To",
     apply: "Apply dates",
@@ -53,21 +53,21 @@ export const financeCopy = {
     saving: "Saving…",
     netCollected: "Net money collected",
     receiptsHint:
-      "Payments less full refunds and payment corrections; includes delivery fees.",
+      "Payments less refunds and payment corrections; includes delivery fees.",
     spent: "Cash spent",
     spentHint: "All recorded expenses, including stock purchases.",
     cashBalance: "Tracked cash balance",
     cashHint:
       "Net money collected minus cash spent. This is not your bank balance.",
-    operatingResult: "Paid-order profit estimate",
+    operatingResult: "Profit estimate",
     operatingHint: "Net collected minus product costs and operating expenses.",
     margin: "Estimated margin",
     incomplete: "Incomplete",
     missing:
-      "Some paid orders have no product cost recorded. Complete their costs below to calculate profit and margins.",
+      "Some recognized product costs are missing. Complete the original unit costs below to calculate profit and margins.",
     addExpense: "Record an expense",
     expenseIntro:
-      "Log money you have actually paid. Buying stock affects cash; its unit cost is counted in profit when an order is marked paid.",
+      "Log money you have actually paid. Stock purchases affect cash; product costs follow the order’s costing policy.",
     amount: "Amount (EGP)",
     category: "Category",
     date: "Date paid",
@@ -86,9 +86,9 @@ export const financeCopy = {
     netItems: "Net product receipts",
     netDelivery: "Net delivery fees collected",
     payments: "Payments recorded",
-    refunds: "Full refunds",
+    refunds: "Refunds recorded",
     corrections: "Paid-status corrections",
-    productCosts: "Product costs on paid orders",
+    productCosts: "Recognized product costs",
     operating: "Operating expenses",
     gross: "Gross profit estimate",
     grossMargin: "Gross margin",
@@ -97,7 +97,7 @@ export const financeCopy = {
     legacyRefunds:
       "Refunds that predate tracking are excluded because their original payment and refund dates are unknown:",
     methodology:
-      "Ordinary payments use the time an admin marks the order paid. Imported past orders use the original payment date entered in Cairo time; the recording time stays in the audit history. This is a paid-order estimate, not an accrual or tax report. Record carrier fees and other business costs as expenses. Refunds reverse receipts in the refund period; product costs remain because a refund does not establish that returned goods are reusable. Partial refunds and resale recovery are not modeled.",
+      "Managed orders recognize product costs when items ship, reversing them only for explicitly restocked returns. Receipts and refunds use their recorded effective Cairo dates, including partial amounts. Legacy cost movements remain at their original dates; promotion records a costing-policy adjustment without inventing cash. Cash balance is not a bank balance, and this management estimate is not a tax or accrual report.",
     history: "Recent expenses",
     emptyExpenses: "No expenses recorded yet.",
     void: "Void entry",
@@ -113,7 +113,7 @@ export const financeCopy = {
     saveCost: "Save cost",
     quantity: "Qty",
     missingLimit:
-      "Showing up to 100 missing costs from paid-order history, across all dates.",
+      "Showing up to 100 missing recognized costs, across all dates.",
     recentPayments: "Recent payments & refunds",
     emptyPayments: "No payment activity recorded yet.",
     payment: "Payment",
@@ -133,7 +133,7 @@ export const financeCopy = {
   },
   ar: {
     title: "التقرير المالي",
-    intro: "تابع المقبوضات والمصروفات وتقدير ربح الطلبات المدفوعة.",
+    intro: "قارن المقبوضات وتكاليف المنتجات ومصروفات المشروع.",
     from: "من",
     to: "إلى",
     apply: "تطبيق الفترة",
@@ -152,20 +152,20 @@ export const financeCopy = {
     saving: "جارٍ الحفظ…",
     netCollected: "صافي المقبوضات",
     receiptsHint:
-      "المدفوعات بعد خصم الاستردادات الكاملة وتصحيحات الدفع، وتشمل رسوم التوصيل.",
+      "المدفوعات بعد خصم الاستردادات وتصحيحات الدفع، وتشمل رسوم التوصيل.",
     spent: "المصروفات النقدية",
     spentHint: "جميع المصروفات المسجلة، بما فيها شراء المخزون.",
     cashBalance: "الرصيد النقدي المسجل",
     cashHint: "صافي المقبوضات ناقص المصروفات المسجلة. لا يمثل رصيد البنك.",
-    operatingResult: "تقدير ربح الطلبات المدفوعة",
+    operatingResult: "تقدير الربح",
     operatingHint: "صافي المقبوضات ناقص تكلفة المنتجات ومصروفات التشغيل.",
     margin: "هامش الربح التقديري",
     incomplete: "غير مكتمل",
     missing:
-      "بعض الطلبات المدفوعة ليس لها تكلفة منتج مسجلة. أكمل التكاليف أدناه لحساب الربح والهامش.",
+      "بعض تكاليف المنتجات المحتسبة غير مسجلة. أكمل التكلفة الأصلية أدناه لحساب الربح والهامش.",
     addExpense: "تسجيل مصروف",
     expenseIntro:
-      "سجّل المبالغ التي دفعتها فعلاً. شراء المخزون يؤثر على النقدية، وتُحسب تكلفة الوحدة في الربح عند تسجيل الطلب كمدفوع.",
+      "سجّل المبالغ التي دفعتها فعلًا. شراء المخزون يؤثر على النقدية، وتُحسب تكلفة المنتجات وفق سياسة تكلفة الطلب.",
     amount: "المبلغ (جنيه)",
     category: "الفئة",
     date: "تاريخ الدفع",
@@ -184,9 +184,9 @@ export const financeCopy = {
     netItems: "صافي مقبوضات المنتجات",
     netDelivery: "صافي رسوم التوصيل المقبوضة",
     payments: "المدفوعات المسجلة",
-    refunds: "الاستردادات الكاملة",
+    refunds: "الاستردادات المسجلة",
     corrections: "تصحيحات حالة الدفع",
-    productCosts: "تكلفة منتجات الطلبات المدفوعة",
+    productCosts: "تكلفة المنتجات المحتسبة",
     operating: "مصروفات التشغيل",
     gross: "تقدير مجمل الربح",
     grossMargin: "هامش مجمل الربح",
@@ -195,7 +195,7 @@ export const financeCopy = {
     legacyRefunds:
       "استردادات سابقة غير محسوبة لعدم معرفة تاريخ الدفع والاسترداد الأصلي:",
     methodology:
-      "تستخدم المدفوعات العادية وقت تسجيل المسؤول للطلب كمدفوع. أما الطلبات السابقة فتستخدم تاريخ الدفع الأصلي الذي أُدخل بتوقيت القاهرة، مع حفظ وقت التسجيل في السجل. هذا تقدير للطلبات المدفوعة وليس تقريراً ضريبياً أو محاسبياً على أساس الاستحقاق. سجّل رسوم شركة الشحن وباقي التكاليف كمصروفات. الاسترداد يخصم المقبوضات في فترة الاسترداد، مع الاحتفاظ بتكلفة المنتجات لأن الاسترداد لا يثبت صلاحية المرتجعات لإعادة البيع. الاسترداد الجزئي واستعادة تكلفة المرتجعات غير محسوبين.",
+      "تُحتسب تكلفة المنتجات للطلبات المُدارة عند الشحن، وتُعكس فقط للمرتجعات التي أُعيدت للمخزون صراحةً. تُستخدم تواريخ المقبوضات والاستردادات المسجلة بتوقيت القاهرة، بما فيها المبالغ الجزئية. تبقى حركات التكلفة السابقة في تواريخها الأصلية، ويُسجل التحويل تصحيح سياسة التكلفة دون إنشاء حركة نقدية. الرصيد المتتبع ليس رصيد البنك، وهذا تقدير إداري وليس تقريرًا ضريبيًا أو على أساس الاستحقاق.",
     history: "المصروفات الأخيرة",
     emptyExpenses: "لم تُسجّل مصروفات بعد.",
     void: "إلغاء القيد",
@@ -209,8 +209,7 @@ export const financeCopy = {
     unitCost: "تكلفة الوحدة (جنيه)",
     saveCost: "حفظ التكلفة",
     quantity: "الكمية",
-    missingLimit:
-      "عرض حتى ١٠٠ تكلفة ناقصة من سجل الطلبات المدفوعة عبر كل الفترات.",
+    missingLimit: "عرض حتى ١٠٠ تكلفة محتسبة ناقصة عبر كل الفترات.",
     recentPayments: "المدفوعات والاستردادات الأخيرة",
     emptyPayments: "لم تُسجّل حركة دفع بعد.",
     payment: "دفعة",

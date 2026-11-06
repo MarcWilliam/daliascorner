@@ -184,6 +184,7 @@ export function StoreCheckout({
   const [savedState, setSaved] = useState<{
     owner: string;
     order: SavedOrder;
+    submittedBasket: { id: string; qty: number }[];
     href: string;
   } | null>(null);
   const saved =
@@ -194,9 +195,9 @@ export function StoreCheckout({
   useEffect(() => {
     if (!authReady || savedState?.owner !== zoneOwner) return;
     const sameBasket =
-      lines.length === savedState.order.items.length &&
+      lines.length === savedState.submittedBasket.length &&
       lines.every((line) =>
-        savedState.order.items.some(
+        savedState.submittedBasket.some(
           (item) => item.id === line.id && item.qty === line.qty,
         ),
       );
@@ -353,6 +354,7 @@ export function StoreCheckout({
       setSaved({
         owner: zoneOwner,
         order,
+        submittedBasket: canonical.lines,
         href: "/order/#order=" + orderToken,
       });
       // Submitted-order Lead is sent once by the server; Purchase waits for paid status.
@@ -424,7 +426,7 @@ export function StoreCheckout({
         <p className="text-sm">{c.savedNotice}</p>
         <ul className="text-sm">
           {saved.order.items.map((i) => (
-            <li key={i.id}>
+            <li key={i.line_id ?? i.id}>
               {locale === "ar" ? i.name_ar : i.name_en} × {i.qty} —{" "}
               {i.qty * i.price} EGP
             </li>

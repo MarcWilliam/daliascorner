@@ -12,9 +12,9 @@ Customer registration/profile steps and the verified guest/customer/admin bounda
 
 1. Add products to the cart. Sign in via an enabled Google/Facebook provider before checkout, or continue as a guest.
 2. Enter delivery details, select an active admin-configured zone, choose cash on delivery or configured InstaPay, and place the order.
-3. Place the order on the website. Backend prices and delivery fees determine totals. Transfer instructions and delivery fees are snapshotted with the order. No social message is required.
+3. Place the order on the website. Backend prices and delivery fees determine totals. Payment details and delivery fees are snapshotted with the order. No social message is required.
 4. Open the private order page. The guest token uses the URL fragment (not query parameters) and is removed from the address bar after capture. Private pages never load Meta Pixel.
-5. A guest can use social sign-in afterward to attach the order to the account. Attachment requires possession of the original private token, not merely knowing an order number or email. Once attached, anonymous token access stops.
+5. A guest can use social sign-in afterward to attach the order to the account. Attachment requires possession of an original or unexpired private share token, not merely knowing an order number or email. Once attached, anonymous token access stops.
 6. Account history shows up to 100 recent orders. Keep the private link for guest orders; email receipts are not implemented in this iteration.
 
 ## Admin setup
@@ -27,7 +27,7 @@ Successful unpaid InstaPay receipts and private order pages offer **Send payment
 
 The successful receipt has one main action to view the private order and create an account. Closing it clears the completed basket so ordinary shopping can resume. Editing the basket while the receipt is open starts a fresh checkout while preserving the newly selected items. The separate recovery action for an expired order remains available.
 
-Order cards show payment method, delivery zone, delivery fee and total. Only admins can mark payments paid/refunded. Unpaid pending orders expire after 24 hours, so confirm accepted orders promptly. Paid pending orders retain their reservations until an admin acts. Transfer instructions stop displaying after cancellation or expiry.
+Order cards show payment method, delivery zone, delivery fee and total. Only admins can mark payments paid/refunded. Pending orders with no net receipts expire after their reservation deadline. Positive deposits protect pending reservations. Managed partial shipments release all outstanding holds, and later shipments check availability again. Transfer instructions stop displaying after cancellation or expiry.
 
 ## Social provider activation
 
@@ -97,3 +97,5 @@ Retry ownership hardening: signing in does not change the checkout content finge
 ## Checkout abuse protection
 
 Checkout no longer loads or requires Cloudflare Turnstile. The Edge Function applies shared Postgres request counters: global 100/10 minutes, connection 20/10 minutes, normalized phone 5/hour. Retries count as attempts; 429 responses include Retry-After. Database failure blocks submission with 503. Phone/IP keys use HMAC-SHA256 with the backend secret, and only hashes/counters/expiry are stored in a private RLS table. Stale rows are purged on later limiter calls. Connection headers are gateway signals; phone and global limits also apply independently. A hidden website honeypot rejects filled submissions. Existing origin checks, payload validation, server pricing, stock reservations and idempotency remain enforced. Payment remains manually verified.
+
+Managed order tracking shows partial payment/fulfilment, removed/returned units and balances due/refund due. Internal notes, costs, shipment-return allocations and admin audit details are excluded from customer projections.

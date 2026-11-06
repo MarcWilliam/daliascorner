@@ -63,6 +63,14 @@ export function ManualOrderForm({
   const { locale } = useLocale();
   const formId = useId();
   const ar = locale === "ar";
+  const productName = (product: Stock) => {
+    const base = ar ? product.name_ar : product.name_en;
+    const variant = PRODUCTS.find((p) => p.id === product.product_id)
+      ?.variantLabel?.[locale];
+    return variant && !base.toLowerCase().includes(variant.toLowerCase())
+      ? `${base} — ${variant}`
+      : base;
+  };
   const c = manualOrderCopy[locale];
   const [mode, setMode] = useState<"new" | "past">("new");
   const isPast = mode === "past";
@@ -716,8 +724,8 @@ export function ManualOrderForm({
                               key={product.product_id}
                               value={product.product_id}
                             >
-                              {ar ? product.name_ar : product.name_en} ·{" "}
-                              {product.price} {c.currency}
+                              {productName(product)} · {product.price}{" "}
+                              {c.currency}
                               {!product.active ? ` · ${c.paused}` : ""}
                             </option>
                           ))}
@@ -777,9 +785,7 @@ export function ManualOrderForm({
                         <p className="text-xs text-ink-muted">
                           {category?.name[locale] ?? c.otherProducts}
                         </p>
-                        <p className="font-semibold">
-                          {ar ? product.name_ar : product.name_en}
-                        </p>
+                        <p className="font-semibold">{productName(product)}</p>
                         <p className="mt-1 text-xs text-ink-muted">
                           {product.price} {c.currency} ·{" "}
                           {product.unlimited_stock
@@ -797,7 +803,7 @@ export function ManualOrderForm({
                           max={99}
                           step={1}
                           value={line.qty || ""}
-                          aria-label={`${c.quantity} — ${ar ? product.name_ar : product.name_en}`}
+                          aria-label={`${c.quantity} — ${productName(product)}`}
                           onChange={(event) =>
                             setLines((current) =>
                               current.map((item) =>
@@ -820,7 +826,7 @@ export function ManualOrderForm({
                             step="0.01"
                             inputMode="decimal"
                             value={line.unitCost ?? ""}
-                            aria-label={`${c.originalCost} — ${ar ? product.name_ar : product.name_en}`}
+                            aria-label={`${c.originalCost} — ${productName(product)}`}
                             onChange={(event) =>
                               setLines((current) =>
                                 current.map((item) =>
@@ -836,7 +842,7 @@ export function ManualOrderForm({
                       <button
                         type="button"
                         className="grid h-11 w-11 shrink-0 place-items-center rounded-xl text-destructive hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive"
-                        aria-label={`${c.remove} — ${ar ? product.name_ar : product.name_en}`}
+                        aria-label={`${c.remove} — ${productName(product)}`}
                         onClick={() =>
                           setLines((current) =>
                             current.filter((item) => item.id !== line.id),

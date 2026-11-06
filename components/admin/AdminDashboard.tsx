@@ -10,7 +10,7 @@ import { AdminRefreshButton } from "./AdminRefreshButton";
 import { CheckoutSettings } from "./CheckoutSettings";
 import { InventoryPanel, type Stock, type Movement } from "./InventoryPanel";
 import { ManualOrderForm } from "./ManualOrderForm";
-import { OrderPaymentField } from "./OrderPaymentField";
+import { OrderAdjustments } from "./order-adjustments/OrderAdjustments";
 import { PRODUCTS } from "@/lib/products";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useCustomerAuth } from "@/components/providers/CustomerAuthProvider";
@@ -23,6 +23,12 @@ import { storeCopy } from "@/lib/store/copy";
 import { STORE_CONFIGURED, storeClient } from "@/lib/store/client";
 import { enablePush, disablePush } from "@/lib/store/push";
 import { asset } from "@/lib/asset";
+import {
+  orderItemProgress,
+  orderProgressState,
+  progressStateLabel,
+  type ProgressItem,
+} from "@/lib/store/order-progress";
 
 type Status =
   "pending" | "confirmed" | "shipped" | "delivered" | "cancelled" | "expired";
@@ -31,6 +37,8 @@ type Order = {
   order_number: number;
   status: Status;
   payment_status: "unpaid" | "paid" | "refunded";
+  payment_state?: string;
+  ops_managed?: boolean;
   customer_name: string;
   customer_phone: string;
   customer_address: string;
@@ -45,14 +53,14 @@ type Order = {
   stock_handling?: "already_accounted" | "deduct_now" | null;
   expires_at: string;
   source: "website" | "chat";
-  order_items: {
+  order_items: (ProgressItem & {
     id: number;
     product_id: string;
     name_en: string;
     name_ar: string;
     quantity: number;
     unit_price: number;
-  }[];
+  })[];
 };
 type Notice = AdminNotice;
 const field = "store-field mt-1";
@@ -356,18 +364,6 @@ export function AdminDashboard() {
       if (error) throw error;
       setPush(false);
     });
-  const rpc = async (name: string, args: Record<string, unknown>) => {
-    const { error } = await storeClient().rpc(name, args);
-    if (error) throw error;
-    await refresh();
-    setMessage(locale === "ar" ? "تم حفظ الطلب." : "Order saved.");
-  };
-  const changeStatus = (o: Order, status: Status) => {
-    if (status === "cancelled" && !window.confirm(c.cancelCheck)) return;
-    void action(() =>
-      rpc("transition_order", { p_id: o.id, p_status: status }),
-    );
-  };
   return (
     <main dir={dir} className="admin-ui min-h-screen bg-canvas pb-12 text-ink">
       <header className="border-b border-line bg-surface">
@@ -760,19 +756,25 @@ export function AdminDashboard() {
                           >
                             <span className="col-span-2 flex min-w-0 items-center gap-3 lg:col-span-1">
                               <span className="flex shrink-0 -space-x-3 rtl:space-x-reverse">
-                                {o.order_items.slice(0, 3).map((item) => {
-                                  const product = PRODUCTS.find(
-                                    (p) => p.id === item.product_id,
-                                  );
-                                  return product?.thumb ? (
-                                    <img
-                                      key={item.id}
-                                      src={product.thumb}
-                                      alt=""
-                                      className="h-11 w-11 rounded-xl border-2 border-surface object-cover"
-                                    />
-                                  ) : null;
-                                })}
+                                {o.order_items
+                                  .filter(
+                                    (item) =>
+                                      orderItemProgress(item).billable > 0,
+                                  )
+                                  .slice(0, 3)
+                                  .map((item) => {
+                                    const product = PRODUCTS.find(
+                                      (p) => p.id === item.product_id,
+                                    );
+                                    return product?.thumb ? (
+                                      <img
+                                        key={item.id}
+                                        src={product.thumb}
+                                        alt=""
+                                        className="h-11 w-11 rounded-xl border-2 border-surface object-cover"
+                                      />
+                                    ) : null;
+                                  })}
                               </span>
                               <span className="min-w-0">
                                 <span className="block font-display text-base font-bold text-brand">
@@ -796,7 +798,8 @@ export function AdminDashboard() {
                                     : ""}{" "}
                                   ·{" "}
                                   {o.order_items.reduce(
-                                    (sum, item) => sum + item.quantity,
+                                    (sum, item) =>
+                                      sum + orderItemProgress(item).billable,
                                     0,
                                   )}{" "}
                                   {locale === "ar" ? "قطع" : "pieces"}
@@ -829,12 +832,23 @@ export function AdminDashboard() {
                               <span
                                 className={`rounded-full px-2 py-1 text-xs font-semibold ${["cancelled", "expired"].includes(o.status) ? "bg-orange/20 text-ink" : "bg-leaf-soft text-brand"}`}
                               >
-                                {c[o.status]}
+                                {progressStateLabel(
+                                  orderProgressState(o.order_items, o.status),
+                                  locale === "ar",
+                                ) ?? c[o.status]}
                               </span>
                               <span
                                 className={`rounded-full border px-2 py-1 text-xs ${o.payment_status === "paid" ? "border-brand/20 bg-brand/5 text-brand" : "border-line text-ink-muted"}`}
                               >
-                                {c[o.payment_status]}
+                                {o.payment_state === "partial"
+                                  ? locale === "ar"
+                                    ? "مدفوع جزئيًا"
+                                    : "Partially paid"
+                                  : o.payment_state === "overpaid"
+                                    ? locale === "ar"
+                                      ? "رصيد زائد"
+                                      : "Overpaid"
+                                    : c[o.payment_status]}
                               </span>
                             </span>
                             <span
@@ -952,7 +966,10 @@ export function AdminDashboard() {
                         )}
                       </div>
                       <span className="rounded-full bg-leaf-soft px-3 py-1 font-semibold">
-                        {c[o.status]}
+                        {progressStateLabel(
+                          orderProgressState(o.order_items, o.status),
+                          locale === "ar",
+                        ) ?? c[o.status]}
                       </span>
                     </div>
                     <div className="grid gap-3 sm:grid-cols-2">
@@ -1000,6 +1017,7 @@ export function AdminDashboard() {
                       </h3>
                       <ul className="divide-y divide-line">
                         {o.order_items.map((i) => {
+                          const progress = orderItemProgress(i);
                           const product = PRODUCTS.find(
                             (p) => p.id === i.product_id,
                           );
@@ -1021,12 +1039,26 @@ export function AdminDashboard() {
                                 </p>
                                 <p className="mt-1 text-xs text-ink-muted">
                                   {locale === "ar" ? "الكمية" : "Qty"}:{" "}
-                                  {i.quantity} · {i.unit_price} EGP{" "}
+                                  {progress.billable} · {i.unit_price} EGP{" "}
                                   {locale === "ar" ? "للقطعة" : "each"}
                                 </p>
+                                {(progress.shipped > 0 ||
+                                  progress.removed > 0 ||
+                                  progress.returned > 0) && (
+                                  <p className="mt-1 text-xs text-ink-muted">
+                                    {locale === "ar" ? "شُحن" : "Shipped"}:{" "}
+                                    {progress.shipped} ·{" "}
+                                    {locale === "ar" ? "متبقي" : "Remaining"}:{" "}
+                                    {progress.remaining} ·{" "}
+                                    {locale === "ar" ? "أزيل" : "Removed"}:{" "}
+                                    {progress.removed} ·{" "}
+                                    {locale === "ar" ? "مرتجع" : "Returned"}:{" "}
+                                    {progress.returned}
+                                  </p>
+                                )}
                               </div>
                               <strong className="shrink-0 text-sm tabular-nums">
-                                {i.quantity * i.unit_price} EGP
+                                {progress.billable * i.unit_price} EGP
                               </strong>
                             </li>
                           );
@@ -1090,65 +1122,11 @@ export function AdminDashboard() {
                             : "This order is cancelled and payment is still marked received. Record a refund after returning the money; cancellation does not refund it automatically."}
                         </p>
                       )}
-                    <section
-                      aria-label={
-                        locale === "ar"
-                          ? "إدارة الطلب والدفع"
-                          : "Manage order and payment"
-                      }
-                      className="rounded-xl border border-line bg-canvas/40 p-4"
-                    >
-                      <h3 className="mb-3 text-sm font-semibold">
-                        {locale === "ar"
-                          ? "إدارة الطلب والدفع"
-                          : "Manage order & payment"}
-                      </h3>
-                      <div className="grid gap-3 sm:flex sm:flex-wrap sm:items-start">
-                        <OrderPaymentField
-                          key={o.id}
-                          orderId={o.id}
-                          payment={o.payment_status}
-                          disabled={busy}
-                          onSaved={refresh}
-                          onSavingChange={setBusy}
-                        />
-                        <div className="flex flex-wrap gap-3 sm:pt-6">
-                          {o.status === "pending" && (
-                            <ClayButton
-                              disabled={busy}
-                              onClick={() => changeStatus(o, "confirmed")}
-                            >
-                              {c.confirm}
-                            </ClayButton>
-                          )}
-                          {o.status === "confirmed" && (
-                            <ClayButton
-                              disabled={busy}
-                              onClick={() => changeStatus(o, "shipped")}
-                            >
-                              {c.ship}
-                            </ClayButton>
-                          )}
-                          {o.status === "shipped" && (
-                            <ClayButton
-                              disabled={busy}
-                              onClick={() => changeStatus(o, "delivered")}
-                            >
-                              {c.deliver}
-                            </ClayButton>
-                          )}
-                          {["pending", "confirmed"].includes(o.status) && (
-                            <ClayButton
-                              variant="outline"
-                              disabled={busy}
-                              onClick={() => changeStatus(o, "cancelled")}
-                            >
-                              {c.cancel}
-                            </ClayButton>
-                          )}
-                        </div>
-                      </div>
-                    </section>
+                    <OrderAdjustments
+                      orderId={o.id}
+                      onSaved={refresh}
+                      onBusyChange={setBusy}
+                    />
                     <AdminOrderMessages
                       orderId={o.id}
                       orderNumber={o.order_number}

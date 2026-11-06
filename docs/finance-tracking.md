@@ -1,8 +1,8 @@
 # Finance workflow
 
-Mark an order **Paid** only when the money is received. This records a payment for the full order total, including delivery. **Refunded** records a full refund of a previously paid order. Changing **Paid → Unpaid** is a correction of a mistaken paid flag; it reverses the receipt and recognized product costs. This panel does not support partial payments or partial refunds.
+Use **Orders → Details → Payments** to record money actually received or refunded: amount, original Cairo date, reference and reason. Partial amounts are supported. The UI does not charge or transfer money. Item, delivery and replacement changes update the obligation and show money due/refund due; they never fabricate cash. See [order adjustments](order-adjustments.md) for fulfilment and correction rules. Legacy full-status endpoints remain restricted to untouched legacy orders and cannot bypass managed cash records.
 
-Record actual business outgoings in **Expenses → Add expense**: amount, category, date paid; note is optional. Use **Stock purchases** for buying inventory, and the other categories for advertising, carrier charges, packaging and overhead. Entries can be voided to correct mistakes; they remain in the register. Exact retries reuse an idempotency key and cannot duplicate the same expense. The register supports date/category/status/note filters and pagination; displayed totals cover the entire filtered result, not just the current page. Switching to **Financial report** preserves an unsaved expense draft.
+Record actual business outgoings in **Expenses → Add expense**: amount, category, date paid; note is optional. Use **Stock purchases** for buying inventory, and the other categories for advertising, carrier charges, packaging and overhead. Use **Edit** to correct amount, category, date and note; an immutable change history is retained. Existing excluded entries keep their exclusion status. Exact retries reuse an idempotency key and cannot duplicate the same expense. The register supports date/category/status/note filters and pagination; displayed totals cover the entire filtered result, not just the current page. Switching to **Financial report** preserves an unsaved expense draft.
 
 **Financial report** contains period-based cash/profit summaries, missing order costs and the payment/refund history. Expense entry and management live on the separate Expenses page.
 
@@ -10,18 +10,18 @@ Set a product’s optional **Unit cost** in **Products & stock** before new orde
 
 ## What the figures mean
 
-- **Net money collected** = recorded full-order payments − full refunds − paid-status corrections. Delivery collected is included.
+- **Net money collected** = recorded receipts − refunds − paid-status corrections. Delivery collected is included.
 - **Cash spent** = all active expense entries, including stock purchases.
 - **Tracked cash balance** = net money collected − cash spent. It is the movement represented by these records, not a bank-account balance or opening cash balance.
-- **Gross profit estimate** = net money collected − cost snapshots × paid-order quantities.
-- **Paid-order profit estimate** = gross profit estimate − operating expenses. Stock purchase expenses are excluded here because product costs are already counted; subtracting both would count inventory twice.
+- **Gross profit estimate** = net money collected − recognized cost-event quantities × their original cost snapshots.
+- **Profit estimate** = gross profit estimate − operating expenses. Stock purchase expenses are excluded here because product costs are already counted; subtracting both would count inventory twice.
 - **Estimated margins** = the corresponding profit estimate ÷ net money collected × 100. Margins are unavailable when net receipts are zero/negative or a required product cost is missing. Profit estimates are also unavailable when a required cost is missing.
 
-This is a paid-order management estimate, not an accrual, statutory or tax report. Ordinary payment dates are the time an admin changes the payment status. Past-order imports use the explicitly entered original payment date in Cairo time; their audit recording time remains the current time. Incomplete or omitted expenses affect the estimate. The total includes delivery receipts; carrier fees must be recorded as expenses. New orders snapshot configured costs; historical imports use only entered original costs or unknown values rather than today's costs.
+This is a cash/product-cost management estimate, not an accrual, statutory or tax report. Managed payments use their manually entered effective Cairo date; date corrections retain the original date and append a correction. Past-order imports use the explicitly entered original payment date in Cairo time; their audit recording time remains the current time. Incomplete or omitted expenses affect the estimate. The total includes delivery receipts; carrier fees must be recorded as expenses. New orders snapshot configured costs; historical imports use only entered original costs or unknown values rather than today's costs.
 
-Refunds reduce receipts in their refund period. They retain product costs: a refund alone does not establish whether returned goods are reusable. Return-cost recovery/resale accounting is not modeled, so returned-stock situations need accounting reconciliation outside this estimate.
+Refunds reduce cash in their effective period. Managed product costs enter when units ship and reverse only for explicitly restocked returns. Damaged/non-restocked returns retain their product cost. Remaining reservations are released after each shipment without removing the outstanding units. Carrier bills and other shipping costs must be recorded as expenses.
 
-Date filters are inclusive calendar dates in **Africa/Cairo** (including timezone changes). Cash entries use their manually entered paid date. An order’s product cost enters the estimate with its first recorded payment; a mistaken-payment correction reverses it. Repeated clicks on the same payment status do not add duplicate events. A refunded order marked paid again does not recognize its original cost twice.
+Date filters are inclusive calendar dates in **Africa/Cairo**. Existing legacy cost movements retain their original payment-linked dates. Promoting an earlier order records a cost-policy adjustment at promotion time before applying new fulfilment events; it does not move money. New website/chat orders enter managed costing at creation, so a paid unshipped chat order recognizes no product cost yet. Historical imports retain their earlier accounting until explicitly adjusted. Report history uses corrected effective cash dates and preserves original receipts/correction history.
 
 ## Existing records and access
 

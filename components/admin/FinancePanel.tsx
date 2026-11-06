@@ -100,11 +100,7 @@ export function FinancePanel({
           .abortSignal(request.signal),
         db.rpc("finance_missing_costs").abortSignal(request.signal),
         db
-          .from("finance_payment_events")
-          .select("id,event_type,amount,occurred_at,orders(order_number)")
-          .order("recorded_at", { ascending: false })
-          .order("id", { ascending: false })
-          .limit(30)
+          .rpc("finance_recent_payments", { p_limit: 30 })
           .abortSignal(request.signal),
       ]);
       if (!current()) return false;

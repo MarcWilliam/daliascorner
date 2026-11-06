@@ -37,6 +37,53 @@ async function identity(db: PGlite, id: string | null, role = "authenticated") {
   await db.exec(`set role ${role}`);
 }
 
+const cairoToday = () =>
+  new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Africa/Cairo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+async function managedDetail(db: PGlite, id: string): Promise<any> {
+  return (await db.query<{ v: any }>("select admin_order_detail($1) v", [id]))
+    .rows[0].v;
+}
+async function managedAction(
+  db: PGlite,
+  id: string,
+  action: string,
+  payload: unknown = {},
+  key: string = crypto.randomUUID(),
+  revision?: number,
+) {
+  const detail = await managedDetail(db, id);
+  return db.query(
+    "select admin_order_action($1,$2,$3,$4,$5::jsonb,'Workflow TEST action')",
+    [
+      id,
+      revision ?? detail.order.revision,
+      key,
+      action,
+      JSON.stringify(payload),
+    ],
+  );
+}
+async function managedShip(db: PGlite, id: string) {
+  const d = await managedDetail(db, id);
+  await managedAction(db, id, "ship", {
+    lines: d.items
+      .map((i: any) => ({
+        item_id: i.id,
+        quantity: i.quantity - i.removed_quantity - i.shipped_quantity,
+      }))
+      .filter((i: any) => i.quantity > 0),
+    courier: "TEST carrier",
+    tracking_number: "TEST reference",
+    dispatched_on: cairoToday(),
+    expected_on: null,
+  });
+}
+
 test("client sequence grants and postgres defaults are removed while owner/service access and checked workflows remain intact", async () => {
   const db = new PGlite();
   try {
@@ -136,8 +183,20 @@ test("client sequence grants and postgres defaults are removed while owner/servi
     assert.equal(receipt.status, "confirmed");
     assert.equal(receipt.payment_status, "paid");
     assert.equal(receipt.total, 260);
-    await db.query("select set_order_payment($1,'unpaid')", [receipt.id]);
-    await db.query("select set_order_payment($1,'paid')", [receipt.id]);
+    await assert.rejects(
+      db.query("select set_order_payment($1,'unpaid')", [receipt.id]),
+      /USE_ORDER_ACTION/,
+    );
+    await managedAction(db, receipt.id, "refund", {
+      amount: 260,
+      date: cairoToday(),
+      reference: "Sequence TEST refund",
+    });
+    await managedAction(db, receipt.id, "payment", {
+      amount: 260,
+      date: cairoToday(),
+      reference: "Sequence TEST repayment",
+    });
     await db.exec("select restock_inventory('sequence-pot',3,'add')");
     assert.deepEqual(
       (

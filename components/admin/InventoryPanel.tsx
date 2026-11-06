@@ -165,6 +165,14 @@ export function InventoryPanel({
         cancelled: "إلغاء طلب",
         expired: "انتهاء حجز",
         past_order_deducted: "خصم مخزون طلب سابق",
+        admin_items_removed: "إزالة منتجات من الطلب",
+        admin_items_added: "إضافة منتجات أو بدائل",
+        partial_shipment: "شحن الكمية المحددة",
+        shipment_remainder_released: "تحرير حجز الكمية غير المشحونة",
+        returned_restocked: "إعادة مرتجع للمخزون",
+        admin_cancelled_remainder: "إلغاء الكمية المتبقية",
+        order_reopened: "إعادة حجز طلب مفتوح",
+        shipment_recording_corrected: "تصحيح تسجيل شحنة",
       }
     : {
         restocked: "Stock added",
@@ -177,6 +185,14 @@ export function InventoryPanel({
         cancelled: "Order cancelled",
         expired: "Reservation expired",
         past_order_deducted: "Past order stock deducted",
+        admin_items_removed: "Order items removed",
+        admin_items_added: "Items or replacements added",
+        partial_shipment: "Selected quantities shipped",
+        shipment_remainder_released: "Unshipped reservations released",
+        returned_restocked: "Returned goods restocked",
+        admin_cancelled_remainder: "Outstanding quantities cancelled",
+        order_reopened: "Reopened order reserved",
+        shipment_recording_corrected: "Shipment recording corrected",
       };
   return (
     <section

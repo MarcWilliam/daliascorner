@@ -305,3 +305,42 @@ test("Meta Lead remains independent of payment, while provider failures retain r
   assert.equal(completed, false);
   assert.deepEqual(totals, { sent: 0, skipped: 0, failed: 1 });
 });
+
+test("Meta contents reflect removed and returned quantities and skip fully reversed orders", async () => {
+  const order = metaOrder();
+  order.order_items = [
+    {
+      product_id: "old",
+      quantity: 4,
+      removed_quantity: 1,
+      returned_quantity: 1,
+      unit_price: 100,
+    },
+    { product_id: "replacement", quantity: 1, unit_price: 50 },
+  ];
+  order.subtotal = 250;
+  const result = await metaFixture(order);
+  const custom = result.sent[0].custom_data as {
+    contents: { id: string; quantity: number }[];
+    value: number;
+  };
+  assert.equal(custom.value, 300);
+  assert.deepEqual(
+    custom.contents.map((i) => ({ id: i.id, quantity: i.quantity })),
+    [
+      { id: "old", quantity: 2 },
+      { id: "replacement", quantity: 1 },
+    ],
+  );
+  order.order_items = [
+    {
+      product_id: "returned",
+      quantity: 2,
+      returned_quantity: 2,
+      unit_price: 100,
+    },
+  ];
+  order.subtotal = 0;
+  order.delivery_fee = 0;
+  assert.equal((await metaFixture(order)).sent.length, 0);
+});
