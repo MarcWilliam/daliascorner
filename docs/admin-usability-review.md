@@ -46,7 +46,7 @@ The Cloudflare feature deployment is separate from the existing custom-domain si
 
 ## Verification
 
-- 120 automated checks pass, including real PostgreSQL execution through PGlite for stock modes, reservations, expiry, payment/refund history, filtered expense pagination/totals, InstaPay eligibility and immutable recipient snapshots, localized payment-proof links, cost snapshots and customer/admin access boundaries.
+- 123 automated checks pass, including real PostgreSQL execution through PGlite for stock modes, reservations, expiry, payment/refund history, filtered expense pagination/totals, InstaPay eligibility and immutable recipient snapshots, localized payment-proof links, cost snapshots and customer/admin access boundaries.
 - Production static export passes using Node 22.23.1.
 - Local browser checks use synthetic data: actual checkout POST failure and success receipt; sign-in dialog cancellation and cart restoration; mobile stock changes; expense entry and missing-cost completion; payment save and order confirmation; notification read status; failed delivery-zone save preserving entries followed by successful retry.
 - English/Arabic and narrow/desktop layouts were checked at 320, 390 and 1280 pixels. Finance date controls were repaired after the narrow-screen check. Product images loaded and affected screens did not overflow horizontally.
@@ -74,3 +74,13 @@ Orders have compact 44px filter controls and server-side sorting by recorded dat
 Verification: 120 automated checks passed, including shared/original link compatibility, expiry, customer ownership/admin denial, generated totals and bilingual template links. Synthetic browser checks verified total ordering, compact598px controls, embedded private link/guest receipt, editable message retention, chart multi/single/zero states, and Arabic reflow at320px. No external WhatsApp link was opened or message sent.
 
 Hosted share-link migration applied. Rolled-back checks passed for token resolution, claimed-order visibility, expiry, admin-claim denial, customer mint denial and generated totals. Security advisor changes are the expected private-table deny-all policy notice and authenticated definer warning for the admin-guarded mint RPC. No test links were retained.
+
+## Expense editing and order-adjustment review
+
+The expense register now uses Edit instead of a Void action in both views. Amount, category, paid date and note are editable, including on excluded entries without restoring their inclusion status. Separate add/edit drafts survive closing and refreshes. Server revisions use exact timestamp strings; conflicting edits block Save until an explicit reload. Corrections are recorded in private append-only history; same-payload retries do not duplicate history. Existing creation/audit identity fields are not editable.
+
+Verification: 123 automated tests passed, including validation, admin/revocation guards, stale writes, exact retries, audit immutability, existing void compatibility and category/report recalculation. Synthetic browser checks verified all4fields (native date keyboard interaction), draft retention, Table/Cards Edit actions with no Void buttons, conflict blocking/reload, and Arabic320px dialog fit/focus. No real expense was edited during UI QA.
+
+Order adjustments reviewed but not implemented in this expense update: customer/contact/address and delivery-zone corrections; unpaid/unshipped item/quantity editing with atomic reservation changes; per-order timeline/internal notes; courier/tracking/delivery dates; partial payments/refunds; returns/exchanges with explicit restock choices; controlled undo/reopen/hold extensions; original order/payment-date correction. Discounts/manual prices/fees remain a separate policy decision because the owner chose catalog prices and configured delivery fees. First recommended batch is customer/delivery details, unpaid/unshipped items, notes/timeline and courier tracking. Paid total changes require financial adjustment records; shipped quantities should use returns/exchanges rather than rewriting the sale.
+
+Hosted expense-edit migration applied. Rolled-back checks verified audit creation, idempotent retries, conflict rejection, updated cash totals, immutable history and customer denial. New advisor notices are the expected private deny-all table and authenticated definer RPC warnings; all new RPCs enforce admin membership. No test expenses or audit rows were retained.

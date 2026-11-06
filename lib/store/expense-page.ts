@@ -16,6 +16,7 @@ export type ExpenseEntry = {
   note: string;
   voided_at: string | null;
   created_at: string;
+  updated_at?: string;
 };
 export type ExpensePage = {
   entries: ExpenseEntry[];

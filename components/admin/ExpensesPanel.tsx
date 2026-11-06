@@ -74,7 +74,25 @@ export function ExpensesPanel({
     [error, setError] = useState(""),
     [message, setMessage] = useState("");
   const [formOpen, setFormOpen] = useState(false),
-    [draft, setDraft] = useState(newDraft);
+    [addDraft, setAddDraft] = useState(newDraft);
+  type Draft = ReturnType<typeof newDraft>;
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editDrafts, setEditDrafts] = useState<
+    Record<string, { entry: ExpenseEntry; draft: Draft }>
+  >({});
+  const [editConflict, setEditConflict] = useState(false);
+  const editEntry = editingId ? editDrafts[editingId]?.entry : undefined;
+  const draft = editingId
+    ? (editDrafts[editingId]?.draft ?? newDraft())
+    : addDraft;
+  function setDraft(value: Draft) {
+    if (editingId)
+      setEditDrafts((previous) => ({
+        ...previous,
+        [editingId]: { ...previous[editingId], draft: value },
+      }));
+    else setAddDraft(value);
+  }
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [view, setView] = useState<"table" | "cards">("cards");
   useEffect(() => {
@@ -99,7 +117,6 @@ export function ExpensesPanel({
       localStorage.setItem("dc.admin.expense-view", next);
     } catch {}
   }
-  const [voidEntry, setVoidEntry] = useState<ExpenseEntry | null>(null);
   const filterButton = useRef<HTMLButtonElement>(null),
     firstFilter = useRef<HTMLInputElement>(null);
   const firstField = useRef<HTMLInputElement>(null),
@@ -220,8 +237,18 @@ export function ExpensesPanel({
       if (!current()) return false;
       setMessage(refreshed ? success : c.refreshError);
       return true;
-    } catch {
-      if (current()) setError(common.saveError);
+    } catch (cause) {
+      if (current()) {
+        if (
+          name === "edit_finance_entry" &&
+          String((cause as { message?: string })?.message).includes(
+            "EXPENSE_CHANGED",
+          )
+        ) {
+          setEditConflict(true);
+          setError(c.changed);
+        } else setError(common.saveError);
+      }
       return false;
     } finally {
       clearTimeout(timer);
@@ -253,17 +280,33 @@ export function ExpensesPanel({
       p_amount: amount,
       p_note: draft.note.trim(),
     };
+    if (editingId && !editEntry?.updated_at) {
+      setError(c.reloadRequired);
+      setEditConflict(true);
+      return;
+    }
+    if (editingId && editConflict) {
+      setError(c.changed);
+      return;
+    }
     const signature = JSON.stringify({ owner: identity, ...payload });
-    if (attempt.current?.signature !== signature)
+    if (!editingId && attempt.current?.signature !== signature)
       attempt.current = { id: crypto.randomUUID(), signature };
     void save(
-      "add_finance_entry",
-      { ...payload, p_id: attempt.current.id },
+      editingId ? "edit_finance_entry" : "add_finance_entry",
+      editingId
+        ? {
+            ...payload,
+            p_id: editingId,
+            p_expected_updated_at: editEntry!.updated_at,
+          }
+        : { ...payload, p_id: attempt.current!.id },
       c.saved,
     ).then((ok) => {
       if (ok) {
         const matches =
-          filters.status !== "voided" &&
+          (filters.status === "all" ||
+            filters.status === (editEntry?.voided_at ? "voided" : "active")) &&
           (!filters.from || payload.p_date >= filters.from) &&
           (!filters.to || payload.p_date <= filters.to) &&
           (filters.category === "all" ||
@@ -271,8 +314,19 @@ export function ExpensesPanel({
           payload.p_note.toLowerCase().includes(filters.search.toLowerCase());
         if (!matches) setMessage(c.savedOutsideFilters);
         setOffset(0);
-        setDraft(newDraft());
-        attempt.current = null;
+        if (editingId) {
+          const id = editingId;
+          setEditDrafts((previous) => {
+            const next = { ...previous };
+            delete next[id];
+            return next;
+          });
+          setEditingId(null);
+          setEditConflict(false);
+        } else {
+          setAddDraft(newDraft());
+          attempt.current = null;
+        }
         setFormOpen(false);
       }
     });
@@ -286,9 +340,83 @@ export function ExpensesPanel({
         draft.note ||
         draft.category !== "other" ||
         draft.date !== cairoDay()
-        ? c.closedForm
+        ? editingId
+          ? c.closedEdit
+          : c.closedForm
         : "",
     );
+  }
+  function openEdit(entry: ExpenseEntry) {
+    const cached = editDrafts[entry.id];
+    if (!cached)
+      setEditDrafts((previous) => ({
+        ...previous,
+        [entry.id]: {
+          entry: { ...entry },
+          draft: {
+            amount: String(entry.amount),
+            category: entry.category,
+            date: entry.entry_date,
+            note: entry.note,
+          },
+        },
+      }));
+    setEditingId(entry.id);
+    const stale = !!cached && cached.entry.updated_at !== entry.updated_at;
+    setEditConflict(stale || !entry.updated_at);
+    setError(stale ? c.changed : !entry.updated_at ? c.reloadRequired : "");
+    setMessage("");
+    setFormOpen(true);
+  }
+  async function reloadExpense() {
+    if (!editingId || mutationBusy.current) return;
+    const id = editingId,
+      owner = identity,
+      controller = new AbortController();
+    mutation.current = controller;
+    mutationBusy.current = true;
+    setBusy(true);
+    const timer = setTimeout(() => controller.abort(), 20000);
+    const current = () =>
+      mounted.current &&
+      currentIdentity.current === owner &&
+      mutation.current === controller;
+    try {
+      const { data, error } = await storeClient()
+        .from("finance_entries")
+        .select(
+          "id,entry_date,category,amount,note,voided_at,created_at,updated_at",
+        )
+        .eq("id", id)
+        .abortSignal(controller.signal)
+        .single();
+      if (!current()) return;
+      if (error || !data?.updated_at) throw Error();
+      const entry = data as ExpenseEntry;
+      setEditDrafts((previous) => ({
+        ...previous,
+        [id]: {
+          entry,
+          draft: {
+            amount: String(entry.amount),
+            category: entry.category,
+            date: entry.entry_date,
+            note: entry.note,
+          },
+        },
+      }));
+      setEditConflict(false);
+      setError("");
+    } catch {
+      if (current()) setError(c.reloadRequired);
+    } finally {
+      clearTimeout(timer);
+      if (current()) {
+        mutation.current = null;
+        mutationBusy.current = false;
+        setBusy(false);
+      }
+    }
   }
   function applyFilters(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -346,6 +474,8 @@ export function ExpensesPanel({
             <ClayButton
               disabled={loading || busy}
               onClick={() => {
+                setEditingId(null);
+                setEditConflict(false);
                 setFormOpen(true);
                 setMessage("");
                 setError("");
@@ -397,7 +527,7 @@ export function ExpensesPanel({
             {message}
           </p>
         )}
-        {error && !formOpen && !voidEntry && (
+        {error && !formOpen && (
           <div
             role="alert"
             className="mt-4 rounded-xl bg-orange/20 p-3 text-sm"
@@ -421,7 +551,7 @@ export function ExpensesPanel({
       </header>
       <AdminDialog
         open={formOpen}
-        title={c.formTitle}
+        title={editingId ? c.editTitle : c.formTitle}
         busy={busy}
         onClose={closeExpenseForm}
       >
@@ -429,6 +559,21 @@ export function ExpensesPanel({
           <p role="alert" className="rounded-xl bg-orange/20 p-3 text-sm">
             {error}
           </p>
+        )}
+        {editingId && (
+          <p className="mb-3 text-xs text-ink-muted">
+            {editEntry?.voided_at ? c.voidedEditHint : c.editHint}
+          </p>
+        )}
+        {editingId && (editConflict || !editEntry?.updated_at) && (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void reloadExpense()}
+            className="mb-3 min-h-11 rounded-lg px-2 font-semibold text-brand underline"
+          >
+            {c.reloadLatest}
+          </button>
         )}
         <form className="space-y-4" onSubmit={addExpense}>
           <fieldset disabled={busy} className="grid gap-4 sm:grid-cols-2">
@@ -489,8 +634,13 @@ export function ExpensesPanel({
               />
             </label>
             <div className="flex flex-wrap gap-3 sm:col-span-2">
-              <ClayButton type="submit">
-                {busy ? common.saving : common.add}
+              <ClayButton
+                type="submit"
+                disabled={
+                  !!editingId && (editConflict || !editEntry?.updated_at)
+                }
+              >
+                {busy ? common.saving : editingId ? c.saveChanges : common.add}
               </ClayButton>
               <ClayButton
                 type="button"
@@ -502,72 +652,6 @@ export function ExpensesPanel({
             </div>
           </fieldset>
         </form>
-      </AdminDialog>
-      <AdminDialog
-        open={voidEntry !== null}
-        title={c.voidTitle}
-        busy={busy}
-        onClose={() => setVoidEntry(null)}
-      >
-        {voidEntry && (
-          <div className="space-y-4">
-            <p className="text-sm text-ink-muted">{c.voidDescription}</p>
-            <dl className="grid grid-cols-2 gap-3 rounded-xl bg-canvas-sunk p-3 text-sm">
-              <div>
-                <dt className="text-ink-muted">{c.amount}</dt>
-                <dd className="mt-1 font-semibold">
-                  {money(voidEntry.amount)}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-ink-muted">{c.paidDate}</dt>
-                <dd className="mt-1 font-semibold">
-                  {date(voidEntry.entry_date)}
-                </dd>
-              </div>
-              <div className="col-span-2">
-                <dt className="text-ink-muted">{c.category}</dt>
-                <dd className="mt-1">
-                  {common.categories[voidEntry.category]}
-                </dd>
-              </div>
-              {voidEntry.note && (
-                <div className="col-span-2">
-                  <dt className="text-ink-muted">{c.note}</dt>
-                  <dd className="mt-1 break-words">{voidEntry.note}</dd>
-                </div>
-              )}
-            </dl>
-            {error && (
-              <p role="alert" className="rounded-xl bg-orange/20 p-3 text-sm">
-                {error}
-              </p>
-            )}
-            <div className="flex flex-wrap justify-end gap-2">
-              <ClayButton
-                variant="outline"
-                disabled={busy}
-                onClick={() => setVoidEntry(null)}
-              >
-                {c.cancel}
-              </ClayButton>
-              <ClayButton
-                disabled={busy}
-                onClick={() => {
-                  void save(
-                    "void_finance_entry",
-                    { p_id: voidEntry.id },
-                    c.voidedSuccess,
-                  ).then((ok) => {
-                    if (ok) setVoidEntry(null);
-                  });
-                }}
-              >
-                {busy ? common.saving : c.voidAction}
-              </ClayButton>
-            </div>
-          </div>
-        )}
       </AdminDialog>
       <section
         id="expense-filter-region"
@@ -817,22 +901,15 @@ export function ExpensesPanel({
                           {money(entry.amount)}
                         </td>
                         <td className="px-3 py-2">
-                          {!entry.voided_at ? (
-                            <button
-                              type="button"
-                              disabled={busy || loading}
-                              className="min-h-11 rounded-xl px-2 font-semibold text-brand underline focus-visible:ring-4 focus-visible:ring-brand/45 disabled:opacity-50"
-                              onClick={() => {
-                                setError("");
-                                setVoidEntry(entry);
-                              }}
-                              aria-label={`${c.voidAction} — ${common.categories[entry.category]}, ${money(entry.amount)}, ${date(entry.entry_date)}`}
-                            >
-                              {c.voidAction}
-                            </button>
-                          ) : (
-                            <span className="text-xs">{c.voided}</span>
-                          )}
+                          <button
+                            type="button"
+                            disabled={busy || loading}
+                            className="min-h-11 rounded-xl px-2 font-semibold text-brand underline focus-visible:ring-4 focus-visible:ring-brand/45 disabled:opacity-50"
+                            onClick={() => openEdit(entry)}
+                            aria-label={`${c.edit} — ${common.categories[entry.category]}, ${money(entry.amount)}, ${date(entry.entry_date)}`}
+                          >
+                            {c.edit}
+                          </button>
                         </td>
                       </tr>
                     ))}
@@ -868,20 +945,16 @@ export function ExpensesPanel({
                       {entry.note || c.noNote}
                     </p>
                     <div className="mt-auto flex justify-end border-t border-line pt-1">
-                      {!entry.voided_at ? (
-                        <button
-                          type="button"
-                          disabled={busy || loading}
-                          className="min-h-11 rounded-xl px-2 text-sm font-semibold text-brand underline focus-visible:ring-4 focus-visible:ring-brand/45 disabled:opacity-50"
-                          onClick={() => {
-                            setError("");
-                            setVoidEntry(entry);
-                          }}
-                          aria-label={`${c.voidAction} — ${common.categories[entry.category]}, ${money(entry.amount)}, ${date(entry.entry_date)}`}
-                        >
-                          {c.voidAction}
-                        </button>
-                      ) : (
+                      <button
+                        type="button"
+                        disabled={busy || loading}
+                        className="min-h-11 rounded-xl px-2 text-sm font-semibold text-brand underline focus-visible:ring-4 focus-visible:ring-brand/45 disabled:opacity-50"
+                        onClick={() => openEdit(entry)}
+                        aria-label={`${c.edit} — ${common.categories[entry.category]}, ${money(entry.amount)}, ${date(entry.entry_date)}`}
+                      >
+                        {c.edit}
+                      </button>
+                      {entry.voided_at && (
                         <span className="inline-flex min-h-11 items-center text-xs">
                           {c.voided}
                         </span>

@@ -10,6 +10,17 @@ export const expenseCopy = {
       "Totals cover all matching pages. Voided entries are excluded from spending.",
     add: "Add expense",
     formTitle: "Add expense",
+    edit: "Edit",
+    editTitle: "Edit expense",
+    saveChanges: "Save changes",
+    changed:
+      "This expense changed since you opened it. Reload the latest version before editing again.",
+    reloadLatest: "Reload latest (replaces this draft)",
+    reloadRequired:
+      "Reload this expense to obtain its latest version before saving.",
+    closedEdit: "Edit draft kept. Choose Edit on the same expense to continue.",
+    voidedEditHint:
+      "This expense is voided. Editing its details does not include it in spending again. Changes are recorded in history.",
     voidTitle: "Void expense?",
     voidAction: "Void",
     voidDescription:
@@ -69,7 +80,7 @@ export const expenseCopy = {
     recorded: "Recorded",
     noNote: "No note",
     editHint:
-      "To correct an entry, void it and record a replacement. Voiding does not delete its history.",
+      "Edit the amount, category, paid date and note. Changes are recorded in history.",
     invalidSearch: "Use no more than 200 characters in the note search.",
     invalidDate: "Choose a valid paid date that is not in the future.",
     retry: "Try again",
@@ -86,6 +97,17 @@ export const expenseCopy = {
       "الإجماليات تشمل كل الصفحات المطابقة. القيود الملغاة مستبعدة من المصروفات.",
     add: "إضافة مصروف",
     formTitle: "إضافة مصروف",
+    edit: "تعديل",
+    editTitle: "تعديل المصروف",
+    saveChanges: "حفظ التعديلات",
+    changed:
+      "تغيّر هذا المصروف منذ فتحه. أعد تحميل أحدث نسخة قبل تعديله مجددًا.",
+    reloadLatest: "تحميل الأحدث (يستبدل هذه المسودة)",
+    reloadRequired: "أعد تحميل المصروف للحصول على أحدث نسخة قبل الحفظ.",
+    closedEdit:
+      "تم الاحتفاظ بمسودة التعديل. اختر تعديل على المصروف نفسه للمتابعة.",
+    voidedEditHint:
+      "هذا المصروف ملغى. تعديل بياناته لا يعيده إلى المصروفات السارية. تُسجل التعديلات في السجل.",
     voidTitle: "إلغاء المصروف؟",
     voidAction: "إلغاء المصروف",
     voidDescription:
@@ -144,7 +166,8 @@ export const expenseCopy = {
     actions: "الإجراءات",
     recorded: "تم التسجيل",
     noNote: "بدون ملاحظة",
-    editHint: "لتصحيح قيد، ألغِه وسجّل بديلًا. الإلغاء لا يحذف تاريخه.",
+    editHint:
+      "عدّل المبلغ والفئة وتاريخ الدفع والملاحظة. تُسجل التعديلات في السجل.",
     invalidSearch: "استخدم ٢٠٠ حرف بحد أقصى للبحث في الملاحظات.",
     invalidDate: "اختر تاريخ دفع صحيحًا لا يقع في المستقبل.",
     retry: "حاول مجددًا",
