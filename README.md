@@ -1,6 +1,6 @@
 # Dalia's Corner
 
-A single-page, fully bilingual (Arabic + English, RTL) marketing site for **Dalia's Corner** — handmade, hand-painted pottery planters shaped like animal characters. Built with **Next.js (App Router) + TypeScript + Tailwind CSS**. Claymorphism design system, client-side cart, WhatsApp checkout. No backend, no payment.
+A single-page, fully bilingual (Arabic + English, RTL) marketing site for **Dalia's Corner** — handmade, hand-painted pottery planters shaped like animal characters. Built with **Next.js (App Router) + TypeScript + Tailwind CSS**. Claymorphism design system, client-side cart, WhatsApp checkout. Supabase-backed orders, stock and admin login are being implemented on `codex/supabase-store-admin`; WhatsApp remains the checkout communication channel. No online payment. See [backend setup](docs/supabase-cloudflare-setup.md).
 
 ## Run
 
@@ -33,7 +33,7 @@ Append the bilingual entry to [`lib/products.json`](lib/products.json), assign i
 
 Each version is a complete product entry with its own stable `id`, bilingual `name` and `blurb`, photos, and price. On additional versions, set `variantOf` to the original product's ID, such as `"bahloul"`. Give every version (including the original) a bilingual `variantLabel`, such as `{ "en": "Green", "ar": "أخضر" }`. For colour variants, also set `color` to the bilingual colour; other design variations can leave it out. Names and prices may differ between versions. Keep every member in the same category and point directly to the original, never to another variant.
 
-The collection shows one card per family with photo choices. Switching a choice updates the photo, name, description, price, and quantity controls. Each version keeps its own detail URL and cart line, and the colour/design label follows it into WhatsApp orders, structured data, and catalog exports. Existing product IDs remain unchanged so saved carts and links continue to work. There is no inventory system; two versions do not imply two units in stock.
+The collection shows one card per family with photo choices. Switching a choice updates the photo, name, description, price, and quantity controls. Each version keeps its own detail URL and cart line, and the colour/design label follows it into WhatsApp orders, structured data, and catalog exports. Existing product IDs remain unchanged so saved carts and links continue to work. Stock is tracked per variant in Supabase. Initial quantities are zero until an admin enters actual stock.
 
 ## Copy / translations
 

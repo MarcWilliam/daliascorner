@@ -7,21 +7,33 @@ import { Minus, Plus, ShoppingBag, Trash2, X } from "lucide-react";
 import { useCart } from "@/components/providers/CartProvider";
 import { useLocale } from "@/components/providers/LocaleProvider";
 import { useAnnouncer } from "@/components/providers/Announcer";
-import { ClayButton } from "@/components/ui/ClayButton";
-import { WhatsAppIcon } from "@/components/ui/BrandIcons";
 import { getProduct, getProductName } from "@/lib/products";
-import { buildOrderLink, type Customer } from "@/lib/whatsapp";
+import { type Customer } from "@/lib/whatsapp";
 import { STORAGE_CUSTOMER } from "@/lib/config";
-import { trackCheckoutLead } from "@/lib/meta";
+import { StoreCheckout } from "@/components/ui/StoreCheckout";
+import { ClayButton } from "@/components/ui/ClayButton";
 
 export function CartDrawer() {
   const active = useSaleActive();
-  const { lines, count, isOpen, close, increment, decrement, remove, hasPrices, subtotal } =
-    useCart();
+  const {
+    lines,
+    count,
+    isOpen,
+    close,
+    increment,
+    decrement,
+    remove,
+    hasPrices,
+    subtotal,
+  } = useCart();
   const { t, locale, dir, messages } = useLocale();
   const announce = useAnnouncer();
 
-  const [customer, setCustomer] = useState<Customer>({ name: "", phone: "", address: "" });
+  const [customer, setCustomer] = useState<Customer>({
+    name: "",
+    phone: "",
+    address: "",
+  });
   const [loaded, setLoaded] = useState(false);
 
   // Load any saved delivery details once on mount.
@@ -143,24 +155,6 @@ export function CartDrawer() {
     else el.setAttribute("inert", "");
   }, [isOpen]);
 
-  // Only build the (potentially long) order link once details are complete — not
-  // on every keystroke while the form is still being filled in.
-  const checkoutHref = useMemo(
-    () => (canCheckout ? buildOrderLink(lines, locale, messages, customer) : ""),
-    [canCheckout, lines, locale, messages, customer, active],
-  );
-
-  // The handoff to chat is the only conversion this site can honestly report:
-  // everything after it — price, delivery, payment — happens in a thread Meta
-  // never sees. Hence `Lead`, never `Purchase`. Fire-and-forget: the CTA opens
-  // in a new tab, so this page stays alive to finish hashing and sending.
-  const handleCheckoutLead = useCallback(
-    () => {
-      void trackCheckoutLead(lines, customer);
-    },
-    [lines, customer],
-  );
-
   // Off-screen slide direction follows the inline-end side (mirrors in RTL).
   const offClass = isOpen
     ? "translate-x-0"
@@ -217,10 +211,17 @@ export function CartDrawer() {
         {lines.length === 0 ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-5 px-6 text-center">
             <span className="grid h-20 w-20 place-items-center rounded-blob bg-canvas-sunk">
-              <ShoppingBag className="h-9 w-9 text-ink-muted" aria-hidden="true" />
+              <ShoppingBag
+                className="h-9 w-9 text-ink-muted"
+                aria-hidden="true"
+              />
             </span>
             <p className="text-lg text-ink-muted">{t("cart.empty")}</p>
-            <ClayButton href="#characters" variant="primary" onClick={close as never}>
+            <ClayButton
+              href="#characters"
+              variant="primary"
+              onClick={close as never}
+            >
               {t("cart.emptyCta")}
             </ClayButton>
           </div>
@@ -244,7 +245,9 @@ export function CartDrawer() {
                   />
                   <div className="flex min-w-0 flex-1 flex-col gap-2">
                     <div className="flex items-start justify-between gap-2">
-                      <span className="font-display font-semibold text-ink">{name}</span>
+                      <span className="font-display font-semibold text-ink">
+                        {name}
+                      </span>
                       <button
                         type="button"
                         onClick={() => {
@@ -254,7 +257,10 @@ export function CartDrawer() {
                         aria-label={`${t("cart.remove")} — ${name}`}
                         className="grid h-9 w-9 shrink-0 place-items-center rounded-clay text-destructive transition-colors hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-destructive/40 [touch-action:manipulation] cursor-pointer"
                       >
-                        <Trash2 className="h-[1.15rem] w-[1.15rem]" aria-hidden="true" />
+                        <Trash2
+                          className="h-[1.15rem] w-[1.15rem]"
+                          aria-hidden="true"
+                        />
                       </button>
                     </div>
 
@@ -286,7 +292,9 @@ export function CartDrawer() {
                         <button
                           type="button"
                           onClick={() => {
-                            announce(`${name} — ${t("cart.quantity")}: ${line.qty + 1}`);
+                            announce(
+                              `${name} — ${t("cart.quantity")}: ${line.qty + 1}`,
+                            );
                             increment(line.id);
                           }}
                           aria-label={t("cart.increase")}
@@ -386,26 +394,11 @@ export function CartDrawer() {
             </div>
           )}
 
-          <div className="space-y-2.5">
-            {!canCheckout ? (
-              <ClayButton variant="whatsapp" className="w-full" disabled type="button">
-                <WhatsAppIcon className="h-5 w-5" />
-                {t("cart.checkout")}
-              </ClayButton>
-            ) : (
-              <ClayButton
-                href={checkoutHref}
-                target="_blank"
-                rel="noopener noreferrer"
-                variant="whatsapp"
-                className="w-full"
-                onClick={handleCheckoutLead}
-              >
-                <WhatsAppIcon className="h-5 w-5" />
-                {t("cart.checkout")}
-              </ClayButton>
-            )}
-          </div>
+          <StoreCheckout
+            customer={customer}
+            canCheckout={canCheckout}
+            visible={isOpen}
+          />
         </div>
       </div>
     </div>

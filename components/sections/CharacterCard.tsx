@@ -1,5 +1,7 @@
 "use client";
 
+import { StockAvailability } from "@/components/ui/StockAvailability";
+import { useInventory } from "@/components/providers/InventoryProvider";
 import { useSaleActive } from "@/components/providers/PromotionProvider";
 
 import { salePricing } from "@/lib/promotion";
@@ -7,7 +9,11 @@ import { useEffect, useRef, useState } from "react";
 import { m, useMotionValue, useReducedMotion, useSpring } from "framer-motion";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import { Minus, Plus } from "lucide-react";
-import { getProductCategory, getProductName, type Product } from "@/lib/products";
+import {
+  getProductCategory,
+  getProductName,
+  type Product,
+} from "@/lib/products";
 import { VariantPicker } from "@/components/ui/VariantPicker";
 import { useLocale } from "@/components/providers/LocaleProvider";
 import { useCart } from "@/components/providers/CartProvider";
@@ -28,7 +34,11 @@ const accentDot: Record<Product["accent"], string> = {
   mauve: "bg-mauve",
 };
 
-export function CharacterCard({ product: initialProduct }: { product: Product }) {
+export function CharacterCard({
+  product: initialProduct,
+}: {
+  product: Product;
+}) {
   const [selectedProduct, setProduct] = useState(initialProduct);
   const active = useSaleActive();
   const product = salePricing(selectedProduct, active);
@@ -44,6 +54,8 @@ export function CharacterCard({ product: initialProduct }: { product: Product })
   const name = getProductName(product, locale);
   const category = getProductCategory(product.category);
   // How many of this character are currently in the cart.
+  const { items: inventory } = useInventory();
+  const available = inventory[product.id]?.available;
   const qty = lines.find((l) => l.id === product.id)?.qty ?? 0;
 
   // 3D tilt + lift. Raw motion values are set from one of several inputs and
@@ -131,7 +143,11 @@ export function CharacterCard({ product: initialProduct }: { product: Product })
   // Decrementing the last one removes the line — announce that, not a bare "0",
   // before the stepper unmounts (mirrors the cart drawer's remove button).
   function handleDecrement() {
-    announce(qty <= 1 ? t("cart.removed", { name }) : `${name} — ${t("cart.quantity")}: ${qty - 1}`);
+    announce(
+      qty <= 1
+        ? t("cart.removed", { name })
+        : `${name} — ${t("cart.quantity")}: ${qty - 1}`,
+    );
     decrement(product.id);
   }
   function handleBuyNow() {
@@ -190,7 +206,10 @@ export function CharacterCard({ product: initialProduct }: { product: Product })
       {/* body */}
       <div className="flex flex-1 flex-col gap-2 p-5">
         <h4 className="flex items-center gap-2 text-xl">
-          <span aria-hidden="true" className={`h-2.5 w-2.5 rounded-full ${accentDot[product.accent]}`} />
+          <span
+            aria-hidden="true"
+            className={`h-2.5 w-2.5 rounded-full ${accentDot[product.accent]}`}
+          />
           {name}
         </h4>
         <VariantPicker product={product} onSelect={setProduct} />
@@ -204,19 +223,22 @@ export function CharacterCard({ product: initialProduct }: { product: Product })
             <span className="tabular font-display text-lg font-bold text-brand">
               {product.price} {messages.cart.currency}
             </span>
-            {product.originalPrice != null && product.originalPrice > product.price && (
-              <span className="tabular text-sm text-ink-muted line-through">
-                {product.originalPrice} {messages.cart.currency}
-              </span>
-            )}
+            {product.originalPrice != null &&
+              product.originalPrice > product.price && (
+                <span className="tabular text-sm text-ink-muted line-through">
+                  {product.originalPrice} {messages.cart.currency}
+                </span>
+              )}
           </p>
         )}
 
+        <StockAvailability id={product.id} />
         {/* Keep both shopping paths visible: build a cart or check out now. */}
         <div className="mt-2 grid grid-cols-2 gap-2.5">
           {qty === 0 ? (
             <button
               type="button"
+              disabled={available !== undefined && qty >= available}
               onClick={handleAdd}
               className="btn-clay inline-flex min-h-[3rem] items-center justify-center gap-2 rounded-clay bg-brand px-3 font-display text-sm font-semibold leading-none text-canvas [--edge:var(--brand-edge)] [touch-action:manipulation] cursor-pointer focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/45"
             >
@@ -242,6 +264,7 @@ export function CharacterCard({ product: initialProduct }: { product: Product })
               </span>
               <button
                 type="button"
+                disabled={available !== undefined && qty >= available}
                 onClick={handleIncrement}
                 aria-label={t("cart.increase")}
                 className="grid h-full place-items-center text-brand transition-colors hover:bg-canvas-sunk focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-brand/45 [touch-action:manipulation] cursor-pointer"
@@ -252,6 +275,7 @@ export function CharacterCard({ product: initialProduct }: { product: Product })
           )}
           <button
             type="button"
+            disabled={available === 0}
             onClick={handleBuyNow}
             className="btn-clay inline-flex min-h-[3rem] items-center justify-center rounded-clay bg-orange px-3 font-display text-sm font-semibold leading-none text-ink [--edge:var(--orange-edge)] [touch-action:manipulation] cursor-pointer focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/45"
           >

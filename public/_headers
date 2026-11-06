@@ -1,0 +1,10 @@
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  X-Frame-Options: DENY
+/admin/*
+  X-Robots-Tag: noindex, nofollow
+  Cache-Control: no-store
+/admin-sw.js
+  Cache-Control: no-cache
+  Service-Worker-Allowed: /admin/

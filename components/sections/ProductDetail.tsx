@@ -1,5 +1,7 @@
 "use client";
 
+import { StockAvailability } from "@/components/ui/StockAvailability";
+import { useInventory } from "@/components/providers/InventoryProvider";
 import { useSaleActive } from "@/components/providers/PromotionProvider";
 
 import { salePricing } from "@/lib/promotion";
@@ -39,26 +41,38 @@ const accentTint: Record<Product["accent"], string> = {
  * than a one-pager. Deliberately small — everything it shows already lives in
  * lib/products.ts, so there is no second copy of anything to keep in sync.
  */
-export function ProductDetail({ product: initialProduct }: { product: Product }) {
+export function ProductDetail({
+  product: initialProduct,
+}: {
+  product: Product;
+}) {
   const active = useSaleActive();
-  const product = useMemo(() => salePricing(initialProduct, active), [initialProduct, active]);
+  const product = useMemo(
+    () => salePricing(initialProduct, active),
+    [initialProduct, active],
+  );
   const { t, locale, messages } = useLocale();
   const { add, buyNow, increment, decrement, lines } = useCart();
   const { consent } = useConsent();
   const announce = useAnnouncer();
 
   const name = getProductName(product, locale);
+  const { items: inventory } = useInventory();
+  const available = inventory[product.id]?.available;
   const qty = lines.find((l) => l.id === product.id)?.qty ?? 0;
   const category = getProductCategory(product.category);
   // Keep recommendations useful as the catalog grows: siblings first, then a
   // small cross-collection sample instead of rendering the entire catalog.
-  const others = PRODUCT_FAMILIES.filter((p) => p.id !== getProductFamilyId(product))
+  const others = PRODUCT_FAMILIES.filter(
+    (p) => p.id !== getProductFamilyId(product),
+  )
     .sort((a, b) => {
       const aSame = a.category === product.category ? 0 : 1;
       const bSame = b.category === product.category ? 0 : 1;
       return aSame - bSame;
     })
-    .slice(0, 4).map((p) => salePricing(p, active));
+    .slice(0, 4)
+    .map((p) => salePricing(p, active));
 
   const onSale =
     product.price != null &&
@@ -88,7 +102,10 @@ export function ProductDetail({ product: initialProduct }: { product: Product })
               href={asset(`/#collection-${product.category}`)}
               className="inline-flex items-center gap-2 rounded-clay py-2 font-display text-sm font-semibold text-ink-muted transition-colors hover:text-brand focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/45"
             >
-              <ArrowLeft className="h-4 w-4 rtl:-scale-x-100" aria-hidden="true" />
+              <ArrowLeft
+                className="h-4 w-4 rtl:-scale-x-100"
+                aria-hidden="true"
+              />
               {t("product.backToCollection", {
                 collection: category.name[locale],
               })}
@@ -144,6 +161,7 @@ export function ProductDetail({ product: initialProduct }: { product: Product })
                   </p>
                 )}
 
+                <StockAvailability id={product.id} />
                 {/* Cart controls plus a direct path into checkout. */}
                 {qty === 0 ? (
                   <div className="flex flex-col gap-3 sm:flex-row">
@@ -152,6 +170,7 @@ export function ProductDetail({ product: initialProduct }: { product: Product })
                       variant="primary"
                       size="lg"
                       className="w-full sm:w-auto"
+                      disabled={available === 0}
                       onClick={() => {
                         add(product.id);
                         announce(t("cart.added", { name }));
@@ -165,6 +184,7 @@ export function ProductDetail({ product: initialProduct }: { product: Product })
                       variant="accent"
                       size="lg"
                       className="w-full sm:w-auto"
+                      disabled={available === 0}
                       onClick={() => {
                         buyNow(product.id);
                         announce(t("cart.added", { name }));
@@ -200,9 +220,12 @@ export function ProductDetail({ product: initialProduct }: { product: Product })
                       </span>
                       <button
                         type="button"
+                        disabled={available !== undefined && qty >= available}
                         onClick={() => {
                           increment(product.id);
-                          announce(`${name} — ${t("cart.quantity")}: ${qty + 1}`);
+                          announce(
+                            `${name} — ${t("cart.quantity")}: ${qty + 1}`,
+                          );
                         }}
                         aria-label={t("cart.increase")}
                         className="grid h-full place-items-center text-brand transition-colors hover:bg-canvas-sunk focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-brand/45 [touch-action:manipulation] cursor-pointer"
@@ -214,6 +237,7 @@ export function ProductDetail({ product: initialProduct }: { product: Product })
                       type="button"
                       variant="accent"
                       size="lg"
+                      disabled={available === 0}
                       onClick={() => buyNow(product.id)}
                     >
                       {t("cart.buyNow")}
@@ -224,7 +248,10 @@ export function ProductDetail({ product: initialProduct }: { product: Product })
                 {/* the facts every customer asks about, from the FAQ + specs */}
                 <ul className="mt-2 grid gap-3">
                   <li className="flex gap-3 rounded-clay border border-line bg-surface p-4">
-                    <Ruler className="h-5 w-5 shrink-0 text-mauve" aria-hidden="true" />
+                    <Ruler
+                      className="h-5 w-5 shrink-0 text-mauve"
+                      aria-hidden="true"
+                    />
                     <div>
                       <p className="font-display font-semibold text-ink">
                         {t("product.size")}
@@ -235,7 +262,10 @@ export function ProductDetail({ product: initialProduct }: { product: Product })
                     </div>
                   </li>
                   <li className="flex gap-3 rounded-clay border border-line bg-surface p-4">
-                    <Leaf className="h-5 w-5 shrink-0 text-leaf" aria-hidden="true" />
+                    <Leaf
+                      className="h-5 w-5 shrink-0 text-leaf"
+                      aria-hidden="true"
+                    />
                     <div>
                       <p className="font-display font-semibold text-ink">
                         {t("product.included")}
@@ -246,7 +276,10 @@ export function ProductDetail({ product: initialProduct }: { product: Product })
                     </div>
                   </li>
                   <li className="flex gap-3 rounded-clay border border-line bg-surface p-4">
-                    <Truck className="h-5 w-5 shrink-0 text-clay" aria-hidden="true" />
+                    <Truck
+                      className="h-5 w-5 shrink-0 text-clay"
+                      aria-hidden="true"
+                    />
                     <div>
                       <p className="font-display font-semibold text-ink">
                         {t("product.delivery")}

@@ -8,8 +8,13 @@ import {
   useMemo,
   useState,
 } from "react";
+import { usePathname } from "next/navigation";
 import { STORAGE_CONSENT } from "@/lib/config";
-import { PIXEL_CONFIGURED, setTrackingEnabled, trackPageView } from "@/lib/meta";
+import {
+  PIXEL_CONFIGURED,
+  setTrackingEnabled,
+  trackPageView,
+} from "@/lib/meta";
 
 export type Consent = "granted" | "denied";
 
@@ -57,6 +62,8 @@ function persist(value: Consent) {
  * A visitor with no pixel configured (META_PIXEL_ID = "") never sees the banner.
  */
 export function ConsentProvider({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const isAdmin = pathname === "/admin" || pathname.startsWith("/admin/");
   const [consent, setConsent] = useState<Consent | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const [reopened, setReopened] = useState(false);
@@ -64,7 +71,8 @@ export function ConsentProvider({ children }: { children: React.ReactNode }) {
   // Adopt the stored choice on mount. A returning "granted" visitor loads the
   // pixel here and gets their PageView; everyone else loads nothing.
   useEffect(() => {
-    if (!PIXEL_CONFIGURED) {
+    if (isAdmin || !PIXEL_CONFIGURED) {
+      setTrackingEnabled(false);
       setHydrated(true);
       return;
     }
@@ -75,7 +83,7 @@ export function ConsentProvider({ children }: { children: React.ReactNode }) {
     }
     setConsent(stored);
     setHydrated(true);
-  }, []);
+  }, [isAdmin]);
 
   const grant = useCallback(() => {
     persist("granted");
@@ -95,7 +103,7 @@ export function ConsentProvider({ children }: { children: React.ReactNode }) {
   const reopen = useCallback(() => setReopened(true), []);
 
   const bannerOpen =
-    PIXEL_CONFIGURED && hydrated && (reopened || consent === null);
+    !isAdmin && PIXEL_CONFIGURED && hydrated && (reopened || consent === null);
 
   const value = useMemo<ConsentContextValue>(
     () => ({ consent, hydrated, bannerOpen, grant, deny, reopen }),

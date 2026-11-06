@@ -157,7 +157,8 @@ function product(base: Product) {
             priceCurrency: PRICE_CURRENCY,
             price: String(p.price),
             ...(p.originalPrice ? { priceValidUntil: "2026-11-02", validThrough: SALE_END } : {}),
-            availability: "https://schema.org/InStock",
+            // Static HTML cannot promise live stock. The live Meta feed checks Supabase.
+            ...(!process.env.NEXT_PUBLIC_SUPABASE_URL ? { availability: "https://schema.org/InStock" } : {}),
             itemCondition: "https://schema.org/NewCondition",
             url: productUrl(p.id),
             seller: { "@id": ORG_ID },

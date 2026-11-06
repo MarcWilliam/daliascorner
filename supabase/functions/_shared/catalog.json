@@ -1,0 +1,122 @@
+[
+  {
+    "id": "bahira",
+    "title": "Bahira",
+    "description": "The eldest of our three duckling siblings, big sister to Bahgat and baby Zaghloul. Nothing ruffles her feathers, and she's happiest with a bit of water nearby.",
+    "image": "/products/bahira.webp",
+    "group": "bahira",
+    "color": ""
+  },
+  {
+    "id": "zouzou",
+    "title": "ZouZou",
+    "description": "A little bunny with big curious eyes and rosy cheeks. Put her anywhere and the whole corner suddenly feels softer.",
+    "image": "/products/zouzou.webp",
+    "group": "zouzou",
+    "color": ""
+  },
+  {
+    "id": "shawkat",
+    "title": "Shawkat",
+    "description": "A russet fox who knows exactly how clever he is, and yes, a little spoiled. Wherever he sits, mischief follows.",
+    "image": "/products/shawkat.webp",
+    "group": "shawkat",
+    "color": ""
+  },
+  {
+    "id": "shokreya",
+    "title": "Shokreya",
+    "description": "Forever halfway into a nap, and all the sweeter for it. She brightens up her spot quietly, no fuss at all.",
+    "image": "/products/shokreya.webp",
+    "group": "shokreya",
+    "color": ""
+  },
+  {
+    "id": "zaghloul",
+    "title": "Zaghloul",
+    "description": "The baby of the duckling trio, still hatching out of his shell and brand new to everything. Bahira and Bahgat keep him tucked safely between them.",
+    "image": "/products/zaghloul.webp",
+    "group": "zaghloul",
+    "color": ""
+  },
+  {
+    "id": "bahgat",
+    "title": "Bahgat",
+    "description": "His name means “joy”, and he takes the job seriously. He's the sunny middle duckling of the trio, right between Bahira and little Zaghloul.",
+    "image": "/products/bahgat.webp",
+    "group": "bahgat",
+    "color": ""
+  },
+  {
+    "id": "bondoq",
+    "title": "Bondoq",
+    "description": "His name is Bondoq… always smiling and effortlessly spreading joy",
+    "image": "/products/bondoq.webp",
+    "group": "bondoq",
+    "color": ""
+  },
+  {
+    "id": "farawla",
+    "title": "Farawla",
+    "description": "Cute without even trying, and always makes every corner feel a little brighter",
+    "image": "/products/farawla.webp",
+    "group": "farawla",
+    "color": ""
+  },
+  {
+    "id": "suzy",
+    "title": "Suzy",
+    "description": "It won’t take up much space, but it’ll definitely catch your eye.",
+    "image": "/products/suzy.webp",
+    "group": "suzy",
+    "color": ""
+  },
+  {
+    "id": "bahloul",
+    "title": "Bahloul",
+    "description": "Bahloul always looks surprised, and no one knows what he’s seen",
+    "image": "/products/bahloul.webp",
+    "group": "bahloul",
+    "color": "Cream"
+  },
+  {
+    "id": "bahloul-green",
+    "title": "Bahloul",
+    "description": "Bahloul always looks surprised, and no one knows what he’s seen",
+    "image": "/products/bahloul-green.webp",
+    "group": "bahloul",
+    "color": "Green"
+  },
+  {
+    "id": "semsem",
+    "title": "Semsem",
+    "description": "Semsem is a little pot with a big smile that makes you smile right back",
+    "image": "/products/semsem.webp",
+    "group": "semsem",
+    "color": "White"
+  },
+  {
+    "id": "semsem-yellow",
+    "title": "Semsem",
+    "description": "Semsem is a little pot with a big smile that makes you smile right back",
+    "image": "/products/semsem-yellow.webp",
+    "group": "semsem",
+    "color": "Yellow"
+  },
+  {
+    "id": "zooba",
+    "title": "Zooba",
+    "description": "Zooba is a little scooter taking her plant along for a ride",
+    "image": "/products/zooba.webp",
+    "group": "zooba",
+    "color": ""
+  },
+  {
+    "id": "azza",
+    "title": "Azza",
+    "description": "Azza is a little red classic car, parked in style and ready for a spot in your home",
+    "image": "/products/azza.webp",
+    "group": "azza",
+    "color": ""
+  }
+]

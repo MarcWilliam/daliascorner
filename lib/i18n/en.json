@@ -173,7 +173,7 @@
   },
   "privacy": {
     "title": "Privacy & tracking",
-    "updated": "Last updated: 1 August 2026",
+    "updated": "Last updated: 6 November 2026",
     "intro": "Dalia's Corner is a small family pottery studio in Cairo. This page is the plain, honest version of what happens to your information when you visit the site or place an order.",
     "backHome": "Back to the shop",
     "contactTitle": "Questions, or want your data deleted?",
@@ -185,12 +185,11 @@
         "items": []
       },
       {
-        "h": "Your cart stays in your browser",
-        "p": "When you add characters to the cart and type in your name, phone number, and address, all of it is saved in your own browser's local storage and nowhere else. This whole site is a set of static files. There's no server behind it and no database, so we simply can't see what you typed until you choose to send it to us.",
+        "h": "Your cart and saved orders",
+        "p": "Your cart and delivery details are saved in your browser while you shop. When you save an order, your name, phone number, delivery address and chosen items are sent to our Supabase backend so we can reserve stock and fulfil your order. Only authorized admins can read these orders. WhatsApp opens only when you choose to continue.",
         "items": [
-          "Your cart and delivery details never leave your device on their own.",
-          "When you tap \"Order on WhatsApp\", your browser opens WhatsApp with the order already written out. You're the one who hits send, not us.",
-          "Clear your browser data and all of it is gone."
+          "Clearing browser data removes local details, but does not delete an order already saved. Contact us to request deletion.",
+          "Cloudflare Turnstile checks checkout requests to help prevent automated abuse."
         ]
       },
       {
@@ -204,12 +203,12 @@
       },
       {
         "h": "What we send when you check out",
-        "p": "If, and only if, you've accepted tracking, then the moment you tap the WhatsApp checkout button we send Meta a scrambled (SHA-256 hashed) version of the name and phone number you entered, along with the city (Cairo) and country (Egypt). The scrambling happens on your own device, so your real name and number never leave it. Meta uses this to work out whether you'd seen one of our ads. You can switch it off at any time, and ordering works just fine without it.",
+        "p": "If you accept tracking, after a successful order save we send Meta a SHA-256 hashed version of your name and phone number with city and country for ad matching. Hashing happens in your browser before this information is sent to Meta. Order fulfilment separately requires your original delivery details in our backend and in WhatsApp when you send the message. Declining tracking does not prevent ordering.",
         "items": []
       },
       {
         "h": "Where your information goes",
-        "p": "Meta processes this data outside Egypt, including in Ireland and the United States. If you'd rather it didn't, decline tracking. The shop works exactly the same either way.",
+        "p": "Supabase stores order and admin account data in our configured project region. Cloudflare hosts the site and provides checkout abuse protection. These providers may process data outside Egypt. Meta may also process tracking data outside Egypt, including in Ireland and the United States, when you accept tracking.",
         "items": []
       },
       {
@@ -220,6 +219,11 @@
       {
         "h": "Once you message us",
         "p": "When your order moves into WhatsApp, that conversation is covered by Meta's own privacy policy as well as this one. We keep your order details, meaning your name, phone number, and address, for as long as we need them to deliver your order and help if something goes wrong. After that, we delete them.",
+        "items": []
+      },
+      {
+        "h": "Admin notifications",
+        "p": "Admins can opt in to phone notifications. We store the browser push subscription to deliver order and low-stock alerts. Lock-screen alerts do not include customer details. Admins can disable notifications on each device from the admin area.",
         "items": []
       },
       {
