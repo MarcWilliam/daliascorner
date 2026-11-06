@@ -75,7 +75,10 @@ function MessageEditor({
       controller.abort();
     };
   }, [orderId, retry]);
-  const [language, setLanguage] = useState<Locale>(orderLocale ?? locale);
+  const [languageOverride, setLanguageOverride] = useState<Locale | null>(null);
+  // Follow the saved checkout language even if it arrives after the editor mounts.
+  // An explicit admin choice remains in effect across order/payment refreshes.
+  const language = languageOverride ?? orderLocale ?? locale;
   const [template, setTemplate] = useState<OrderMessageTemplate>(
     status === "shipped"
       ? "on_the_way"
@@ -114,6 +117,18 @@ function MessageEditor({
         <WhatsAppIcon aria-hidden="true" className="h-5 w-5" />
         {ar ? "راسل العميل" : "Message customer"}
       </h3>
+      <p className="text-xs text-ink-muted">
+        {ar ? "لغة العميل عند الطلب: " : "Customer language at checkout: "}
+        <span className="font-semibold text-ink">
+          {orderLocale === "ar"
+            ? "العربية"
+            : orderLocale === "en"
+              ? "English"
+              : ar
+                ? "غير مسجلة"
+                : "Not recorded"}
+        </span>
+      </p>
       <fieldset
         disabled={busy || !orderLink}
         className="grid grid-cols-[minmax(0,1fr)_auto] gap-3"
@@ -139,7 +154,7 @@ function MessageEditor({
           <select
             className="store-field mt-1"
             value={language}
-            onChange={(e) => setLanguage(e.target.value as Locale)}
+            onChange={(e) => setLanguageOverride(e.target.value as Locale)}
           >
             <option value="en">English</option>
             <option value="ar">العربية</option>

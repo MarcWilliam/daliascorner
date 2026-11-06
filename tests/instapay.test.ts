@@ -297,3 +297,23 @@ test("legacy transfer orders retain their original routing and are never backfil
     await db.close();
   }
 });
+
+test("website orders snapshot the selected English or Arabic checkout language", async () => {
+  const { db, zone } = await setup();
+  try {
+    for (const locale of ["en", "ar"] as const) {
+      const key = crypto.randomUUID();
+      await db.query(
+        "select create_website_order($1,'language-snapshot',$2::jsonb,'[{\"id\":\"pot\",\"qty\":1}]'::jsonb,$3,$4,$5,'cash',null,false)",
+        [key, JSON.stringify(customer), locale, crypto.randomUUID(), zone],
+      );
+      const saved = await db.query<{ locale: string }>(
+        "select locale from orders where idempotency_key=$1",
+        [key],
+      );
+      assert.equal(saved.rows[0].locale, locale);
+    }
+  } finally {
+    await db.close();
+  }
+});
