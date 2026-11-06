@@ -1,8 +1,9 @@
+import { metaPixel, metaVersion } from "./meta-config.ts";
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2.119.0";
 export async function dispatchMeta(db: SupabaseClient) {
   const token = Deno.env.get("META_ACCESS_TOKEN"),
-    pixel = Deno.env.get("META_PIXEL_ID"),
-    version = Deno.env.get("META_GRAPH_VERSION");
+    pixel = metaPixel(),
+    version = metaVersion();
   if (
     !token ||
     !pixel ||

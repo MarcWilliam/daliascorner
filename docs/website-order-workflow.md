@@ -42,7 +42,7 @@ They default to hidden until configured. Admin email/password login remains avai
 
 Existing browser PageView/ViewContent/AddToCart/InitiateCheckout events remain consent-gated. Website order submission queues a server Lead; an admin marking a non-cancelled order paid queues Purchase. Neither a checkout click nor selecting manual transfer means paid. Stable per-order event IDs and unique queue keys prevent duplicate conversions on retries. Delivery fees are included in conversion value.
 
-Save `META_ACCESS_TOKEN`, `META_PIXEL_ID` and `META_GRAPH_VERSION` in Supabase Edge Function Secrets. Use the existing Pixel `1574733761109578` after verifying ownership in Events Manager. Set a supported Graph API version explicitly; no version is guessed. Add `META_TEST_EVENT_CODE` for Events Manager tests, then remove it before genuine reporting.
+Save `META_ACCESS_TOKEN`, `META_PIXEL_ID` and `META_GRAPH_VERSION` in Supabase Edge Function Secrets. Use the existing Pixel `1574733761109578` after verifying ownership in Events Manager. The verified dataset and Graph v27.0 are the defaults in `_shared/meta-config.ts`; environment variables can override them. The version was checked against Meta’s official Dataset Quality reference. Add `META_TEST_EVENT_CODE` for Events Manager tests, then remove it before genuine reporting.
 
 The notification worker dispatches Meta events as well as push. Queues remain unsent without configuration; this is not proof of a connected Meta integration. It retries leased batches, stops after eight attempts, and does not send events older than six days. Review queued failures operationally. Refunds after reporting are not automatically retracted from Meta.
 
@@ -51,3 +51,9 @@ Customer order pages offer revocation of future order ad reporting. Already-deli
 ## Verification status
 
 Local production build and 17 tests passed before external OAuth/Meta setup. Database tests cover fee snapshots, private links, account attachment, role restrictions, stock lifecycle and exactly-once queue insertion. End-to-end OAuth with real providers, Meta Test Events acceptance, a real configured delivery zone and an actual website test order remain release checks. Do not mark those complete based only on a successful build.
+
+## Dataset Quality and campaign monitoring
+
+The admin Meta & ads view calls an admin-only Edge Function. It shows Meta-reported match quality, event coverage, upload frequency, event-associated spend and ad-set use where available. Missing metrics are not represented as zero. These are dataset-wide, cached five minutes, and may include existing integrations; event-associated spend must not be summed as an account spend total. Campaign creation and budget changes remain in Ads Manager.
+
+Verified: the saved Dataset Quality-enabled token returned five event types for both core quality and campaign queries. A synthetic Lead sent with Meta Test Events code was accepted by Graph API and displayed as Processed / Server in Events Manager. It created no website order and reported no real purchase. The access token remains exclusively in Supabase secrets.

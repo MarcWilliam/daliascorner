@@ -1,4 +1,5 @@
 "use client";
+import { MetaHealth } from "./MetaHealth";
 import { CheckoutSettings } from "./CheckoutSettings";
 import { useCallback, useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
@@ -27,7 +28,9 @@ type Order = {
   customer_phone: string;
   customer_address: string;
   subtotal: number;
-  delivery_fee:number; delivery_zone:string; payment_method:string;
+  delivery_fee: number;
+  delivery_zone: string;
+  payment_method: string;
   created_at: string;
   expires_at: string;
   order_items: {
@@ -76,7 +79,7 @@ export function AdminDashboard() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [recovery, setRecovery] = useState(false);
-  const [tab, setTab] = useState<"orders" | "stock" | "notifications">(
+  const [tab, setTab] = useState<"orders" | "stock" | "notifications" | "meta">(
     "orders",
   );
   const [filter, setFilter] = useState("all");
@@ -385,31 +388,33 @@ export function AdminDashboard() {
         ) : (
           <>
             <nav aria-label={c.admin} className="flex flex-wrap gap-2">
-              {(["orders", "stock", "notifications"] as const).map((key) => {
-                const Icon =
-                  key === "orders"
-                    ? ShoppingBag
-                    : key === "stock"
-                      ? Package
-                      : Bell;
-                return (
-                  <ClayButton
-                    key={key}
-                    variant={tab === key ? "primary" : "outline"}
-                    aria-pressed={tab === key}
-                    onClick={() => setTab(key)}
-                  >
-                    <Icon aria-hidden="true" className="h-5 w-5" />
-                    {c[key]}
-                    {key === "notifications" &&
-                      notices.some((n) => !n.read_at) && (
-                        <span>
-                          ({notices.filter((n) => !n.read_at).length})
-                        </span>
-                      )}
-                  </ClayButton>
-                );
-              })}
+              {(["orders", "stock", "notifications", "meta"] as const).map(
+                (key) => {
+                  const Icon =
+                    key === "orders"
+                      ? ShoppingBag
+                      : key === "stock"
+                        ? Package
+                        : Bell;
+                  return (
+                    <ClayButton
+                      key={key}
+                      variant={tab === key ? "primary" : "outline"}
+                      aria-pressed={tab === key}
+                      onClick={() => setTab(key)}
+                    >
+                      <Icon aria-hidden="true" className="h-5 w-5" />
+                      {c[key]}
+                      {key === "notifications" &&
+                        notices.some((n) => !n.read_at) && (
+                          <span>
+                            ({notices.filter((n) => !n.read_at).length})
+                          </span>
+                        )}
+                    </ClayButton>
+                  );
+                },
+              )}
               <ClayButton
                 variant="outline"
                 disabled={loading || busy}
@@ -473,7 +478,17 @@ export function AdminDashboard() {
                         >
                           {o.customer_phone}
                         </a>
-                        <p>{o.customer_address}</p><p>{o.delivery_zone}</p><p>{o.payment_method==="transfer"?(locale==="ar"?"تحويل يدوي":"Manual transfer"):(locale==="ar"?"الدفع عند الاستلام":"Cash on delivery")}</p>
+                        <p>{o.customer_address}</p>
+                        <p>{o.delivery_zone}</p>
+                        <p>
+                          {o.payment_method === "transfer"
+                            ? locale === "ar"
+                              ? "تحويل يدوي"
+                              : "Manual transfer"
+                            : locale === "ar"
+                              ? "الدفع عند الاستلام"
+                              : "Cash on delivery"}
+                        </p>
                       </div>
                       <div>
                         <ul className="space-y-2">
@@ -493,7 +508,13 @@ export function AdminDashboard() {
                           ))}
                         </ul>
                         <p className="mt-3 border-t border-line pt-3 font-bold">
-                          {c.subtotal}: {o.subtotal} EGP<br/>{locale==="ar"?"التوصيل":"Delivery"}: {o.delivery_fee??0} EGP<br/>{locale==="ar"?"الإجمالي":"Total"}: {Number(o.subtotal)+Number(o.delivery_fee??0)} EGP
+                          {c.subtotal}: {o.subtotal} EGP
+                          <br />
+                          {locale === "ar" ? "التوصيل" : "Delivery"}:{" "}
+                          {o.delivery_fee ?? 0} EGP
+                          <br />
+                          {locale === "ar" ? "الإجمالي" : "Total"}:{" "}
+                          {Number(o.subtotal) + Number(o.delivery_fee ?? 0)} EGP
                         </p>
                       </div>
                     </div>
@@ -568,6 +589,7 @@ export function AdminDashboard() {
                 )}
               </section>
             )}
+            {tab === "meta" && <MetaHealth />}
             {tab === "stock" && <CheckoutSettings />}
             {tab === "stock" && (
               <section aria-label={c.stock} className="space-y-5">

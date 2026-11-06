@@ -1,5 +1,6 @@
 export const storeCopy = {
   en: {
+    meta:"Meta & ads",
     admin: "Store admin",
     subtitle: "Orders, stock and notifications",
     home: "Back to shop",
@@ -93,6 +94,7 @@ export const storeCopy = {
     testSent: "Test notification sent to this device.",
   },
   ar: {
+    meta:"Meta والإعلانات",
     admin: "إدارة المتجر",
     subtitle: "الطلبات والمخزون والإشعارات",
     home: "العودة للمتجر",

@@ -79,8 +79,8 @@ export function buildLlmsTxt(): string {
   // Order matches the site's own contact policy (see lib/jsonld.ts): never
   // publish a placeholder WhatsApp number or an unset Facebook URL.
   const orderLines = [
-    "- There is no online payment. Website orders are completed through WhatsApp.",
-    '- Add characters to the website cart and select "Checkout on WhatsApp" to open a pre-filled message with the order and delivery details.',
+    "- Customers place orders directly on the website, choosing an available delivery zone and cash on delivery or manual transfer.",
+    '- Add characters to the cart, enter delivery details and select Place order. The confirmation links to a private order-status page.',
     "- Customers submit orders on the website and track them on private order pages. WhatsApp is available for custom design and support questions.",
     ...(WHATSAPP_NUMBER_IS_PLACEHOLDER ? [] : [`- WhatsApp: ${prettyWhatsApp()}.`]),
   ];

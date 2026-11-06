@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.place-order]
 verify_jwt = false
+
+[functions.meta-status]
+verify_jwt = false
