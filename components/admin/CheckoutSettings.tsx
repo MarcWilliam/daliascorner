@@ -1,11 +1,12 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Plus, X } from "lucide-react";
+import { Plus, Pencil } from "lucide-react";
 import { storeClient } from "@/lib/store/client";
 import { useLocale } from "@/components/providers/LocaleProvider";
 import { ClayButton } from "@/components/ui/ClayButton";
 import { instaPayConfigured, instaPaySettings } from "@/lib/store/instapay";
 import { WHATSAPP_NUMBER } from "@/lib/config";
+import { AdminDialog } from "./AdminDialog";
 type Zone = {
   id: string;
   name_en: string;
@@ -14,8 +15,7 @@ type Zone = {
   active: boolean;
 };
 const field = "store-field mt-1";
-const panel =
-  "rounded-clay-lg border border-line bg-surface p-5 shadow-clay-sm sm:p-6";
+const panel = "rounded-2xl border border-line bg-surface p-4 sm:p-5";
 export function CheckoutSettings({
   refreshKey = 0,
 }: { refreshKey?: number } = {}) {
@@ -42,19 +42,43 @@ export function CheckoutSettings({
     [message, setMessage] = useState(""),
     [error, setError] = useState("");
   const [showZoneForm, setShowZoneForm] = useState(false);
-  const [zoneDraft, setZoneDraft] = useState({ en: "", ar: "", fee: "" });
+  type ZoneDraft = { en: string; ar: string; fee: string; active: boolean };
+  const [editingZone, setEditingZone] = useState<string | null>(null);
+  const [zoneDraft, setZoneDraft] = useState<ZoneDraft>({
+    en: "",
+    ar: "",
+    fee: "",
+    active: true,
+  });
+  const drafts = useRef<Record<string, ZoneDraft>>({});
   const [zoneError, setZoneError] = useState("");
   const [zoneMessage, setZoneMessage] = useState("");
-  const addZoneButton = useRef<HTMLButtonElement>(null);
-  const zoneNameInput = useRef<HTMLInputElement>(null);
-  const addingZone = useRef(false);
-  useEffect(() => {
-    if (showZoneForm) zoneNameInput.current?.focus();
-  }, [showZoneForm]);
+  const savingZone = useRef(false);
+  function openZone(zone?: Zone) {
+    const key = zone?.id ?? "new";
+    setEditingZone(zone?.id ?? null);
+    setZoneDraft(
+      drafts.current[key] ?? {
+        en: zone?.name_en ?? "",
+        ar: zone?.name_ar ?? "",
+        fee: zone ? String(zone.fee) : "",
+        active: zone?.active ?? true,
+      },
+    );
+    setZoneError("");
+    setShowZoneForm(true);
+  }
+  function updateZoneDraft(next: Partial<ZoneDraft>) {
+    setZoneDraft((current) => {
+      const updated = { ...current, ...next };
+      drafts.current[editingZone ?? "new"] = updated;
+      return updated;
+    });
+  }
   function closeZoneForm() {
+    if (savingZone.current) return;
     setShowZoneForm(false);
     setZoneError("");
-    requestAnimationFrame(() => addZoneButton.current?.focus());
   }
   const load = useCallback(async (preservePaymentDraft = false) => {
     setLoading(true);
@@ -122,58 +146,28 @@ export function CheckoutSettings({
       setBusy(false);
     }
   }
-  function zoneValues(form: HTMLFormElement) {
-    const f = new FormData(form);
-    return {
-      name_en: String(f.get("en") ?? "").trim(),
-      name_ar: String(f.get("ar") ?? "").trim(),
-      fee: Number(f.get("fee")),
-      active: f.get("active") === "on",
-    };
-  }
-  function validZone(v: ReturnType<typeof zoneValues>) {
-    if (
-      !v.name_en ||
-      !v.name_ar ||
-      !Number.isFinite(v.fee) ||
-      v.fee < 0 ||
-      v.fee > 10000
-    ) {
-      setError(
-        ar
-          ? "أدخل اسم المنطقة باللغتين ورسومًا من 0 إلى 10000 جنيه."
-          : "Enter both zone names and a delivery fee between 0 and 10,000 EGP.",
-      );
-      return false;
-    }
-    return true;
-  }
   const paused =
     !zones.some((z) => z.active) ||
     (!savedMethods.cash_enabled &&
       !(savedMethods.transfer_enabled && instaPayConfigured(savedMethods)));
   return (
     <section className="space-y-5" aria-busy={loading || busy}>
-      <div className={panel}>
-        <h2 className="text-xl">
-          {ar ? "التوصيل والدفع" : "Delivery & payment"}
-        </h2>
-        <p className="mt-2 text-sm text-ink-muted">
-          {ar
-            ? "اختر مناطق التوصيل والرسوم وطرق الدفع التي تظهر عند إتمام الطلب."
-            : "Choose the delivery areas, fees and payment methods customers see at checkout."}
-        </p>
+      <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
         {ready && (
           <p
-            className={`mt-4 rounded-xl px-4 py-3 text-sm font-semibold ${paused ? "bg-orange/20" : "bg-leaf-soft"}`}
+            className={`inline-flex items-center gap-2 font-medium ${paused ? "text-destructive" : "text-brand"}`}
           >
+            <span
+              aria-hidden="true"
+              className={`h-2 w-2 rounded-full ${paused ? "bg-destructive" : "bg-brand"}`}
+            />
             {paused
               ? ar
-                ? "الطلبات متوقفة: فعّل منطقة توصيل وطريقة دفع واحدة على الأقل."
-                : "Checkout is paused: enable at least one delivery zone and one payment method."
+                ? "الطلبات متوقفة: فعّل منطقة وطريقة دفع."
+                : "Checkout paused: enable a zone and payment method."
               : ar
-                ? "الموقع جاهز لاستقبال الطلبات."
-                : "Website checkout is accepting orders."}
+                ? "الموقع يستقبل الطلبات"
+                : "Checkout accepting orders"}
           </p>
         )}
         {message && (
@@ -213,278 +207,227 @@ export function CheckoutSettings({
                 {ar ? "مناطق التوصيل" : "Delivery zones"}
               </h2>
               <ClayButton
-                ref={addZoneButton}
                 type="button"
                 variant="outline"
                 disabled={busy || loading}
-                aria-expanded={showZoneForm}
-                aria-controls="add-delivery-zone-form"
-                onClick={() => {
-                  setZoneMessage("");
-                  setZoneError("");
-                  setShowZoneForm(true);
-                  requestAnimationFrame(() => zoneNameInput.current?.focus());
-                }}
+                onClick={() => openZone()}
               >
                 <Plus className="h-4 w-4" aria-hidden="true" />
                 {ar ? "إضافة منطقة" : "Add zone"}
               </ClayButton>
             </div>
-            <p className="mt-2 text-sm text-ink-muted">
-              {ar
-                ? "المناطق المفعّلة فقط تظهر للعملاء. أوقف أي منطقة مؤقتًا دون حذفها."
-                : "Only active zones appear to customers. Pause a zone at any time without deleting it."}
-            </p>
             {zoneMessage && (
-              <p
-                role="status"
-                className="mt-3 rounded-xl bg-leaf-soft p-3 text-sm font-semibold text-brand"
-              >
+              <p role="status" className="mt-2 text-sm text-brand">
                 {zoneMessage}
               </p>
             )}
-            <div className="mt-4 divide-y divide-line">
-              {zones.map((z) => (
-                <form
-                  key={`${z.id}-${z.name_en}-${z.name_ar}-${z.fee}-${z.active}`}
-                  className="py-4 first:pt-0"
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    const v = zoneValues(e.currentTarget);
-                    if (validZone(v))
-                      void save(() =>
-                        storeClient()
-                          .from("delivery_zones")
-                          .update(v)
-                          .eq("id", z.id),
-                      );
-                  }}
+            <ul className="mt-3 divide-y divide-line">
+              {zones.map((zone) => (
+                <li
+                  key={zone.id}
+                  className="flex flex-wrap items-center gap-x-4 gap-y-2 py-3"
                 >
-                  <fieldset
-                    disabled={busy || loading}
-                    className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"
-                  >
-                    <label className="text-sm">
-                      English
-                      <input
-                        className={field}
-                        name="en"
-                        defaultValue={z.name_en}
-                        required
-                        maxLength={100}
-                      />
-                    </label>
-                    <label className="text-sm">
-                      العربية
-                      <input
-                        className={field}
-                        dir="rtl"
-                        name="ar"
-                        defaultValue={z.name_ar}
-                        required
-                        maxLength={100}
-                      />
-                    </label>
-                    <label className="text-sm">
-                      {ar ? "الرسوم EGP" : "Delivery fee EGP"}
-                      <input
-                        className={field}
-                        type="number"
-                        inputMode="decimal"
-                        min={0}
-                        max={10000}
-                        step="0.01"
-                        name="fee"
-                        defaultValue={z.fee}
-                        required
-                      />
-                    </label>
-                    <div className="flex items-center justify-between gap-3 sm:col-span-2 lg:col-span-3">
-                      <label className="flex min-h-12 items-center gap-3 text-sm">
-                        <input
-                          type="checkbox"
-                          className="h-5 w-5 accent-brand"
-                          name="active"
-                          defaultChecked={z.active}
-                        />
-                        {ar ? "منطقة مفعّلة" : "Zone is active"}
-                      </label>
-                      <ClayButton type="submit" variant="outline">
-                        {ar ? "حفظ المنطقة" : "Save zone"}
-                      </ClayButton>
-                    </div>
-                  </fieldset>
-                </form>
-              ))}
-            </div>
-            {!zones.length && (
-              <p className="my-4 text-sm">
-                {ar
-                  ? "لا توجد مناطق توصيل. اختر إضافة منطقة للبدء."
-                  : "No delivery zones yet. Choose Add zone to get started."}
-              </p>
-            )}
-            {showZoneForm && (
-              <section
-                id="add-delivery-zone-form"
-                aria-labelledby="add-delivery-zone-title"
-                className="mt-4 rounded-2xl border border-line bg-canvas-sunk p-4"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <h3 id="add-delivery-zone-title" className="text-lg">
-                      {ar ? "منطقة توصيل جديدة" : "New delivery zone"}
-                    </h3>
-                    <p className="mt-2 text-sm text-ink-muted">
-                      {ar
-                        ? "أدخل اسم المنطقة باللغتين ورسوم التوصيل. ستكون متاحة للعملاء عند الحفظ."
-                        : "Enter the area in both languages and its delivery fee. It will be available to customers when saved."}
+                  <div className="min-w-0 flex-1">
+                    <p className="break-words font-semibold">
+                      {ar ? zone.name_ar : zone.name_en}
+                    </p>
+                    <p
+                      className="break-words text-xs text-ink-muted"
+                      dir={ar ? "ltr" : "rtl"}
+                    >
+                      {ar ? zone.name_en : zone.name_ar}
                     </p>
                   </div>
+                  <span className="text-sm tabular whitespace-nowrap">
+                    {zone.fee} EGP
+                  </span>
+                  <span
+                    className={`rounded-md px-2 py-1 text-xs ${zone.active ? "bg-leaf-soft text-brand" : "bg-canvas-sunk text-ink-muted"}`}
+                  >
+                    {zone.active
+                      ? ar
+                        ? "مفعّلة"
+                        : "Active"
+                      : ar
+                        ? "متوقفة"
+                        : "Paused"}
+                  </span>
                   <button
                     type="button"
                     disabled={busy || loading}
-                    aria-label={ar ? "إغلاق نموذج المنطقة" : "Close zone form"}
-                    onClick={closeZoneForm}
-                    className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-line bg-surface text-brand focus-visible:ring-2 focus-visible:ring-brand disabled:opacity-50"
+                    onClick={() => openZone(zone)}
+                    aria-label={`${ar ? "تعديل" : "Edit"} — ${ar ? zone.name_ar : zone.name_en}`}
+                    className="inline-flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm font-semibold text-brand hover:bg-canvas-sunk focus-visible:ring-4 focus-visible:ring-brand/35 disabled:opacity-50"
                   >
-                    <X className="h-5 w-5" aria-hidden="true" />
+                    <Pencil className="h-4 w-4" aria-hidden="true" />
+                    {ar ? "تعديل" : "Edit"}
                   </button>
-                </div>
-                <form
-                  className="mt-3"
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    if (addingZone.current || busy || loading) return;
-                    setZoneError("");
-                    const v = {
-                      name_en: zoneDraft.en.trim(),
-                      name_ar: zoneDraft.ar.trim(),
-                      fee: Number(zoneDraft.fee),
-                      active: true,
-                    };
-                    if (!zoneDraft.fee.trim() || !validZone(v)) {
-                      setZoneError(
-                        ar
-                          ? "أدخل اسم المنطقة باللغتين ورسومًا من 0 إلى 10000 جنيه."
-                          : "Enter both zone names and a delivery fee between 0 and 10,000 EGP.",
-                      );
-                      return;
-                    }
-                    addingZone.current = true;
-                    void save(() =>
-                      storeClient().from("delivery_zones").insert(v),
-                    )
-                      .then((ok) => {
-                        if (ok) {
-                          setZoneDraft({ en: "", ar: "", fee: "" });
-                          setZoneMessage(
-                            ar
-                              ? "تمت إضافة منطقة التوصيل وتفعيلها."
-                              : "Delivery zone added and activated.",
-                          );
-                          closeZoneForm();
-                        } else
-                          setZoneError(
-                            ar
-                              ? "تعذر إضافة المنطقة. احتفظنا بالبيانات؛ حاول مجددًا."
-                              : "Could not add the zone. Your entries have been kept; please try again.",
-                          );
-                      })
-                      .finally(() => {
-                        addingZone.current = false;
-                      });
-                  }}
-                >
-                  <fieldset
-                    disabled={busy || loading}
-                    className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"
-                  >
-                    <label className="text-sm">
-                      English
-                      <input
-                        ref={zoneNameInput}
-                        className={field}
-                        name="en"
-                        value={zoneDraft.en}
-                        onChange={(event) =>
-                          setZoneDraft((current) => ({
-                            ...current,
-                            en: event.target.value,
-                          }))
-                        }
-                        required
-                        maxLength={100}
-                      />
-                    </label>
-                    <label className="text-sm">
-                      العربية
-                      <input
-                        className={field}
-                        dir="rtl"
-                        name="ar"
-                        value={zoneDraft.ar}
-                        onChange={(event) =>
-                          setZoneDraft((current) => ({
-                            ...current,
-                            ar: event.target.value,
-                          }))
-                        }
-                        required
-                        maxLength={100}
-                      />
-                    </label>
-                    <label className="text-sm">
-                      {ar ? "الرسوم EGP" : "Delivery fee EGP"}
-                      <input
-                        className={field}
-                        type="number"
-                        inputMode="decimal"
-                        min={0}
-                        max={10000}
-                        step="0.01"
-                        name="fee"
-                        value={zoneDraft.fee}
-                        onChange={(event) =>
-                          setZoneDraft((current) => ({
-                            ...current,
-                            fee: event.target.value,
-                          }))
-                        }
-                        required
-                      />
-                    </label>
-                    {zoneError && (
-                      <p
-                        role="alert"
-                        className="rounded-xl bg-destructive/10 p-3 text-sm text-destructive sm:col-span-2 lg:col-span-3"
-                      >
-                        {zoneError}
-                      </p>
-                    )}
-                    <div className="flex flex-wrap gap-3 sm:col-span-2 lg:col-span-3">
-                      <ClayButton type="submit">
-                        {busy
-                          ? ar
-                            ? "جارٍ الحفظ…"
-                            : "Saving…"
-                          : ar
-                            ? "حفظ المنطقة"
-                            : "Save new zone"}
-                      </ClayButton>
-                      <ClayButton
-                        type="button"
-                        variant="outline"
-                        onClick={closeZoneForm}
-                      >
-                        {ar ? "إلغاء" : "Cancel"}
-                      </ClayButton>
-                    </div>
-                  </fieldset>
-                </form>
-              </section>
+                </li>
+              ))}
+            </ul>
+            {!zones.length && (
+              <p className="py-4 text-sm text-ink-muted">
+                {ar
+                  ? "أضف أول منطقة توصيل للبدء."
+                  : "Add your first delivery zone to get started."}
+              </p>
             )}
           </section>
+          <AdminDialog
+            open={showZoneForm}
+            onClose={closeZoneForm}
+            busy={busy || loading}
+            title={
+              editingZone
+                ? ar
+                  ? "تعديل منطقة التوصيل"
+                  : "Edit delivery zone"
+                : ar
+                  ? "إضافة منطقة توصيل"
+                  : "Add delivery zone"
+            }
+          >
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                if (savingZone.current || busy || loading) return;
+                setZoneError("");
+                const values = {
+                  name_en: zoneDraft.en.trim(),
+                  name_ar: zoneDraft.ar.trim(),
+                  fee: Number(zoneDraft.fee),
+                  active: zoneDraft.active,
+                };
+                if (
+                  !values.name_en ||
+                  !values.name_ar ||
+                  !zoneDraft.fee.trim() ||
+                  !Number.isFinite(values.fee) ||
+                  values.fee < 0 ||
+                  values.fee > 10000
+                ) {
+                  setZoneError(
+                    ar
+                      ? "أدخل الاسمين ورسومًا من 0 إلى 10000 جنيه."
+                      : "Enter both names and a fee between 0 and 10,000 EGP.",
+                  );
+                  return;
+                }
+                savingZone.current = true;
+                const key = editingZone ?? "new";
+                void save(() =>
+                  editingZone
+                    ? storeClient()
+                        .from("delivery_zones")
+                        .update(values)
+                        .eq("id", editingZone)
+                    : storeClient().from("delivery_zones").insert(values),
+                )
+                  .then((ok) => {
+                    if (ok) {
+                      delete drafts.current[key];
+                      setShowZoneForm(false);
+                      setZoneMessage(
+                        ar ? "تم حفظ منطقة التوصيل." : "Delivery zone saved.",
+                      );
+                    } else
+                      setZoneError(
+                        ar
+                          ? "تعذر الحفظ. بياناتك محفوظة؛ حاول مجددًا."
+                          : "Could not save. Your entries have been kept; try again.",
+                      );
+                  })
+                  .finally(() => {
+                    savingZone.current = false;
+                  });
+              }}
+            >
+              <fieldset disabled={busy || loading} className="space-y-4">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <label className="block text-sm">
+                    English
+                    <input
+                      autoFocus
+                      className={field}
+                      name="en"
+                      dir="ltr"
+                      required
+                      maxLength={100}
+                      value={zoneDraft.en}
+                      onChange={(e) => updateZoneDraft({ en: e.target.value })}
+                    />
+                  </label>
+                  <label className="block text-sm">
+                    العربية
+                    <input
+                      className={field}
+                      name="ar"
+                      dir="rtl"
+                      required
+                      maxLength={100}
+                      value={zoneDraft.ar}
+                      onChange={(e) => updateZoneDraft({ ar: e.target.value })}
+                    />
+                  </label>
+                </div>
+                <label className="block text-sm">
+                  {ar ? "رسوم التوصيل EGP" : "Delivery fee EGP"}
+                  <input
+                    className={field}
+                    name="fee"
+                    type="number"
+                    min={0}
+                    max={10000}
+                    step="0.01"
+                    inputMode="decimal"
+                    required
+                    value={zoneDraft.fee}
+                    onChange={(e) => updateZoneDraft({ fee: e.target.value })}
+                  />
+                </label>
+                <label className="flex min-h-11 items-center gap-3 text-sm">
+                  <input
+                    type="checkbox"
+                    name="active"
+                    className="h-5 w-5 accent-brand"
+                    checked={zoneDraft.active}
+                    onChange={(e) =>
+                      updateZoneDraft({ active: e.target.checked })
+                    }
+                  />
+                  {ar
+                    ? "متاحة للعملاء عند الدفع"
+                    : "Available to customers at checkout"}
+                </label>
+                {zoneError && (
+                  <p
+                    role="alert"
+                    className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive"
+                  >
+                    {zoneError}
+                  </p>
+                )}
+                <div className="flex justify-end gap-2 border-t border-line pt-4">
+                  <ClayButton
+                    type="button"
+                    variant="outline"
+                    onClick={closeZoneForm}
+                  >
+                    {ar ? "إلغاء" : "Cancel"}
+                  </ClayButton>
+                  <ClayButton type="submit">
+                    {busy
+                      ? ar
+                        ? "جارٍ الحفظ…"
+                        : "Saving…"
+                      : ar
+                        ? "حفظ المنطقة"
+                        : "Save zone"}
+                  </ClayButton>
+                </div>
+              </fieldset>
+            </form>
+          </AdminDialog>
           <section className={panel}>
             <h2 className="text-lg">{ar ? "طرق الدفع" : "Payment methods"}</h2>
             <form
@@ -566,8 +509,8 @@ export function CheckoutSettings({
                     className="rounded-xl bg-orange/20 p-3 text-sm"
                   >
                     {ar
-                      ? "إنستا باي غير جاهز عند الدفع حتى تضيف رابطًا أو رقم/عنوان مستلم صالحًا. لا نستخدم رقم واتساب تلقائيًا كجهة دفع."
-                      : "InstaPay is unavailable at checkout until you add a valid payment link or recipient number/address. Your WhatsApp number is not used as a payment recipient automatically."}
+                      ? "أضف رابط الدفع أو بيانات المستلم لتفعيل إنستا باي عند الدفع."
+                      : "Add a payment link or recipient to enable InstaPay at checkout."}
                   </p>
                 )}
                 <div className="grid gap-3 sm:grid-cols-2">
@@ -610,35 +553,21 @@ export function CheckoutSettings({
                 </div>
                 <p className="text-xs leading-5 text-ink-muted">
                   {ar
-                    ? "انسخ رابط الدفع من تطبيق إنستا باي أو أدخل رقم الاستلام/عنوان IPA الخاص بالمتجر. لا تُدخل كلمة مرور أو IPN PIN. تُحفظ بيانات المستلم مع الطلبات الجديدة."
-                    : "Copy the payment link from InstaPay or enter the shop’s receiving mobile/IPA. Never enter a password or IPN PIN. Recipient details are saved with new orders."}
+                    ? "استخدم رقم الاستلام/عنوان IPA أو رابطًا من إنستا باي. التغييرات للطلبات الجديدة."
+                    : "Use your receiving mobile/IPA or a link copied from InstaPay. Changes apply to new orders."}
                 </p>
-                <div className="space-y-2 rounded-xl border border-line bg-canvas p-4 text-sm">
-                  <h3 className="font-semibold">
-                    {ar
-                      ? "صور الدفع عبر واتساب"
-                      : "Payment screenshots on WhatsApp"}
-                  </h3>
-                  <p className="text-ink-muted">
-                    {ar
-                      ? "بعد تسجيل الطلب، يمكن للعميل فتح واتساب برقم طلبه وإرفاق صورة الدفع. لا حاجة لكتابة تعليمات مخصصة."
-                      : "After placing an order, customers can open WhatsApp with their order number and attach a payment screenshot. No custom instructions are needed."}
-                  </p>
-                  <p className="text-ink-muted">
-                    {ar ? "رقم واتساب المتجر: " : "Shop WhatsApp: "}
-                    <span
-                      dir="ltr"
-                      className="inline-block font-semibold text-ink"
-                    >
-                      +{WHATSAPP_NUMBER}
-                    </span>
-                  </p>
-                  <p className="text-xs text-ink-muted">
-                    {ar
-                      ? "تحقق من وصول المبلغ قبل تحديد الطلب كمدفوع."
-                      : "Verify receipt of the money before marking the order paid."}
-                  </p>
-                </div>
+                <p className="border-t border-line pt-3 text-xs leading-5 text-ink-muted">
+                  {ar
+                    ? "صور الدفع عبر واتساب المتجر: "
+                    : "Payment screenshots go to shop WhatsApp: "}
+                  <span dir="ltr" className="inline-block font-medium text-ink">
+                    +{WHATSAPP_NUMBER}
+                  </span>
+                  .
+                  {ar
+                    ? " تحقق من وصول المبلغ قبل تحديد الطلب كمدفوع."
+                    : " Verify receipt before marking an order paid."}
+                </p>
                 {!settings.cash_enabled && !settings.transfer_enabled && (
                   <p className="rounded-xl bg-orange/20 p-3 text-sm">
                     {ar

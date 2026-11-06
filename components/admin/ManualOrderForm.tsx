@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useId } from "react";
+import { AdminDialog } from "./AdminDialog";
 import { CheckCircle2, Copy, Package, Plus, Trash2 } from "lucide-react";
 import { useLocale } from "@/components/providers/LocaleProvider";
 import { ClayButton } from "@/components/ui/ClayButton";
@@ -36,28 +37,23 @@ type Receipt = {
   subtotal: number;
   delivery_fee: number;
   status:
-    | "pending"
-    | "confirmed"
-    | "shipped"
-    | "delivered"
-    | "cancelled"
-    | "expired";
+    "pending" | "confirmed" | "shipped" | "delivered" | "cancelled" | "expired";
   payment_status: "unpaid" | "paid" | "refunded";
   ordered_at?: string;
   is_historical?: boolean;
   stock_handling?: "already_accounted" | "deduct_now";
 };
 const field = "store-field mt-1";
-const panel =
-  "rounded-clay-lg border border-line bg-surface p-5 shadow-clay-sm sm:p-6";
 
 export function ManualOrderForm({
+  open,
   actorId,
   stock,
   onSaved,
   onCancel,
   onViewOrder,
 }: {
+  open: boolean;
   actorId: string;
   stock: Stock[];
   onSaved: () => Promise<void>;
@@ -65,6 +61,7 @@ export function ManualOrderForm({
   onViewOrder?: (orderNumber: number) => void;
 }) {
   const { locale } = useLocale();
+  const formId = useId();
   const ar = locale === "ar";
   const c = manualOrderCopy[locale];
   const [mode, setMode] = useState<"new" | "past">("new");
@@ -104,6 +101,13 @@ export function ManualOrderForm({
   const [warning, setWarning] = useState("");
   const [receipt, setReceipt] = useState<Receipt | null>(null);
   const savedHeading = useRef<HTMLHeadingElement>(null);
+  const errorMessage = useRef<HTMLParagraphElement>(null);
+  useEffect(() => {
+    if (open && error) {
+      errorMessage.current?.focus();
+      errorMessage.current?.scrollIntoView({ block: "nearest" });
+    }
+  }, [open, error]);
   const loadOptions = useCallback(async () => {
     setOptions("loading");
     try {
@@ -152,8 +156,8 @@ export function ManualOrderForm({
     }
   }, []);
   useEffect(() => {
-    void loadOptions();
-  }, [loadOptions]);
+    if (open) void loadOptions();
+  }, [loadOptions, open]);
   useEffect(() => {
     if (receipt) savedHeading.current?.focus();
   }, [receipt]);
@@ -401,553 +405,602 @@ export function ManualOrderForm({
       : "";
   if (receipt)
     return (
-      <section className={panel}>
-        <span className="mb-4 grid h-12 w-12 place-items-center rounded-2xl bg-leaf-soft text-brand">
-          <CheckCircle2 aria-hidden="true" />
-        </span>
-        <h2 ref={savedHeading} tabIndex={-1} className="text-2xl">
-          {c.saved} · DC-{receipt.order_number}
-        </h2>
-        <p className="mt-3 text-sm leading-6 text-ink-muted">
-          {receipt.is_historical ? c.pastSavedNotice : c.savedNotice}
-        </p>
-        {receipt.is_historical && (
-          <div className="mt-4 space-y-2 text-sm text-ink-muted">
-            {receipt.ordered_at && (
+      <AdminDialog
+        open={open}
+        title={`${c.saved} · DC-${receipt.order_number}`}
+        variant="drawer"
+        busy={busy}
+        onClose={() => onCancel?.()}
+      >
+        <section>
+          <span className="mb-4 grid h-12 w-12 place-items-center rounded-2xl bg-leaf-soft text-brand">
+            <CheckCircle2 aria-hidden="true" />
+          </span>
+          <h2 ref={savedHeading} tabIndex={-1} className="text-2xl">
+            {receipt.is_historical ? c.pastMode : c.newMode}
+          </h2>
+          <p className="mt-3 text-sm leading-6 text-ink-muted">
+            {receipt.is_historical ? c.pastSavedNotice : c.savedNotice}
+          </p>
+          {receipt.is_historical && (
+            <div className="mt-4 space-y-2 text-sm text-ink-muted">
+              {receipt.ordered_at && (
+                <p>
+                  {c.orderedOn}:{" "}
+                  {new Intl.DateTimeFormat(ar ? "ar-EG" : "en-GB", {
+                    timeZone: "Africa/Cairo",
+                    dateStyle: "medium",
+                  }).format(new Date(receipt.ordered_at))}
+                </p>
+              )}
               <p>
-                {c.orderedOn}:{" "}
-                {new Intl.DateTimeFormat(ar ? "ar-EG" : "en-GB", {
-                  timeZone: "Africa/Cairo",
-                  dateStyle: "medium",
-                }).format(new Date(receipt.ordered_at))}
+                {receipt.stock_handling === "deduct_now"
+                  ? c.deductNow
+                  : c.accounted}
               </p>
-            )}
-            <p>
-              {receipt.stock_handling === "deduct_now"
-                ? c.deductNow
-                : c.accounted}
-            </p>
-          </div>
-        )}
-        <div className="mt-3 flex flex-wrap gap-2">
-          <span className="rounded-full bg-leaf-soft px-3 py-1 text-sm font-semibold text-brand">
-            {storeCopy[locale][receipt.status]}
-          </span>
-          <span className="rounded-full bg-leaf-soft px-3 py-1 text-sm font-semibold text-brand">
-            {receipt.payment_status === "paid"
-              ? c.paidStatus
-              : receipt.payment_status === "refunded"
-                ? storeCopy[locale].refunded
-                : c.unpaidStatus}
-          </span>
-        </div>
-        <dl className="mt-5 max-w-sm space-y-2 text-sm">
-          <div className="flex justify-between gap-4">
-            <dt>{c.subtotal}</dt>
-            <dd>
-              {receipt.subtotal} {c.currency}
-            </dd>
-          </div>
-          <div className="flex justify-between gap-4">
-            <dt>{c.fee}</dt>
-            <dd>
-              {receipt.delivery_fee} {c.currency}
-            </dd>
-          </div>
-          <div className="flex justify-between gap-4 border-t border-line pt-3 font-semibold">
-            <dt>{c.total}</dt>
-            <dd>
-              {receipt.total} {c.currency}
-            </dd>
-          </div>
-        </dl>
-        <div className="mt-6 max-w-2xl rounded-2xl border border-line p-4">
-          <label className="block text-sm font-semibold">
-            {c.tracking}
-            <input
-              ref={trackingInput}
-              type="text"
-              dir="ltr"
-              className={field}
-              value={trackingUrl}
-              readOnly
-              onFocus={(event) => event.target.select()}
-            />
-          </label>
-          <p className="mt-2 text-xs leading-5 text-ink-muted">
-            {c.trackingHint}
-          </p>
-          <button
-            type="button"
-            className="mt-2 inline-flex min-h-11 items-center gap-2 rounded-lg px-2 text-sm font-semibold text-brand underline"
-            onClick={async () => {
-              try {
-                await navigator.clipboard.writeText(trackingUrl);
-                setCopyMessage(c.copied);
-              } catch {
-                trackingInput.current?.focus();
-                trackingInput.current?.select();
-                setCopyMessage(c.copyFailed);
-              }
-            }}
-          >
-            <Copy aria-hidden="true" className="h-4 w-4" />
-            {c.copyLink}
-          </button>
-          {copyMessage && (
-            <p role="status" className="mt-1 text-sm text-ink-muted">
-              {copyMessage}
-            </p>
+            </div>
           )}
-        </div>
-        {warning && (
-          <p role="status" className="mt-4 rounded-xl bg-orange/15 p-3 text-sm">
-            {warning}
-          </p>
-        )}
-        <div className="mt-6 flex flex-wrap gap-3">
-          {onViewOrder && (
-            <ClayButton onClick={() => onViewOrder(receipt.order_number)}>
-              {c.viewOrder}
-            </ClayButton>
-          )}
-          <ClayButton variant="outline" onClick={reset}>
-            {c.newOrder}
-          </ClayButton>
-          {onCancel && (
+          <div className="mt-3 flex flex-wrap gap-2">
+            <span className="rounded-full bg-leaf-soft px-3 py-1 text-sm font-semibold text-brand">
+              {storeCopy[locale][receipt.status]}
+            </span>
+            <span className="rounded-full bg-leaf-soft px-3 py-1 text-sm font-semibold text-brand">
+              {receipt.payment_status === "paid"
+                ? c.paidStatus
+                : receipt.payment_status === "refunded"
+                  ? storeCopy[locale].refunded
+                  : c.unpaidStatus}
+            </span>
+          </div>
+          <dl className="mt-5 max-w-sm space-y-2 text-sm">
+            <div className="flex justify-between gap-4">
+              <dt>{c.subtotal}</dt>
+              <dd>
+                {receipt.subtotal} {c.currency}
+              </dd>
+            </div>
+            <div className="flex justify-between gap-4">
+              <dt>{c.fee}</dt>
+              <dd>
+                {receipt.delivery_fee} {c.currency}
+              </dd>
+            </div>
+            <div className="flex justify-between gap-4 border-t border-line pt-3 font-semibold">
+              <dt>{c.total}</dt>
+              <dd>
+                {receipt.total} {c.currency}
+              </dd>
+            </div>
+          </dl>
+          <div className="mt-6 max-w-2xl rounded-2xl border border-line p-4">
+            <label className="block text-sm font-semibold">
+              {c.tracking}
+              <input
+                ref={trackingInput}
+                type="text"
+                dir="ltr"
+                className={field}
+                value={trackingUrl}
+                readOnly
+                onFocus={(event) => event.target.select()}
+              />
+            </label>
+            <p className="mt-2 text-xs leading-5 text-ink-muted">
+              {c.trackingHint}
+            </p>
             <button
               type="button"
-              className="min-h-12 rounded-xl px-3 font-semibold text-brand"
-              onClick={onCancel}
+              className="mt-2 inline-flex min-h-11 items-center gap-2 rounded-lg px-2 text-sm font-semibold text-brand underline"
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(trackingUrl);
+                  setCopyMessage(c.copied);
+                } catch {
+                  trackingInput.current?.focus();
+                  trackingInput.current?.select();
+                  setCopyMessage(c.copyFailed);
+                }
+              }}
             >
-              {c.done}
+              <Copy aria-hidden="true" className="h-4 w-4" />
+              {c.copyLink}
             </button>
+            {copyMessage && (
+              <p role="status" className="mt-1 text-sm text-ink-muted">
+                {copyMessage}
+              </p>
+            )}
+          </div>
+          {warning && (
+            <p
+              role="status"
+              className="mt-4 rounded-xl bg-orange/15 p-3 text-sm"
+            >
+              {warning}
+            </p>
           )}
-        </div>
-      </section>
+          <div className="mt-6 flex flex-wrap gap-3">
+            {onViewOrder && (
+              <ClayButton onClick={() => onViewOrder(receipt.order_number)}>
+                {c.viewOrder}
+              </ClayButton>
+            )}
+            <ClayButton variant="outline" onClick={reset}>
+              {c.newOrder}
+            </ClayButton>
+            {onCancel && (
+              <button
+                type="button"
+                className="min-h-12 rounded-xl px-3 font-semibold text-brand"
+                onClick={onCancel}
+              >
+                {c.done}
+              </button>
+            )}
+          </div>
+        </section>
+      </AdminDialog>
     );
   return (
-    <form
-      onSubmit={(event) => void submit(event)}
-      className={panel}
-      aria-busy={busy}
-    >
-      <h2 className="text-2xl">{c.title}</h2>
-      <p className="mt-2 max-w-2xl text-sm leading-6 text-ink-muted">
-        {isPast ? c.pastIntro : c.intro}
-      </p>
-      <fieldset disabled={busy} className="mt-6 space-y-6">
-        <fieldset className="border-0 p-0">
-          <legend className="mb-2 text-sm font-semibold">{c.mode}</legend>
-          <div className="grid grid-cols-1 gap-2 rounded-2xl bg-canvas-sunk p-1.5 sm:grid-cols-2">
-            {(
-              [
-                { value: "new", label: c.newMode },
-                { value: "past", label: c.pastMode },
-              ] as const
-            ).map((item) => (
-              <label
-                key={item.value}
-                className={`flex min-h-12 cursor-pointer items-center gap-3 rounded-xl border px-3 py-3 text-sm font-semibold ${mode === item.value ? "border-brand/40 bg-surface text-brand shadow-clay-sm" : "border-transparent text-ink-muted"}`}
+    <AdminDialog
+      open={open}
+      title={c.title}
+      variant="drawer"
+      busy={busy}
+      onClose={() => onCancel?.()}
+      footer={
+        <div className="space-y-3">
+          <dl className="flex flex-wrap items-center gap-x-5 gap-y-1 text-sm">
+            <div>
+              <dt className="inline text-ink-muted">{c.subtotal}: </dt>
+              <dd className="inline">
+                {subtotal} {c.currency}
+              </dd>
+            </div>
+            <div>
+              <dt className="inline text-ink-muted">{c.fee}: </dt>
+              <dd className="inline">
+                {selectedZone ? `${selectedZone.fee} ${c.currency}` : "—"}
+              </dd>
+            </div>
+            <div className="ms-auto font-semibold">
+              <dt className="inline">{c.total}: </dt>
+              <dd className="inline">
+                {selectedZone ? `${preview.total} ${c.currency}` : "—"}
+              </dd>
+            </div>
+          </dl>
+          <div className="flex flex-wrap items-center gap-3">
+            <ClayButton
+              type="submit"
+              form={formId}
+              disabled={
+                busy ||
+                !configured ||
+                !activeProducts.length ||
+                newHasPausedProducts
+              }
+            >
+              {busy ? c.saving : c.save}
+            </ClayButton>
+            {onCancel && (
+              <ClayButton
+                type="button"
+                variant="outline"
+                disabled={busy}
+                onClick={onCancel}
               >
-                <input
-                  type="radio"
-                  name="manual-order-mode"
-                  value={item.value}
-                  checked={mode === item.value}
-                  className="h-4 w-4 shrink-0 accent-brand"
-                  onChange={() => changeMode(item.value)}
-                />
-                {item.label}
-              </label>
-            ))}
+                {c.closeDraft}
+              </ClayButton>
+            )}
+            <span className="text-xs text-ink-muted">{c.draftHint}</span>
           </div>
-        </fieldset>
-        {isPast && (
-          <fieldset className="space-y-3 rounded-2xl border border-line bg-canvas/40 p-4">
-            <legend className="px-1 font-display text-lg font-semibold">
-              {c.history}
-            </legend>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <label className="text-sm">
-                {c.orderedOn}
-                <input
-                  type="date"
-                  className={field}
-                  required
-                  max={today}
-                  value={orderedOn}
-                  onChange={(event) => setOrderedOn(event.target.value)}
-                />
-              </label>
-              {paid && (
+        </div>
+      }
+    >
+      <form
+        id={formId}
+        onSubmit={(event) => void submit(event)}
+        className="space-y-4"
+        aria-busy={busy}
+      >
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-ink-muted">
+          {isPast ? c.pastIntro : c.intro}
+        </p>
+        <fieldset disabled={busy} className="space-y-4">
+          <fieldset className="border-0 p-0">
+            <legend className="mb-2 text-sm font-semibold">{c.mode}</legend>
+            <div className="grid grid-cols-1 gap-2 rounded-2xl bg-canvas-sunk p-1.5 sm:grid-cols-2">
+              {(
+                [
+                  { value: "new", label: c.newMode },
+                  { value: "past", label: c.pastMode },
+                ] as const
+              ).map((item) => (
+                <label
+                  key={item.value}
+                  className={`flex min-h-12 cursor-pointer items-center gap-3 rounded-xl border px-3 py-3 text-sm font-semibold ${mode === item.value ? "border-brand/40 bg-surface text-brand shadow-clay-sm" : "border-transparent text-ink-muted"}`}
+                >
+                  <input
+                    type="radio"
+                    name="manual-order-mode"
+                    value={item.value}
+                    checked={mode === item.value}
+                    className="h-4 w-4 shrink-0 accent-brand"
+                    onChange={() => changeMode(item.value)}
+                  />
+                  {item.label}
+                </label>
+              ))}
+            </div>
+          </fieldset>
+          {isPast && (
+            <fieldset className="space-y-3 rounded-2xl border border-line bg-canvas/40 p-4">
+              <legend className="px-1 font-display text-lg font-semibold">
+                {c.history}
+              </legend>
+              <div className="grid gap-3 sm:grid-cols-2">
                 <label className="text-sm">
-                  {c.paidOn}
+                  {c.orderedOn}
                   <input
                     type="date"
                     className={field}
                     required
-                    min={orderedOn || undefined}
                     max={today}
-                    value={paidOn}
-                    onChange={(event) => setPaidOn(event.target.value)}
+                    value={orderedOn}
+                    onChange={(event) => setOrderedOn(event.target.value)}
                   />
                 </label>
-              )}
-            </div>
-            <p className="text-xs leading-5 text-ink-muted">
-              {c.originalDatesHint}
-            </p>
-            <label className="block text-sm">
-              {c.stockHandling}
-              <select
-                className={field}
-                value={stockHandling}
-                onChange={(event) =>
-                  setStockHandling(
-                    event.target.value as "already_accounted" | "deduct_now",
-                  )
-                }
-              >
-                <option value="already_accounted">{c.accounted}</option>
-                <option value="deduct_now">{c.deductNow}</option>
-              </select>
-            </label>
-            <p className="text-xs leading-5 text-ink-muted">{c.stockHint}</p>
-          </fieldset>
-        )}
-        <fieldset className="space-y-4 border-0 p-0">
-          <legend className="mb-3 font-display text-lg font-semibold">
-            {c.products}
-          </legend>
-          <div className="flex flex-wrap items-end gap-3">
-            <label className="min-w-0 basis-56 flex-1 text-sm">
-              {c.chooseProduct}
-              <select
-                className={field}
-                value={productId}
-                onChange={(event) => setProductId(event.target.value)}
-              >
-                <option value="">{c.chooseProduct}</option>
-                {productGroups
-                  .filter((group) => group.products.length)
-                  .map((group) => (
-                    <optgroup key={group.id} label={group.label}>
-                      {group.products
-                        .filter(
-                          (product) =>
-                            !lines.some(
-                              (line) => line.id === product.product_id,
-                            ),
-                        )
-                        .map((product) => (
-                          <option
-                            key={product.product_id}
-                            value={product.product_id}
-                          >
-                            {ar ? product.name_ar : product.name_en} ·{" "}
-                            {product.price} {c.currency}
-                            {!product.active ? ` · ${c.paused}` : ""}
-                          </option>
-                        ))}
-                    </optgroup>
-                  ))}
-              </select>
-            </label>
-            <ClayButton
-              type="button"
-              variant="outline"
-              onClick={addProduct}
-              disabled={!productId || busy}
-            >
-              <Plus aria-hidden="true" className="h-4 w-4" />
-              {c.addProduct}
-            </ClayButton>
-          </div>
-          {!activeProducts.length && (
-            <p className="text-sm text-ink-muted">
-              {isPast ? c.pastNoProducts : c.noProducts}
-            </p>
+                {paid && (
+                  <label className="text-sm">
+                    {c.paidOn}
+                    <input
+                      type="date"
+                      className={field}
+                      required
+                      min={orderedOn || undefined}
+                      max={today}
+                      value={paidOn}
+                      onChange={(event) => setPaidOn(event.target.value)}
+                    />
+                  </label>
+                )}
+              </div>
+              <p className="text-xs leading-5 text-ink-muted">
+                {c.originalDatesHint}
+              </p>
+              <label className="block text-sm">
+                {c.stockHandling}
+                <select
+                  className={field}
+                  value={stockHandling}
+                  onChange={(event) =>
+                    setStockHandling(
+                      event.target.value as "already_accounted" | "deduct_now",
+                    )
+                  }
+                >
+                  <option value="already_accounted">{c.accounted}</option>
+                  <option value="deduct_now">{c.deductNow}</option>
+                </select>
+              </label>
+              <p className="text-xs leading-5 text-ink-muted">{c.stockHint}</p>
+            </fieldset>
           )}
-          {newHasPausedProducts && (
-            <p role="status" className="rounded-xl bg-orange/15 p-3 text-sm">
-              {c.newPaused}
-            </p>
-          )}
-          {lines.length > 0 && (
-            <ul className="space-y-3">
-              {lines.map((line) => {
-                const product = stock.find((p) => p.product_id === line.id);
-                const catalogProduct = PRODUCTS.find((p) => p.id === line.id);
-                const category = PRODUCT_CATEGORIES.find(
-                  (category) => category.id === catalogProduct?.category,
-                );
-                if (!product) return null;
-                return (
-                  <li
-                    key={line.id}
-                    className="flex flex-wrap items-center gap-3 rounded-2xl border border-line bg-canvas/40 p-3"
-                  >
-                    {catalogProduct ? (
-                      <img
-                        src={catalogProduct.thumb}
-                        width={56}
-                        height={56}
-                        alt=""
-                        className="h-14 w-14 shrink-0 rounded-xl object-cover"
-                      />
-                    ) : (
-                      <Package
-                        aria-hidden="true"
-                        className="h-12 w-12 shrink-0 text-brand"
-                      />
-                    )}
-                    <div className="min-w-0 flex-1 basis-28">
-                      <p className="text-xs text-ink-muted">
-                        {category?.name[locale] ?? c.otherProducts}
-                      </p>
-                      <p className="font-semibold">
-                        {ar ? product.name_ar : product.name_en}
-                      </p>
-                      <p className="mt-1 text-xs text-ink-muted">
-                        {product.price} {c.currency} ·{" "}
-                        {product.unlimited_stock
-                          ? c.unlimited
-                          : `${Math.max(0, product.on_hand - product.reserved)} ${c.available}`}
-                      </p>
-                    </div>
-                    <label className="w-24 text-sm">
-                      {c.quantity}
-                      <input
-                        type="number"
-                        className={field}
-                        required
-                        min={1}
-                        max={99}
-                        step={1}
-                        value={line.qty || ""}
-                        aria-label={`${c.quantity} — ${ar ? product.name_ar : product.name_en}`}
-                        onChange={(event) =>
-                          setLines((current) =>
-                            current.map((item) =>
-                              item.id === line.id
-                                ? { ...item, qty: Number(event.target.value) }
-                                : item,
-                            ),
+          <fieldset className="space-y-4 border-0 p-0">
+            <legend className="mb-3 font-display text-lg font-semibold">
+              {c.products}
+            </legend>
+            <div className="flex flex-wrap items-end gap-3">
+              <label className="min-w-0 basis-56 flex-1 text-sm">
+                {c.chooseProduct}
+                <select
+                  className={field}
+                  value={productId}
+                  onChange={(event) => setProductId(event.target.value)}
+                >
+                  <option value="">{c.chooseProduct}</option>
+                  {productGroups
+                    .filter((group) => group.products.length)
+                    .map((group) => (
+                      <optgroup key={group.id} label={group.label}>
+                        {group.products
+                          .filter(
+                            (product) =>
+                              !lines.some(
+                                (line) => line.id === product.product_id,
+                              ),
                           )
-                        }
-                      />
-                    </label>
-                    {isPast && (
-                      <label className="w-full text-sm sm:w-40">
-                        {c.originalCost}
+                          .map((product) => (
+                            <option
+                              key={product.product_id}
+                              value={product.product_id}
+                            >
+                              {ar ? product.name_ar : product.name_en} ·{" "}
+                              {product.price} {c.currency}
+                              {!product.active ? ` · ${c.paused}` : ""}
+                            </option>
+                          ))}
+                      </optgroup>
+                    ))}
+                </select>
+              </label>
+              <ClayButton
+                type="button"
+                variant="outline"
+                onClick={addProduct}
+                disabled={!productId || busy}
+              >
+                <Plus aria-hidden="true" className="h-4 w-4" />
+                {c.addProduct}
+              </ClayButton>
+            </div>
+            {!activeProducts.length && (
+              <p className="text-sm text-ink-muted">
+                {isPast ? c.pastNoProducts : c.noProducts}
+              </p>
+            )}
+            {newHasPausedProducts && (
+              <p role="status" className="rounded-xl bg-orange/15 p-3 text-sm">
+                {c.newPaused}
+              </p>
+            )}
+            {lines.length > 0 && (
+              <ul className="space-y-3">
+                {lines.map((line) => {
+                  const product = stock.find((p) => p.product_id === line.id);
+                  const catalogProduct = PRODUCTS.find((p) => p.id === line.id);
+                  const category = PRODUCT_CATEGORIES.find(
+                    (category) => category.id === catalogProduct?.category,
+                  );
+                  if (!product) return null;
+                  return (
+                    <li
+                      key={line.id}
+                      className="flex flex-wrap items-center gap-3 rounded-2xl border border-line bg-canvas/40 p-3"
+                    >
+                      {catalogProduct ? (
+                        <img
+                          src={catalogProduct.thumb}
+                          width={56}
+                          height={56}
+                          alt=""
+                          className="h-14 w-14 shrink-0 rounded-xl object-cover"
+                        />
+                      ) : (
+                        <Package
+                          aria-hidden="true"
+                          className="h-12 w-12 shrink-0 text-brand"
+                        />
+                      )}
+                      <div className="min-w-0 flex-1 basis-28">
+                        <p className="text-xs text-ink-muted">
+                          {category?.name[locale] ?? c.otherProducts}
+                        </p>
+                        <p className="font-semibold">
+                          {ar ? product.name_ar : product.name_en}
+                        </p>
+                        <p className="mt-1 text-xs text-ink-muted">
+                          {product.price} {c.currency} ·{" "}
+                          {product.unlimited_stock
+                            ? c.unlimited
+                            : `${Math.max(0, product.on_hand - product.reserved)} ${c.available}`}
+                        </p>
+                      </div>
+                      <label className="w-24 text-sm">
+                        {c.quantity}
                         <input
                           type="number"
                           className={field}
-                          min={0}
-                          max={9999999999.99}
-                          step="0.01"
-                          inputMode="decimal"
-                          value={line.unitCost ?? ""}
-                          aria-label={`${c.originalCost} — ${ar ? product.name_ar : product.name_en}`}
+                          required
+                          min={1}
+                          max={99}
+                          step={1}
+                          value={line.qty || ""}
+                          aria-label={`${c.quantity} — ${ar ? product.name_ar : product.name_en}`}
                           onChange={(event) =>
                             setLines((current) =>
                               current.map((item) =>
                                 item.id === line.id
-                                  ? { ...item, unitCost: event.target.value }
+                                  ? { ...item, qty: Number(event.target.value) }
                                   : item,
                               ),
                             )
                           }
                         />
                       </label>
-                    )}
-                    <button
-                      type="button"
-                      className="grid h-11 w-11 shrink-0 place-items-center rounded-xl text-destructive hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive"
-                      aria-label={`${c.remove} — ${ar ? product.name_ar : product.name_en}`}
-                      onClick={() =>
-                        setLines((current) =>
-                          current.filter((item) => item.id !== line.id),
-                        )
-                      }
-                    >
-                      <Trash2 aria-hidden="true" className="h-5 w-5" />
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-          {isPast && (
-            <p className="text-xs leading-5 text-ink-muted">{c.costHint}</p>
-          )}
-        </fieldset>
-        <fieldset className="space-y-3 border-0 border-t border-line pt-5">
-          <legend className="font-display text-lg font-semibold">
-            {c.customer}
-          </legend>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <label className="text-sm">
-              {c.name}
+                      {isPast && (
+                        <label className="w-full text-sm sm:w-40">
+                          {c.originalCost}
+                          <input
+                            type="number"
+                            className={field}
+                            min={0}
+                            max={9999999999.99}
+                            step="0.01"
+                            inputMode="decimal"
+                            value={line.unitCost ?? ""}
+                            aria-label={`${c.originalCost} — ${ar ? product.name_ar : product.name_en}`}
+                            onChange={(event) =>
+                              setLines((current) =>
+                                current.map((item) =>
+                                  item.id === line.id
+                                    ? { ...item, unitCost: event.target.value }
+                                    : item,
+                                ),
+                              )
+                            }
+                          />
+                        </label>
+                      )}
+                      <button
+                        type="button"
+                        className="grid h-11 w-11 shrink-0 place-items-center rounded-xl text-destructive hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive"
+                        aria-label={`${c.remove} — ${ar ? product.name_ar : product.name_en}`}
+                        onClick={() =>
+                          setLines((current) =>
+                            current.filter((item) => item.id !== line.id),
+                          )
+                        }
+                      >
+                        <Trash2 aria-hidden="true" className="h-5 w-5" />
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+            {isPast && (
+              <p className="text-xs leading-5 text-ink-muted">{c.costHint}</p>
+            )}
+          </fieldset>
+          <fieldset className="space-y-3 border-0 border-t border-line pt-5">
+            <legend className="font-display text-lg font-semibold">
+              {c.customer}
+            </legend>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="text-sm">
+                {c.name}
+                <input
+                  className={field}
+                  type="text"
+                  required
+                  minLength={2}
+                  maxLength={120}
+                  autoComplete="off"
+                  value={customer.name}
+                  onChange={(event) =>
+                    setCustomer({ ...customer, name: event.target.value })
+                  }
+                />
+              </label>
+              <label className="text-sm">
+                {c.phone}
+                <input
+                  className={field}
+                  type="tel"
+                  required
+                  maxLength={30}
+                  inputMode="tel"
+                  dir="ltr"
+                  autoComplete="off"
+                  value={customer.phone}
+                  onChange={(event) =>
+                    setCustomer({ ...customer, phone: event.target.value })
+                  }
+                />
+              </label>
+            </div>
+            <label className="block text-sm">
+              {c.address}
               <input
                 className={field}
                 type="text"
                 required
-                minLength={2}
-                maxLength={120}
+                minLength={5}
+                maxLength={500}
                 autoComplete="off"
-                value={customer.name}
+                value={customer.address}
                 onChange={(event) =>
-                  setCustomer({ ...customer, name: event.target.value })
+                  setCustomer({ ...customer, address: event.target.value })
                 }
               />
             </label>
-            <label className="text-sm">
-              {c.phone}
-              <input
-                className={field}
-                type="tel"
-                required
-                maxLength={30}
-                inputMode="tel"
-                dir="ltr"
-                autoComplete="off"
-                value={customer.phone}
-                onChange={(event) =>
-                  setCustomer({ ...customer, phone: event.target.value })
-                }
-              />
-            </label>
-          </div>
-          <label className="block text-sm">
-            {c.address}
-            <input
-              className={field}
-              type="text"
-              required
-              minLength={5}
-              maxLength={500}
-              autoComplete="off"
-              value={customer.address}
-              onChange={(event) =>
-                setCustomer({ ...customer, address: event.target.value })
-              }
-            />
-          </label>
-        </fieldset>
-        <fieldset className="space-y-3 border-0 border-t border-line pt-5">
-          <legend className="font-display text-lg font-semibold">
-            {c.delivery}
-          </legend>
-          {options === "loading" && (
-            <p role="status" className="text-sm text-ink-muted">
-              {c.loading}
-            </p>
-          )}
-          {options === "error" && (
-            <div role="alert" className="rounded-xl bg-orange/15 p-3 text-sm">
-              {c.loadError}{" "}
-              <button
-                type="button"
-                className="min-h-11 rounded-lg px-2 font-semibold text-brand underline"
-                onClick={() => void loadOptions()}
-              >
-                {c.retry}
-              </button>
-            </div>
-          )}
-          {options === "ready" && !availableZones.length && (
-            <p role="status" className="text-sm text-ink-muted">
-              {isPast ? c.pastNoDelivery : c.noDelivery}
-            </p>
-          )}
-          {options === "ready" &&
-            !isPast &&
-            !methods.cash &&
-            !methods.transfer && (
+          </fieldset>
+          <fieldset className="space-y-3 border-0 border-t border-line pt-5">
+            <legend className="font-display text-lg font-semibold">
+              {c.delivery}
+            </legend>
+            {options === "loading" && (
               <p role="status" className="text-sm text-ink-muted">
-                {c.noPayment}
+                {c.loading}
               </p>
             )}
-          <div className="grid gap-3 sm:grid-cols-2">
-            <label className="text-sm">
-              {c.area}
-              <select
-                className={field}
-                required
-                value={zoneId}
-                disabled={options !== "ready" || !availableZones.length}
-                onChange={(event) => setZoneId(event.target.value)}
-              >
-                <option value="">{c.chooseArea}</option>
-                {availableZones.map((zone) => (
-                  <option key={zone.id} value={zone.id}>
-                    {ar ? zone.name_ar : zone.name_en} · {zone.fee} {c.currency}
-                    {!zone.active ? ` · ${c.paused}` : ""}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="text-sm">
-              {c.payment}
-              <select
-                className={field}
-                required
-                value={payment}
-                disabled={
-                  options !== "ready" ||
-                  (!isPast && !methods.cash && !methods.transfer)
-                }
-                onChange={(event) => setPayment(event.target.value)}
-              >
-                {(isPast || methods.cash) && (
-                  <option value="cash">{c.cash}</option>
-                )}
-                {(isPast || methods.transfer) && (
-                  <option value="transfer">{c.transfer}</option>
-                )}
-              </select>
-            </label>
-          </div>
-          <label className="flex min-h-12 items-start gap-3 rounded-xl border border-line bg-canvas/40 p-3">
-            <input
-              type="checkbox"
-              className="mt-1 h-5 w-5 shrink-0 accent-brand"
-              checked={paid}
-              onChange={(event) => {
-                setPaid(event.target.checked);
-                if (!event.target.checked) setPaidOn("");
-              }}
-            />
-            <span>
-              <span className="block text-sm font-semibold">{c.paid}</span>
-              <span className="mt-1 block text-xs leading-5 text-ink-muted">
-                {c.paidHint}
+            {options === "error" && (
+              <div role="alert" className="rounded-xl bg-orange/15 p-3 text-sm">
+                {c.loadError}{" "}
+                <button
+                  type="button"
+                  className="min-h-11 rounded-lg px-2 font-semibold text-brand underline"
+                  onClick={() => void loadOptions()}
+                >
+                  {c.retry}
+                </button>
+              </div>
+            )}
+            {options === "ready" && !availableZones.length && (
+              <p role="status" className="text-sm text-ink-muted">
+                {isPast ? c.pastNoDelivery : c.noDelivery}
+              </p>
+            )}
+            {options === "ready" &&
+              !isPast &&
+              !methods.cash &&
+              !methods.transfer && (
+                <p role="status" className="text-sm text-ink-muted">
+                  {c.noPayment}
+                </p>
+              )}
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="text-sm">
+                {c.area}
+                <select
+                  className={field}
+                  required
+                  value={zoneId}
+                  disabled={options !== "ready" || !availableZones.length}
+                  onChange={(event) => setZoneId(event.target.value)}
+                >
+                  <option value="">{c.chooseArea}</option>
+                  {availableZones.map((zone) => (
+                    <option key={zone.id} value={zone.id}>
+                      {ar ? zone.name_ar : zone.name_en} · {zone.fee}{" "}
+                      {c.currency}
+                      {!zone.active ? ` · ${c.paused}` : ""}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="text-sm">
+                {c.payment}
+                <select
+                  className={field}
+                  required
+                  value={payment}
+                  disabled={
+                    options !== "ready" ||
+                    (!isPast && !methods.cash && !methods.transfer)
+                  }
+                  onChange={(event) => setPayment(event.target.value)}
+                >
+                  {(isPast || methods.cash) && (
+                    <option value="cash">{c.cash}</option>
+                  )}
+                  {(isPast || methods.transfer) && (
+                    <option value="transfer">{c.transfer}</option>
+                  )}
+                </select>
+              </label>
+            </div>
+            <label className="flex min-h-12 items-start gap-3 rounded-xl border border-line bg-canvas/40 p-3">
+              <input
+                type="checkbox"
+                className="mt-1 h-5 w-5 shrink-0 accent-brand"
+                checked={paid}
+                onChange={(event) => {
+                  setPaid(event.target.checked);
+                  if (!event.target.checked) setPaidOn("");
+                }}
+              />
+              <span>
+                <span className="block text-sm font-semibold">{c.paid}</span>
+                <span className="mt-1 block text-xs leading-5 text-ink-muted">
+                  {c.paidHint}
+                </span>
               </span>
-            </span>
-          </label>
-        </fieldset>
-        <div className="rounded-2xl bg-canvas-sunk p-4">
-          <dl className="space-y-2 text-sm">
-            <div className="flex justify-between gap-4">
-              <dt>{c.subtotal}</dt>
-              <dd>
-                {subtotal} {c.currency}
-              </dd>
-            </div>
-            <div className="flex justify-between gap-4">
-              <dt>{c.fee}</dt>
-              <dd>
-                {selectedZone ? `${selectedZone.fee} ${c.currency}` : "—"}
-              </dd>
-            </div>
-            <div className="flex justify-between gap-4 border-t border-line pt-3 text-lg font-semibold">
-              <dt>{c.total}</dt>
-              <dd>{selectedZone ? `${preview.total} ${c.currency}` : "—"}</dd>
-            </div>
-          </dl>
-          <p className="mt-3 text-xs leading-5 text-ink-muted">
+            </label>
+          </fieldset>
+          <p className="text-xs leading-5 text-ink-muted">
             {selectedZone
               ? isPast
                 ? c.pastStatus
@@ -956,76 +1009,57 @@ export function ManualOrderForm({
                   : c.status
               : c.selectArea}
           </p>
-        </div>
-        {isPast && (
-          <div className="rounded-2xl border border-line bg-canvas/40 p-4">
-            <label className="flex min-h-12 items-start gap-3">
-              <input
-                type="checkbox"
-                required
-                className="mt-1 h-5 w-5 shrink-0 accent-brand"
-                checked={originalConfirmed}
-                onChange={(event) =>
-                  setConfirmedPriceKey(
-                    event.target.checked ? preview.confirmationKey : "",
-                  )
-                }
-              />
-              <span className="text-sm font-semibold">{c.confirmOriginal}</span>
-            </label>
-            <p className="mt-2 text-xs leading-5 text-ink-muted">
-              {c.originalPriceHint}
-            </p>
-          </div>
-        )}
-        {error && (
-          <p
-            role="alert"
-            className="rounded-xl bg-destructive/10 p-3 text-sm text-destructive"
-          >
-            {error}
-          </p>
-        )}
-        {error === c.totalChanged && (
-          <button
-            type="button"
-            disabled={busy || options === "loading"}
-            className="min-h-11 rounded-lg px-2 text-sm font-semibold text-brand underline"
-            onClick={async () => {
-              setConfirmedPriceKey("");
-              await Promise.all([
-                loadOptions(),
-                onSaved().catch(() => setWarning(c.loadError)),
-              ]);
-            }}
-          >
-            {c.reloadPrices}
-          </button>
-        )}
-        <div className="flex flex-wrap gap-3">
-          <ClayButton
-            type="submit"
-            disabled={
-              busy ||
-              !configured ||
-              !activeProducts.length ||
-              newHasPausedProducts
-            }
-          >
-            {busy ? c.saving : c.save}
-          </ClayButton>
-          {onCancel && (
-            <ClayButton
-              type="button"
-              variant="outline"
-              disabled={busy}
-              onClick={onCancel}
-            >
-              {c.cancel}
-            </ClayButton>
+          {isPast && (
+            <div className="rounded-2xl border border-line bg-canvas/40 p-4">
+              <label className="flex min-h-12 items-start gap-3">
+                <input
+                  type="checkbox"
+                  required
+                  className="mt-1 h-5 w-5 shrink-0 accent-brand"
+                  checked={originalConfirmed}
+                  onChange={(event) =>
+                    setConfirmedPriceKey(
+                      event.target.checked ? preview.confirmationKey : "",
+                    )
+                  }
+                />
+                <span className="text-sm font-semibold">
+                  {c.confirmOriginal}
+                </span>
+              </label>
+              <p className="mt-2 text-xs leading-5 text-ink-muted">
+                {c.originalPriceHint}
+              </p>
+            </div>
           )}
-        </div>
-      </fieldset>
-    </form>
+          {error && (
+            <p
+              ref={errorMessage}
+              role="alert"
+              tabIndex={-1}
+              className="rounded-xl bg-destructive/10 p-3 text-sm text-destructive"
+            >
+              {error}
+            </p>
+          )}
+          {error === c.totalChanged && (
+            <button
+              type="button"
+              disabled={busy || options === "loading"}
+              className="min-h-11 rounded-lg px-2 text-sm font-semibold text-brand underline"
+              onClick={async () => {
+                setConfirmedPriceKey("");
+                await Promise.all([
+                  loadOptions(),
+                  onSaved().catch(() => setWarning(c.loadError)),
+                ]);
+              }}
+            >
+              {c.reloadPrices}
+            </button>
+          )}
+        </fieldset>
+      </form>
+    </AdminDialog>
   );
 }

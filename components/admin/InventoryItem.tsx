@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Check, Package } from "lucide-react";
+import { Check, Package, Plus } from "lucide-react";
 import { useLocale } from "@/components/providers/LocaleProvider";
 import { storeClient } from "@/lib/store/client";
 import { PRODUCTS, PRODUCT_CATEGORIES } from "@/lib/products";
 import type { Stock } from "./InventoryPanel";
+import { AdminDialog } from "./AdminDialog";
 
 type Props = {
   stock: Stock;
@@ -38,6 +39,7 @@ export function InventoryItem({
     [message, setMessage] = useState(""),
     [error, setError] = useState("");
   const busyRef = useRef(false);
+  const [restockOpen, setRestockOpen] = useState(false);
   const [operation, setOperation] = useState("add"),
     [quantity, setQuantity] = useState("");
   const [costDraft, setCostDraft] = useState(cost == null ? "" : String(cost));
@@ -85,9 +87,17 @@ export function InventoryItem({
     try {
       const result = await storeClient().rpc(rpc, args);
       if (result.error) throw result.error;
-      await onSaved();
       after?.();
       setMessage(ar ? "تم الحفظ" : "Saved");
+      try {
+        await onSaved();
+      } catch {
+        setMessage(
+          ar
+            ? "تم الحفظ. حدّث الصفحة لعرض الأعداد الحالية."
+            : "Saved. Refresh to load the latest counts.",
+        );
+      }
     } catch (failure) {
       const code =
         typeof failure === "object" && failure && "message" in failure
@@ -195,90 +205,136 @@ export function InventoryItem({
       </label>
     </fieldset>
   );
-  const stockForm = s.unlimited_stock ? (
-    <p className="max-w-xs text-xs leading-5 text-ink-muted">
-      {ar
-        ? "الطلبات غير المحدودة لا تغيّر العدد المحفوظ. راجع العدد قبل إعادة تفعيل التتبع."
-        : "Unlimited orders leave the stored count unchanged. Check it before switching back."}
-    </p>
-  ) : (
-    <form
-      aria-label={`${ar ? "تحديث المخزون" : "Update stock"} — ${name}`}
-      onSubmit={(event) => {
-        event.preventDefault();
-        void save(
-          "restock_inventory",
-          {
-            p_product: s.product_id,
-            p_quantity: Number(quantity),
-            p_operation: operation,
-          },
-          () => setQuantity(""),
-        );
-      }}
-    >
-      <fieldset disabled={busy} className="flex items-end gap-2">
-        <label className={table ? "w-40 shrink-0" : "min-w-0 flex-1"}>
-          <span
-            className={table ? "sr-only" : "mb-1 block text-xs text-ink-muted"}
-          >
-            {ar ? "الإجراء" : "Stock action"}
-          </span>
-          <select
-            className={field}
-            value={operation}
-            aria-label={`${ar ? "الإجراء" : "Stock action"} — ${name}`}
-            onChange={(event) => setOperation(event.target.value)}
-          >
-            <option value="add">{ar ? "إضافة مخزون" : "Add stock"}</option>
-            <option value="remove">
-              {ar ? "إزالة مخزون" : "Remove stock"}
-            </option>
-            <option value="set">{ar ? "تصحيح العدد" : "Set count"}</option>
-          </select>
-        </label>
-        <label className="w-20 shrink-0">
-          <span
-            className={table ? "sr-only" : "mb-1 block text-xs text-ink-muted"}
-          >
-            {operation === "set"
-              ? ar
-                ? "العدد"
-                : "Count"
-              : ar
-                ? "الكمية"
-                : "Quantity"}
-          </span>
-          <input
-            className={field}
-            type="number"
-            inputMode="numeric"
-            min={operation === "set" ? 0 : 1}
-            max={10000}
-            step={1}
-            required
-            value={quantity}
-            aria-label={`${operation === "set" ? (ar ? "العدد الفعلي" : "Actual count") : ar ? "الكمية" : "Quantity"} — ${name}`}
-            onChange={(event) => setQuantity(event.target.value)}
-          />
-        </label>
-        <button
-          type="submit"
-          className={saveButton}
-          aria-label={`${ar ? "حفظ المخزون" : "Save stock"} — ${name}`}
-          title={ar ? "حفظ المخزون" : "Save stock"}
-        >
-          <Check aria-hidden="true" className="h-5 w-5" />
-        </button>
-      </fieldset>
-      {operation === "set" && (
-        <p className="mt-1 max-w-xs text-[11px] leading-4 text-ink-muted">
-          {ar
-            ? "إجمالي القطع الموجودة، بما فيها المحجوز."
-            : "All pieces on hand, including reserved pieces."}
+  const stockControl = (
+    <>
+      <button
+        type="button"
+        disabled={busy || s.unlimited_stock}
+        onClick={() => {
+          setError("");
+          setMessage("");
+          setRestockOpen(true);
+        }}
+        aria-label={`${ar ? "تعديل المخزون" : "Restock"} — ${name}`}
+        title={
+          s.unlimited_stock
+            ? ar
+              ? "أوقف المخزون غير المحدود لتعديل العدد"
+              : "Turn off unlimited stock to change the count"
+            : undefined
+        }
+        className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-line px-3 text-sm font-semibold text-brand disabled:opacity-40 focus-visible:ring-4 focus-visible:ring-brand/35"
+      >
+        <Plus aria-hidden="true" className="h-4 w-4" />
+        {ar ? "تعديل المخزون" : "Restock"}
+      </button>
+      <AdminDialog
+        open={restockOpen}
+        onClose={() => setRestockOpen(false)}
+        title={`${ar ? "تعديل المخزون" : "Restock"} · ${name}`}
+        busy={busy}
+      >
+        <p className="mb-4 text-sm text-ink-muted">
+          {ar ? "بالمخزن" : "On hand"}: {s.on_hand} ·{" "}
+          {ar ? "محجوز" : "Reserved"}: {s.reserved}
         </p>
-      )}
-    </form>
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            void save(
+              "restock_inventory",
+              {
+                p_product: s.product_id,
+                p_quantity: Number(quantity),
+                p_operation: operation,
+              },
+              () => {
+                setQuantity("");
+                setRestockOpen(false);
+              },
+            );
+          }}
+        >
+          <fieldset
+            disabled={busy || s.unlimited_stock}
+            className="grid gap-4 sm:grid-cols-2"
+          >
+            <label className="text-sm">
+              {ar ? "الإجراء" : "Stock action"}
+              <select
+                className="store-field mt-1"
+                value={operation}
+                aria-label={`${ar ? "الإجراء" : "Stock action"} — ${name}`}
+                onChange={(e) => setOperation(e.target.value)}
+              >
+                <option value="add">{ar ? "إضافة مخزون" : "Add stock"}</option>
+                <option value="remove">
+                  {ar ? "إزالة مخزون" : "Remove stock"}
+                </option>
+                <option value="set">{ar ? "تصحيح العدد" : "Set count"}</option>
+              </select>
+            </label>
+            <label className="text-sm">
+              {operation === "set"
+                ? ar
+                  ? "العدد الفعلي"
+                  : "Actual count"
+                : ar
+                  ? "الكمية"
+                  : "Quantity"}
+              <input
+                className="store-field mt-1"
+                type="number"
+                inputMode="numeric"
+                min={operation === "set" ? 0 : 1}
+                max={10000}
+                step={1}
+                required
+                value={quantity}
+                aria-label={`${operation === "set" ? (ar ? "العدد الفعلي" : "Actual count") : ar ? "الكمية" : "Quantity"} — ${name}`}
+                onChange={(e) => setQuantity(e.target.value)}
+              />
+            </label>
+            {operation === "set" && (
+              <p className="text-xs text-ink-muted sm:col-span-2">
+                {ar
+                  ? "العدد الإجمالي الفعلي بما فيه المحجوز."
+                  : "Total pieces physically on hand, including reservations."}
+              </p>
+            )}
+            {error && (
+              <p
+                role="alert"
+                className="text-sm text-destructive sm:col-span-2"
+              >
+                {error}
+              </p>
+            )}
+            <div className="flex gap-3 sm:col-span-2">
+              <button
+                type="submit"
+                className="min-h-12 rounded-xl bg-brand px-4 font-semibold text-canvas"
+              >
+                {busy
+                  ? ar
+                    ? "جارٍ الحفظ…"
+                    : "Saving…"
+                  : ar
+                    ? "حفظ المخزون"
+                    : "Save stock"}
+              </button>
+              <button
+                type="button"
+                className="min-h-12 rounded-xl border border-line px-4 text-brand"
+                onClick={() => setRestockOpen(false)}
+              >
+                {ar ? "إلغاء" : "Cancel"}
+              </button>
+            </div>
+          </fieldset>
+        </form>
+      </AdminDialog>
+    </>
   );
   const costForm = costAvailable ? (
     <form
@@ -368,13 +424,13 @@ export function InventoryItem({
       <tr role="presentation" className="block min-w-0">
         <td role="presentation" colSpan={5} className="block w-full">
           <article
-            className="space-y-3 rounded-2xl border border-line bg-surface p-4 shadow-clay-sm"
+            className="space-y-3 rounded-xl border border-line bg-surface p-3"
             aria-busy={busy}
           >
             {productInfo}
             {counts}
             {availability}
-            {stockForm}
+            {stockControl}
             <section className="border-t border-line pt-3">{costForm}</section>
             {feedback}
           </article>
@@ -388,14 +444,14 @@ export function InventoryItem({
     >
       <th
         scope="row"
-        className="min-w-48 px-3 py-3 text-start font-normal align-middle"
+        className="min-w-40 px-3 py-3 text-start font-normal align-middle"
       >
         {productInfo}
         {feedback}
       </th>
       <td className="px-3 py-3 align-middle">{counts}</td>
-      <td className="min-w-[20rem] px-3 py-3 align-middle">{stockForm}</td>
-      <td className="min-w-44 px-3 py-3 align-middle">{costForm}</td>
+      <td className="px-3 py-3 align-middle">{stockControl}</td>
+      <td className="w-40 min-w-36 px-3 py-3 align-middle">{costForm}</td>
       <td className="px-3 py-2 align-middle">{availability}</td>
     </tr>
   );

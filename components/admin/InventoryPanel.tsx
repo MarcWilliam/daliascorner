@@ -1,7 +1,8 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
-import { LayoutGrid, List, Search } from "lucide-react";
+import { LayoutGrid, List, Search, History } from "lucide-react";
 import { InventoryItem } from "./InventoryItem";
+import { AdminDialog } from "./AdminDialog";
 import { ClayButton } from "@/components/ui/ClayButton";
 import { useLocale } from "@/components/providers/LocaleProvider";
 import { storeClient } from "@/lib/store/client";
@@ -33,14 +34,20 @@ export function InventoryPanel({
   movements,
   loading,
   onRefresh,
+  initialProduct,
 }: {
   stock: Stock[];
   movements: Movement[];
   loading: boolean;
   onRefresh: () => Promise<void>;
+  initialProduct?: string;
 }) {
   const { locale } = useLocale();
   const ar = locale === "ar";
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyProduct, setHistoryProduct] = useState("all");
+  const [historyFrom, setHistoryFrom] = useState("");
+  const [historyTo, setHistoryTo] = useState("");
   const [view, setView] = useState<"table" | "cards">("cards");
   const [viewReady, setViewReady] = useState(false);
   const [pendingProducts, setPendingProducts] = useState<Set<string>>(
@@ -79,6 +86,13 @@ export function InventoryPanel({
   const [search, setSearch] = useState(""),
     [category, setCategory] = useState("all"),
     [filter, setFilter] = useState("all");
+  useEffect(() => {
+    if (initialProduct) {
+      setSearch(initialProduct);
+      setCategory("all");
+      setFilter("all");
+    }
+  }, [initialProduct]);
   const [costs, setCosts] = useState<Record<string, number | null>>({}),
     [costAvailable, setCostAvailable] = useState(false),
     [costError, setCostError] = useState(false),
@@ -126,6 +140,19 @@ export function InventoryPanel({
           s.on_hand - s.reserved <= s.low_stock_threshold))
     );
   });
+  const shownMovements = movements.filter((m) => {
+    const day = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Africa/Cairo",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(new Date(m.created_at));
+    return (
+      (historyProduct === "all" || m.product_id === historyProduct) &&
+      (!historyFrom || day >= historyFrom) &&
+      (!historyTo || day <= historyTo)
+    );
+  });
   const reasons: Record<string, string> = ar
     ? {
         restocked: "إضافة مخزون",
@@ -157,11 +184,16 @@ export function InventoryPanel({
       aria-label={ar ? "المخزون" : "Stock"}
       aria-busy={loading}
     >
-      <div className={panel}>
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <h2 className="text-xl">
-            {ar ? "المنتجات والمخزون" : "Products & stock"}
-          </h2>
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <button
+            type="button"
+            onClick={() => setHistoryOpen(true)}
+            className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-line px-3 text-sm font-semibold text-brand focus-visible:ring-4 focus-visible:ring-brand/35"
+          >
+            <History className="h-4 w-4" aria-hidden="true" />
+            {ar ? "سجل المخزون" : "View stock history"}
+          </button>
           <div
             className="inline-flex rounded-xl border border-line bg-canvas-sunk p-1"
             role="group"
@@ -191,12 +223,7 @@ export function InventoryPanel({
             ))}
           </div>
         </div>
-        <p className="mt-2 text-sm text-ink-muted">
-          {ar
-            ? "أضف القطع الجديدة، صحّح العدد الفعلي، أو اختر مخزوناً غير محدود لكل منتج."
-            : "Restock new pieces, correct physical counts, or choose unlimited stock for each product."}
-        </p>
-        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-3">
           <label className="text-sm">
             <span className="flex items-center gap-2">
               <Search className="h-4 w-4" aria-hidden="true" />
@@ -295,7 +322,7 @@ export function InventoryPanel({
       <div
         className={
           view === "table"
-            ? "overflow-x-auto rounded-2xl border border-line bg-surface shadow-clay-sm"
+            ? "max-w-full overflow-x-auto rounded-2xl border border-line bg-surface shadow-clay-sm [contain:paint]"
             : ""
         }
         role={view === "table" ? "region" : undefined}
@@ -312,7 +339,7 @@ export function InventoryPanel({
           role={view === "cards" ? "presentation" : undefined}
           className={
             view === "table"
-              ? "w-full min-w-[66rem] border-collapse text-sm"
+              ? "w-full min-w-[52rem] border-collapse text-sm"
               : "block w-full"
           }
         >
@@ -346,7 +373,9 @@ export function InventoryPanel({
           <tbody
             role={view === "cards" ? "presentation" : undefined}
             className={
-              view === "cards" ? "grid items-start gap-4 lg:grid-cols-2" : ""
+              view === "cards"
+                ? "grid items-start gap-3 lg:grid-cols-2 2xl:grid-cols-3"
+                : ""
             }
           >
             {shown.map((s) => (
@@ -363,17 +392,55 @@ export function InventoryPanel({
           </tbody>
         </table>
       </div>
-      <section className={panel}>
-        <h2 className="text-xl">
-          {ar ? "آخر حركات المخزون" : "Recent stock activity"}
-        </h2>
+      <AdminDialog
+        open={historyOpen}
+        onClose={() => setHistoryOpen(false)}
+        title={ar ? "سجل المخزون" : "Stock history"}
+        variant="drawer"
+      >
+        <div className="grid gap-3 sm:grid-cols-3">
+          <label className="text-sm">
+            {ar ? "المنتج" : "Product"}
+            <select
+              className="store-field mt-1"
+              value={historyProduct}
+              onChange={(e) => setHistoryProduct(e.target.value)}
+            >
+              <option value="all">{ar ? "كل المنتجات" : "All products"}</option>
+              {stock.map((p) => (
+                <option key={p.product_id} value={p.product_id}>
+                  {ar ? p.name_ar : p.name_en}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="text-sm">
+            {ar ? "من" : "From"}
+            <input
+              type="date"
+              className="store-field mt-1"
+              value={historyFrom}
+              onChange={(e) => setHistoryFrom(e.target.value)}
+            />
+          </label>
+          <label className="text-sm">
+            {ar ? "إلى" : "To"}
+            <input
+              type="date"
+              className="store-field mt-1"
+              min={historyFrom || undefined}
+              value={historyTo}
+              onChange={(e) => setHistoryTo(e.target.value)}
+            />
+          </label>
+        </div>
         <p className="mt-1 text-sm text-ink-muted">
           {ar
-            ? "يتم تسجيل عمليات المخزون تلقائياً."
-            : "Stock changes are recorded automatically."}
+            ? "يُعرض أحدث سجل محمّل فقط. التواريخ بتوقيت القاهرة."
+            : "Filters apply to loaded recent activity only. Dates use Cairo time."}
         </p>
         <ul className="mt-3 divide-y divide-line">
-          {movements.map((m) => (
+          {shownMovements.map((m) => (
             <li
               key={m.id}
               className="flex flex-wrap justify-between gap-2 py-3 text-sm"
@@ -402,14 +469,14 @@ export function InventoryPanel({
             </li>
           ))}
         </ul>
-        {!movements.length && (
+        {!shownMovements.length && (
           <p className="mt-3 text-sm text-ink-muted">
             {ar
-              ? "ستظهر هنا عمليات المخزون والطلبات."
-              : "Restocks and order reservations will appear here."}
+              ? "لا توجد حركات محمّلة تطابق الفلاتر."
+              : "No loaded activity matches these filters."}
           </p>
         )}
-      </section>
+      </AdminDialog>
     </section>
   );
 }

@@ -48,7 +48,8 @@
 
   /* Typography tokens — the --font-* faces are injected by next/font (see
      app/layout.tsx); each already prepends a metric-matched fallback. */
-  --font-display: var(--font-baloo2), var(--font-baloo-bhaijaan2), system-ui, sans-serif;
+  --font-display:
+    var(--font-baloo2), var(--font-baloo-bhaijaan2), system-ui, sans-serif;
   --font-body: var(--font-cairo), system-ui, "Segoe UI", sans-serif;
 
   /* Z-index scale */
@@ -134,7 +135,9 @@
     font-size: 1rem;
     font-weight: 400;
     line-height: 1.5;
-    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    transition:
+      border-color 0.15s ease,
+      box-shadow 0.15s ease;
   }
   .store-field::placeholder {
     color: rgb(var(--ink-muted) / 0.7);
@@ -275,4 +278,32 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
   }
+}
+
+/* Admin density: preserve storefront clay styling and all 48px form controls. */
+.admin-ui .rounded-clay-lg {
+  border-radius: 1rem;
+}
+.admin-ui .rounded-clay {
+  border-radius: 0.75rem;
+}
+.admin-ui .btn-clay {
+  transform: none;
+}
+.admin-ui .btn-clay:not(:focus-visible),
+.admin-ui .shadow-clay-sm:not(:focus-visible),
+.admin-ui .shadow-clay-lg:not(:focus-visible) {
+  box-shadow: none;
+}
+.admin-ui .btn-clay:not(:disabled):hover {
+  filter: brightness(0.97);
+}
+.admin-ui .btn-clay:disabled {
+  filter: none;
+}
+.admin-ui .border-2.border-brand {
+  border-width: 1px;
+}
+.admin-ui .inline-flex.rounded-clay {
+  padding-inline: 1rem;
 }

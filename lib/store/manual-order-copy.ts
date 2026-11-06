@@ -1,5 +1,7 @@
 export const manualOrderCopy = {
   en: {
+    closeDraft: "Close",
+    draftHint: "Draft kept until reload or sign out.",
     reloadPrices: "Reload prices & fees",
     newPaused:
       "Some selected products are paused. Remove them for a new order, or choose Past delivered order for an earlier sale.",
@@ -116,6 +118,8 @@ export const manualOrderCopy = {
     currency: "EGP",
   },
   ar: {
+    closeDraft: "إغلاق",
+    draftHint: "تُحفظ المسودة حتى تحديث الصفحة أو تسجيل الخروج.",
     reloadPrices: "تحديث الأسعار ورسوم التوصيل",
     newPaused:
       "بعض المنتجات المحددة متوقفة. احذفها للطلب الجديد، أو اختر طلبًا سابقًا تم تسليمه لتسجيل بيع قديم.",

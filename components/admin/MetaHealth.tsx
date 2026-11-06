@@ -4,7 +4,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   AlertCircle,
   ArrowUpRight,
-  CheckCircle2,
   Clock3,
   RefreshCw,
   ShieldCheck,
@@ -44,7 +43,7 @@ type Health = {
   sent?: Metric;
   failed?: Metric;
 };
-const panel = "rounded-2xl border border-line bg-surface p-4 sm:p-5";
+const panel = "rounded-xl border border-line bg-surface p-4";
 const action =
   "inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-line bg-surface px-3 text-sm font-semibold text-brand transition-colors hover:bg-canvas-sunk focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/35 disabled:cursor-not-allowed disabled:opacity-50";
 function numeric(value: Metric | undefined): number | null {
@@ -197,6 +196,7 @@ export function MetaHealth({
   };
   const failed = numeric(data?.failed);
   const connectionIssue = !!(data?.quality_error || data?.campaign_error);
+  const deliveryIssue = failed !== null && failed > 0;
   const status = error
     ? ar
       ? "تعذر التحديث"
@@ -209,7 +209,7 @@ export function MetaHealth({
         ? ar
           ? "غير مُعدّ"
           : "Not configured"
-        : connectionIssue
+        : connectionIssue || deliveryIssue
           ? ar
             ? "تحتاج مراجعة"
             : "Needs attention"
@@ -217,14 +217,14 @@ export function MetaHealth({
             ? "تم الإعداد"
             : "Configured";
   const StateIcon =
-    error || connectionIssue
+    error || connectionIssue || deliveryIssue
       ? AlertCircle
       : data?.configured
         ? ShieldCheck
         : Clock3;
   return (
     <section
-      className="min-w-0 space-y-5"
+      className="min-w-0 space-y-4"
       aria-label={ar ? "متابعة Meta والإعلانات" : "Meta reporting overview"}
       aria-busy={busy}
     >
@@ -232,20 +232,20 @@ export function MetaHealth({
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-3">
-              <h2 id="meta-connection-title" className="text-xl">
+              <h2 id="meta-connection-title" className="text-lg">
                 {ar ? "اتصال Meta" : "Meta connection"}
               </h2>
               <span
-                className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${error || connectionIssue ? "bg-orange/20 text-ink" : "bg-leaf-soft text-brand"}`}
+                className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${error || connectionIssue || deliveryIssue ? "bg-orange/20 text-ink" : "bg-leaf-soft text-brand"}`}
               >
                 <StateIcon aria-hidden="true" className="h-3.5 w-3.5" />
                 {status}
               </span>
             </div>
-            <p className="mt-2 max-w-3xl text-sm leading-6 text-ink-muted">
+            <p className="mt-1 max-w-3xl text-xs leading-5 text-ink-muted">
               {ar
-                ? "راجع إرسال أحداث موقعك، ثم جودة البيانات واستخدامها في الإعلانات. إدارة الحملات والميزانيات تتم في مدير الإعلانات."
-                : "Check website event delivery, then Meta data quality and advertising use. Manage campaigns and budgets in Ads Manager."}
+                ? "تابع حالة الاتصال والبيانات المستخدمة في إعلانات المتجر."
+                : "Connection status and data used in your shop’s ads."}
             </p>
           </div>
           {!hideRefresh && (
@@ -316,6 +316,24 @@ export function MetaHealth({
               : "The reporting connection has not been configured yet. Orders, stock and finances remain available in their own sections."}
           </p>
         )}
+        {deliveryIssue && (
+          <p role="status" className="mt-3 rounded-lg bg-orange/15 p-3 text-sm">
+            {ar
+              ? `${number(failed!)} أحداث متوقفة أو تحتاج مراجعة. راجع الطلبات والاتصال في مدير الأحداث؛ تغير أهلية الطلب قد يوقف الإبلاغ.`
+              : `${number(failed!)} events are stopped or need review. Review orders and the connection in Events Manager; changed order eligibility can stop reporting.`}
+          </p>
+        )}
+        {data?.configured && !error && !connectionIssue && !deliveryIssue && (
+          <p className="mt-3 text-xs text-ink-muted">
+            {failed === 0
+              ? ar
+                ? "لا توجد أحداث متوقفة في القراءة الحالية."
+                : "No stopped events in the current reading."
+              : ar
+                ? "حالة الإرسال غير متاحة؛ افتح تفاصيل الإرسال لمراجعة القراءة."
+                : "Delivery status unavailable; check Delivery details."}
+          </p>
+        )}
         {connectionIssue && (
           <p className="mt-4 rounded-xl bg-orange/10 p-3 text-sm">
             {ar
@@ -326,91 +344,43 @@ export function MetaHealth({
       </section>
       {data?.configured && (
         <>
-          <section aria-labelledby="meta-queue-title" className="space-y-3">
-            <div>
-              <h2 id="meta-queue-title" className="text-xl">
-                {ar ? "إرسال أحداث هذا الموقع" : "Website event delivery"}
-              </h2>
-              <p className="mt-1 text-xs leading-5 text-ink-muted">
-                {ar
-                  ? "هذه أرقام قائمة إرسال المتجر فقط، وتُقرأ عند تحديث الصفحة."
-                  : "These counts belong only to this shop’s server event queue and are read on refresh."}
-              </p>
-            </div>
-            <dl className="grid gap-3 sm:grid-cols-3">
+          <details className={panel}>
+            <summary className="min-h-11 cursor-pointer font-semibold">
+              {ar ? "تفاصيل الإرسال" : "Delivery details"}
+            </summary>
+            <dl className="grid grid-cols-1 divide-y divide-line sm:grid-cols-3 sm:divide-x sm:divide-y-0 rtl:divide-x-reverse">
               {[
-                {
-                  label: ar ? "في الانتظار" : "Pending",
-                  value: data.pending,
-                  hint: ar
-                    ? "تنتظر الإرسال أو إعادة المحاولة"
-                    : "Waiting to send or retry",
-                  icon: Clock3,
-                },
-                {
-                  label: ar ? "مُرسلة" : "Sent",
-                  value: data.sent,
-                  hint: ar ? "أحداث قبلتها Meta" : "Events accepted by Meta",
-                  icon: CheckCircle2,
-                },
+                { label: ar ? "في الانتظار" : "Pending", value: data.pending },
+                { label: ar ? "مُرسلة" : "Sent", value: data.sent },
                 {
                   label: ar ? "متوقفة / للمراجعة" : "Stopped / review",
                   value: data.failed,
-                  hint: ar
-                    ? "توقفت أو تحتاج فحص الأهلية"
-                    : "Stopped or eligibility needs review",
-                  icon: AlertCircle,
                 },
-              ].map((item) => {
-                const Icon = item.icon;
-                const value = numeric(item.value);
-                return (
-                  <div
-                    key={item.label}
-                    className={`${panel} flex items-start gap-3`}
-                  >
-                    <span className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-canvas-sunk text-brand">
-                      <Icon aria-hidden="true" className="h-4 w-4" />
-                    </span>
-                    <div className="min-w-0">
-                      <dt className="text-xs font-semibold text-ink-muted">
-                        {item.label}
-                      </dt>
-                      <dd className="mt-2 break-words text-2xl font-bold tabular-nums">
-                        {value === null ? missing : number(value)}
-                      </dd>
-                      <p className="mt-1 text-xs leading-5 text-ink-muted">
-                        {item.hint}
-                      </p>
-                    </div>
-                  </div>
-                );
-              })}
+              ].map((item) => (
+                <div key={item.label} className="py-2 sm:px-3 first:ps-0">
+                  <dt className="text-xs text-ink-muted">{item.label}</dt>
+                  <dd className="mt-1 font-semibold tabular-nums">
+                    {numeric(item.value) === null
+                      ? missing
+                      : number(numeric(item.value)!)}
+                  </dd>
+                </div>
+              ))}
             </dl>
-            {failed !== null && failed > 0 && (
-              <p
-                role="status"
-                className="rounded-xl border border-orange/35 bg-orange/10 p-3 text-sm"
-              >
-                {ar
-                  ? "توجد أحداث متوقفة. قد يتوقف الإبلاغ عند تغير أهلية الطلب؛ راجع الطلبات والاتصال قبل الاعتماد على تقارير الإعلان."
-                  : "Some events are stopped. Reporting can stop when order eligibility changes; review orders and the connection before relying on ad reports."}
-              </p>
-            )}
-            <p className="px-1 text-xs leading-5 text-ink-muted">
+            <p className="mt-2 text-xs leading-5 text-ink-muted">
               {ar
-                ? "يُضاف Purchase بعد تأكيد استلام الدفع للطلب المؤهل للإعلانات. تقديم الطلب وحده لا يعني تسجيل عملية شراء."
-                : "Purchase is queued after payment is confirmed for an ad-eligible order. Placing an order alone does not report a purchase."}
+                ? "أرقام قائمة إرسال هذا الموقع فقط؛ تُقرأ عند التحديث. يُرسل Purchase بعد تأكيد استلام الدفع لطلب مؤهل للإعلانات. تقديم الطلب وحده لا يُسجّل شراءً."
+                : "This website’s event queue, read on refresh. Purchase is queued only after payment is confirmed for an ad-eligible order; placing an order alone does not report a purchase."}
             </p>
-          </section>
+          </details>
           <section className={panel} aria-labelledby="meta-quality-title">
-            <h2 id="meta-quality-title" className="text-xl">
+            <h2 id="meta-quality-title" className="text-lg">
               {ar ? "جودة بيانات Meta" : "Meta data quality"}
             </h2>
-            <p className="mt-2 max-w-3xl text-sm leading-6 text-ink-muted">
+            <p className="mt-1 max-w-3xl text-xs leading-5 text-ink-muted">
               {ar
-                ? "تشمل هذه المقاييس كل المصادر المتصلة بمجموعة البيانات، وقد تتأخر. تُحفظ قراءة Meta مؤقتًا لخمس دقائق؛ عدم توفر قيمة لا يعني أنها صفر."
-                : "These metrics cover every integration connected to the dataset and may lag. Meta readings are cached for five minutes; unavailable values are not zero."}
+                ? "كل مصادر مجموعة البيانات · تخزين مؤقت لخمس دقائق · القيم غير المتاحة لا تعني صفرًا."
+                : "Dataset-wide metrics · May lag · Five-minute cache · Unavailable is not zero."}
             </p>
             {data.checked_at &&
               Number.isFinite(Date.parse(data.checked_at)) && (
@@ -462,7 +432,7 @@ export function MetaHealth({
                         <th
                           key={label}
                           scope="col"
-                          className="px-4 py-3 text-start font-semibold"
+                          className="px-3 py-2 text-start font-semibold"
                         >
                           {label}
                         </th>
@@ -480,7 +450,7 @@ export function MetaHealth({
                         <tr key={q.event_name}>
                           <th
                             scope="row"
-                            className="px-4 py-4 text-start font-semibold"
+                            className="px-3 py-3 text-start font-semibold"
                           >
                             <span className="block">
                               {eventName(q.event_name)}
@@ -489,7 +459,7 @@ export function MetaHealth({
                               {q.event_name}
                             </span>
                           </th>
-                          <td className="px-4 py-4">
+                          <td className="px-3 py-3">
                             <span className="font-semibold tabular-nums">
                               {score === null
                                 ? missing
@@ -509,7 +479,7 @@ export function MetaHealth({
                               </div>
                             )}
                           </td>
-                          <td className="px-4 py-4">
+                          <td className="px-3 py-3">
                             <span className="tabular-nums">
                               {coverage === null
                                 ? missing
@@ -521,7 +491,7 @@ export function MetaHealth({
                               </p>
                             )}
                           </td>
-                          <td className="px-4 py-4">
+                          <td className="px-3 py-3">
                             {frequency(q.data_freshness?.upload_frequency)}
                           </td>
                         </tr>
@@ -533,13 +503,13 @@ export function MetaHealth({
             )}
           </section>
           <section className={panel} aria-labelledby="meta-ads-title">
-            <h2 id="meta-ads-title" className="text-xl">
+            <h2 id="meta-ads-title" className="text-lg">
               {ar ? "استخدام الأحداث في الإعلانات" : "Advertising use"}
             </h2>
-            <p className="mt-2 max-w-3xl text-sm leading-6 text-ink-muted">
+            <p className="mt-1 max-w-3xl text-xs leading-5 text-ink-muted">
               {ar
-                ? "عرض للقراءة فقط من Meta. الإنفاق أدناه مرتبط بكل حدث وقد يتداخل بين الأحداث؛ لا يُجمع كإجمالي إنفاق الحساب ولا يُضاف تلقائيًا لمصروفات المتجر."
-                : "Read-only data from Meta. Spend below is associated with each event and may overlap across events; it is not an account spend total or an automatic expense entry."}
+                ? "قراءة من Meta. قد يتداخل الإنفاق المرتبط بالأحداث؛ ليس إجمالي إنفاق الحساب ولا يُضاف تلقائيًا للمصروفات."
+                : "Read-only Meta data. Event-associated spend may overlap; it is not total account spend and is not added to expenses."}
             </p>
             {data.campaign_error ? (
               <p
@@ -585,16 +555,16 @@ export function MetaHealth({
                       </div>
                     </div>
                     {event.event_ad_sets?.data?.length ? (
-                      <ul className="mt-3 grid gap-2 md:grid-cols-2">
+                      <ul className="mt-2 divide-y divide-line">
                         {event.event_ad_sets.data.map((ad) => (
                           <li
                             key={ad.ad_set_id}
-                            className="min-w-0 rounded-xl border border-line bg-canvas/40 p-3"
+                            className="grid min-w-0 gap-2 py-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]"
                           >
                             <p className="break-words font-semibold">
                               {ad.ad_set_name}
                             </p>
-                            <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                            <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
                               <dt className="text-ink-muted">
                                 {ar ? "الهدف" : "Objective"}
                               </dt>

@@ -13,8 +13,8 @@ import {
   ChevronLeft,
   ChevronRight,
   SlidersHorizontal,
-  X,
 } from "lucide-react";
+import { AdminDialog } from "./AdminDialog";
 import { storeClient } from "@/lib/store/client";
 import { useCustomerAuth } from "@/components/providers/CustomerAuthProvider";
 import { useLocale } from "@/components/providers/LocaleProvider";
@@ -33,11 +33,11 @@ import {
   EXPENSE_PAGE_SIZE,
   type ExpenseFilters,
   type ExpensePage,
+  type ExpenseEntry,
 } from "@/lib/store/expense-page";
 
 const field = "store-field mt-1";
-const panel =
-  "rounded-clay-lg border border-line bg-surface p-5 shadow-clay-sm sm:p-6";
+const panel = "rounded-2xl border border-line bg-surface p-4";
 const newDraft = () => ({
   amount: "",
   category: "other" as ExpenseCategory,
@@ -73,10 +73,10 @@ export function ExpensesPanel({
   const [formOpen, setFormOpen] = useState(false),
     [draft, setDraft] = useState(newDraft);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [voidEntry, setVoidEntry] = useState<ExpenseEntry | null>(null);
   const filterButton = useRef<HTMLButtonElement>(null),
     firstFilter = useRef<HTMLInputElement>(null);
-  const formTitle = useRef<HTMLHeadingElement>(null),
-    firstField = useRef<HTMLInputElement>(null),
+  const firstField = useRef<HTMLInputElement>(null),
     listTitle = useRef<HTMLHeadingElement>(null);
   const money = (value: number) =>
     new Intl.NumberFormat(ar ? "ar-EG" : "en-EG", {
@@ -248,9 +248,21 @@ export function ExpensesPanel({
         setDraft(newDraft());
         attempt.current = null;
         setFormOpen(false);
-        listTitle.current?.focus();
       }
     });
+  }
+  function closeExpenseForm() {
+    if (busy) return;
+    setFormOpen(false);
+    setError("");
+    setMessage(
+      draft.amount ||
+        draft.note ||
+        draft.category !== "other" ||
+        draft.date !== cairoDay()
+        ? c.closedForm
+        : "",
+    );
   }
   function applyFilters(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -288,17 +300,10 @@ export function ExpensesPanel({
     setDraftFilters((current) => ({ ...current, [key]: value }));
   }
   return (
-    <section className="space-y-5" aria-busy={loading || busy}>
+    <section className="space-y-3" aria-busy={loading || busy}>
       <header className={hideRefresh ? "space-y-2" : panel}>
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="min-w-0">
-            {!hideRefresh && <h2 className="text-xl">{c.title}</h2>}
-            <p
-              className={`${hideRefresh ? "" : "mt-2"} max-w-2xl text-sm leading-6 text-ink-muted`}
-            >
-              {hideRefresh ? c.compactIntro : c.intro}
-            </p>
-          </div>
+          {!hideRefresh && <h2 className="text-xl">{c.title}</h2>}
           <div className="flex flex-wrap items-center gap-3">
             <button
               ref={filterButton}
@@ -312,18 +317,17 @@ export function ExpensesPanel({
               <SlidersHorizontal aria-hidden="true" className="h-4 w-4" />
               {c.filters}
             </button>
-            {!formOpen && (
-              <ClayButton
-                disabled={loading || busy}
-                onClick={() => {
-                  setFormOpen(true);
-                  setMessage("");
-                }}
-              >
-                <Plus aria-hidden="true" className="h-5 w-5" />
-                {c.add}
-              </ClayButton>
-            )}
+            <ClayButton
+              disabled={loading || busy}
+              onClick={() => {
+                setFormOpen(true);
+                setMessage("");
+                setError("");
+              }}
+            >
+              <Plus aria-hidden="true" className="h-5 w-5" />
+              {c.add}
+            </ClayButton>
             {!hideRefresh && (
               <button
                 type="button"
@@ -367,7 +371,7 @@ export function ExpensesPanel({
             {message}
           </p>
         )}
-        {error && (
+        {error && !formOpen && !voidEntry && (
           <div
             role="alert"
             className="mt-4 rounded-xl bg-orange/20 p-3 text-sm"
@@ -389,109 +393,156 @@ export function ExpensesPanel({
           </div>
         )}
       </header>
-      {formOpen && (
-        <section className={panel} aria-labelledby="expense-form-title">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <h2 id="expense-form-title" ref={formTitle} className="text-lg">
-                {c.formTitle}
-              </h2>
-              <p className="mt-2 max-w-3xl text-sm leading-6 text-ink-muted">
-                {common.expenseIntro}
-              </p>
+      <AdminDialog
+        open={formOpen}
+        title={c.formTitle}
+        busy={busy}
+        onClose={closeExpenseForm}
+      >
+        {error && (
+          <p role="alert" className="rounded-xl bg-orange/20 p-3 text-sm">
+            {error}
+          </p>
+        )}
+        <form className="space-y-4" onSubmit={addExpense}>
+          <fieldset disabled={busy} className="grid gap-4 sm:grid-cols-2">
+            <label className="text-sm">
+              {common.amount}
+              <input
+                ref={firstField}
+                autoFocus
+                className={field}
+                type="number"
+                inputMode="decimal"
+                min="0.01"
+                step="0.01"
+                max="9999999999.99"
+                value={draft.amount}
+                onChange={(e) => setDraft({ ...draft, amount: e.target.value })}
+                required
+              />
+            </label>
+            <label className="text-sm">
+              {common.category}
+              <select
+                className={field}
+                value={draft.category}
+                onChange={(e) =>
+                  setDraft({
+                    ...draft,
+                    category: e.target.value as ExpenseCategory,
+                  })
+                }
+              >
+                {expenseCategories.map((category) => (
+                  <option key={category} value={category}>
+                    {common.categories[category]}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="min-w-0 text-sm">
+              {common.date}
+              <input
+                className={field}
+                type="date"
+                max={cairoDay()}
+                value={draft.date}
+                onChange={(e) => setDraft({ ...draft, date: e.target.value })}
+                required
+              />
+            </label>
+            <label className="text-sm sm:col-span-2">
+              {common.note}
+              <input
+                className={field}
+                value={draft.note}
+                onChange={(e) => setDraft({ ...draft, note: e.target.value })}
+                maxLength={1000}
+                placeholder={common.notePlaceholder}
+              />
+            </label>
+            <div className="flex flex-wrap gap-3 sm:col-span-2">
+              <ClayButton type="submit">
+                {busy ? common.saving : common.add}
+              </ClayButton>
+              <ClayButton
+                type="button"
+                variant="outline"
+                onClick={closeExpenseForm}
+              >
+                {c.cancel}
+              </ClayButton>
             </div>
-            <button
-              type="button"
-              aria-label={c.cancel}
-              title={c.cancel}
-              disabled={busy}
-              onClick={() => {
-                setFormOpen(false);
-                setMessage(c.closedForm);
-              }}
-              className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-line text-brand disabled:opacity-50"
-            >
-              <X aria-hidden="true" className="h-5 w-5" />
-            </button>
-          </div>
-          <form className="mt-4" onSubmit={addExpense}>
-            <fieldset disabled={busy} className="grid gap-4 sm:grid-cols-3">
-              <label className="text-sm">
-                {common.amount}
-                <input
-                  ref={firstField}
-                  className={field}
-                  type="number"
-                  inputMode="decimal"
-                  min="0.01"
-                  step="0.01"
-                  max="9999999999.99"
-                  value={draft.amount}
-                  onChange={(e) =>
-                    setDraft({ ...draft, amount: e.target.value })
-                  }
-                  required
-                />
-              </label>
-              <label className="text-sm">
-                {common.category}
-                <select
-                  className={field}
-                  value={draft.category}
-                  onChange={(e) =>
-                    setDraft({
-                      ...draft,
-                      category: e.target.value as ExpenseCategory,
-                    })
-                  }
-                >
-                  {expenseCategories.map((category) => (
-                    <option key={category} value={category}>
-                      {common.categories[category]}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="min-w-0 text-sm">
-                {common.date}
-                <input
-                  className={field}
-                  type="date"
-                  max={cairoDay()}
-                  value={draft.date}
-                  onChange={(e) => setDraft({ ...draft, date: e.target.value })}
-                  required
-                />
-              </label>
-              <label className="text-sm sm:col-span-3">
-                {common.note}
-                <input
-                  className={field}
-                  value={draft.note}
-                  onChange={(e) => setDraft({ ...draft, note: e.target.value })}
-                  maxLength={1000}
-                  placeholder={common.notePlaceholder}
-                />
-              </label>
-              <div className="flex flex-wrap gap-3 sm:col-span-3">
-                <ClayButton type="submit">
-                  {busy ? common.saving : common.add}
-                </ClayButton>
-                <ClayButton
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    setFormOpen(false);
-                    setMessage(c.closedForm);
-                  }}
-                >
-                  {c.cancel}
-                </ClayButton>
+          </fieldset>
+        </form>
+      </AdminDialog>
+      <AdminDialog
+        open={voidEntry !== null}
+        title={c.voidTitle}
+        busy={busy}
+        onClose={() => setVoidEntry(null)}
+      >
+        {voidEntry && (
+          <div className="space-y-4">
+            <p className="text-sm text-ink-muted">{c.voidDescription}</p>
+            <dl className="grid grid-cols-2 gap-3 rounded-xl bg-canvas-sunk p-3 text-sm">
+              <div>
+                <dt className="text-ink-muted">{c.amount}</dt>
+                <dd className="mt-1 font-semibold">
+                  {money(voidEntry.amount)}
+                </dd>
               </div>
-            </fieldset>
-          </form>
-        </section>
-      )}
+              <div>
+                <dt className="text-ink-muted">{c.paidDate}</dt>
+                <dd className="mt-1 font-semibold">
+                  {date(voidEntry.entry_date)}
+                </dd>
+              </div>
+              <div className="col-span-2">
+                <dt className="text-ink-muted">{c.category}</dt>
+                <dd className="mt-1">
+                  {common.categories[voidEntry.category]}
+                </dd>
+              </div>
+              {voidEntry.note && (
+                <div className="col-span-2">
+                  <dt className="text-ink-muted">{c.note}</dt>
+                  <dd className="mt-1 break-words">{voidEntry.note}</dd>
+                </div>
+              )}
+            </dl>
+            {error && (
+              <p role="alert" className="rounded-xl bg-orange/20 p-3 text-sm">
+                {error}
+              </p>
+            )}
+            <div className="flex flex-wrap justify-end gap-2">
+              <ClayButton
+                variant="outline"
+                disabled={busy}
+                onClick={() => setVoidEntry(null)}
+              >
+                {c.cancel}
+              </ClayButton>
+              <ClayButton
+                disabled={busy}
+                onClick={() => {
+                  void save(
+                    "void_finance_entry",
+                    { p_id: voidEntry.id },
+                    c.voidedSuccess,
+                  ).then((ok) => {
+                    if (ok) setVoidEntry(null);
+                  });
+                }}
+              >
+                {busy ? common.saving : c.voidAction}
+              </ClayButton>
+            </div>
+          </div>
+        )}
+      </AdminDialog>
       <section
         id="expense-filter-region"
         hidden={!filtersOpen}
@@ -626,9 +677,6 @@ export function ExpensesPanel({
                 </div>
               )}
             </dl>
-            <p className="mt-2 text-xs leading-5 text-ink-muted">
-              {c.summaryHint}
-            </p>
           </section>
           <section className={panel} aria-labelledby="expense-register-title">
             <h2
@@ -639,9 +687,7 @@ export function ExpensesPanel({
             >
               {c.register}
             </h2>
-            <p className="mt-2 text-xs leading-5 text-ink-muted">
-              {c.editHint}
-            </p>
+
             {!page.entries.length ? (
               <div className="py-10 text-center">
                 <p className="font-semibold">{c.empty}</p>
@@ -663,7 +709,7 @@ export function ExpensesPanel({
                   {page.entries.map((entry) => (
                     <li
                       key={entry.id}
-                      className={`grid grid-cols-2 items-start gap-x-4 gap-y-3 py-4 lg:grid-cols-[7rem_11rem_minmax(0,1fr)_9rem_6rem] ${entry.voided_at ? "text-ink-muted" : ""}`}
+                      className={`grid grid-cols-2 items-start gap-x-4 gap-y-2 py-3 lg:grid-cols-[7rem_11rem_minmax(0,1fr)_9rem_6rem] ${entry.voided_at ? "text-ink-muted" : ""}`}
                     >
                       <div>
                         <p className="mb-1 text-xs text-ink-muted lg:hidden">
@@ -697,15 +743,11 @@ export function ExpensesPanel({
                           disabled={busy || loading}
                           className="min-h-11 justify-self-end rounded-xl px-2 text-sm font-semibold text-brand underline focus-visible:ring-4 focus-visible:ring-brand/45 disabled:opacity-50 lg:justify-self-start"
                           onClick={() => {
-                            if (window.confirm(common.voidConfirm))
-                              void save(
-                                "void_finance_entry",
-                                { p_id: entry.id },
-                                c.voidedSuccess,
-                              );
+                            setError("");
+                            setVoidEntry(entry);
                           }}
                         >
-                          {common.void}
+                          {c.voidAction}
                         </button>
                       ) : (
                         <span className="text-end text-xs lg:text-start">
@@ -717,7 +759,7 @@ export function ExpensesPanel({
                 </ul>
               </>
             )}
-            <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4">
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-3">
               <p role="status" className="text-xs text-ink-muted">
                 {c.showing} {number(page.total_count ? offset + 1 : 0)}–
                 {number(

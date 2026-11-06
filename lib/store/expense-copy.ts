@@ -9,12 +9,16 @@ export const expenseCopy = {
     summaryHint:
       "Totals cover all matching pages. Voided entries are excluded from spending.",
     add: "Add expense",
-    formTitle: "Record an expense",
+    formTitle: "Add expense",
+    voidTitle: "Void expense?",
+    voidAction: "Void",
+    voidDescription:
+      "This expense will stop counting toward spending and profit. Its history is kept. To correct it, add a replacement expense.",
     cancel: "Cancel",
-    activeTotal: "Spent in this selection",
+    activeTotal: "Total spent",
     activeHint:
       "Active expenses only. Voided entries do not affect spending or profit.",
-    count: "Matching entries",
+    count: "Entries",
     countHint:
       "The count and totals cover every matching entry, including other pages.",
     voidedTotal: "Voided amount",
@@ -71,9 +75,13 @@ export const expenseCopy = {
     summaryHint:
       "الإجماليات تشمل كل الصفحات المطابقة. القيود الملغاة مستبعدة من المصروفات.",
     add: "إضافة مصروف",
-    formTitle: "تسجيل مصروف",
+    formTitle: "إضافة مصروف",
+    voidTitle: "إلغاء المصروف؟",
+    voidAction: "إلغاء المصروف",
+    voidDescription:
+      "لن يُحتسب هذا المصروف ضمن المصروفات والربح، وسيظل تاريخه محفوظًا. لتصحيحه، أضف مصروفًا بديلًا.",
     cancel: "إلغاء",
-    activeTotal: "المصروف ضمن الاختيار",
+    activeTotal: "إجمالي المصروفات",
     activeHint:
       "المصروفات السارية فقط. القيود الملغاة لا تؤثر على المصروفات أو الربح.",
     count: "القيود المطابقة",

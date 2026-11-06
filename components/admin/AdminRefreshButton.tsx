@@ -24,7 +24,7 @@ export function AdminRefreshButton({
       aria-busy={loading}
       disabled={disabled || loading}
       onClick={onClick}
-      className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border-2 border-brand bg-surface text-brand shadow-clay-sm transition-colors hover:bg-canvas-sunk focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/45 disabled:cursor-not-allowed disabled:opacity-50 [touch-action:manipulation]"
+      className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-line bg-surface text-brand transition-colors hover:bg-canvas-sunk focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/45 disabled:cursor-not-allowed disabled:opacity-50 [touch-action:manipulation]"
     >
       <RefreshCw
         aria-hidden="true"

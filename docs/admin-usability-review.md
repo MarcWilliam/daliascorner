@@ -2,6 +2,21 @@
 
 Scope: feature branch `codex/supabase-store-admin`, using the existing catalog, branding, English/Arabic and static Cloudflare Pages frontend.
 
+## Compact admin implementation
+
+- Orders use a compact responsive list with a details drawer. Payment autosave, fulfilment actions and refund guidance remain available in that drawer.
+- Chat orders use a full-height drawer with a persistent total/save footer. New and historical order rules are unchanged; closing retains the draft until reload/sign-out.
+- Expense entry and void confirmation use dialogs. Cancellation retains the expense draft and retry identity. Void confirmation identifies the amount/date/category/note before changing the tracked expense.
+- Delivery zones use name/fee/status rows with Add/Edit dialogs. Cancelled and failed entries remain available; zero fees are supported and saving a zone preserves unrelated payment-setting drafts.
+- Stock has a compact toolbar, a Restock dialog, always-visible unit-cost fields and a separate history drawer. History filters explicitly cover loaded recent activity, rather than claiming a full historical search.
+- Financial report uses Cairo-based date presets, smaller metric cards and margin beside profit. Calculation explanations remain available in its disclosure. Summary formulas and immutable cost rules are unchanged.
+- Notifications show compact device status and setup help on demand. Order alerts open the matching details drawer, including orders outside the loaded page; product alerts filter Stock to that product. Existing enable/test/read controls are preserved.
+- Meta leads with connection health and actionable issues; technical queue counters are under Delivery details. Dataset coverage, cached readings, unavailable values and overlapping ad spend retain their distinct meanings.
+- Shared admin headers remove duplicate branding/taglines. Mobile uses a native section menu; desktop retains the sidebar. Quieter shadows, button edges and corners are scoped to admin; storefront styling and 48px fields are unchanged.
+- Shared native dialogs provide a scrollable body, focus wrapping/restoration, Escape/close actions and busy dismissal guards. Drawers fill phone viewports; their footer stays visible while the form scrolls.
+
+Verification: 113 automated checks passed. Synthetic browser checks covered payment autosave and shipping, chat-order save/receipt navigation and retained drafts, expense save/void and visible failed-save recovery, zero-fee zone saves and cancelled drafts, restock drafts across views, history filtering, notification order/product navigation, and Cairo date presets. All seven Arabic sections fit a 320px viewport; desktop checks used 1280px. Narrow RTL table containment and dialog viewport alignment/focus issues found in QA were repaired. No real orders, stock, expenses or notification preferences were changed during this UI work. No schema migration is required.
+
 ## Changes
 
 - Customer login opens a shared dialog from the header and checkout. Closing it returns to the cart when opened there. OAuth still returns through `/account/` so a private guest order can be attached before resuming shopping.
@@ -31,7 +46,7 @@ The Cloudflare feature deployment is separate from the existing custom-domain si
 
 ## Verification
 
-- 107 automated checks pass, including real PostgreSQL execution through PGlite for stock modes, reservations, expiry, payment/refund history, filtered expense pagination/totals, InstaPay eligibility and immutable recipient snapshots, localized payment-proof links, cost snapshots and customer/admin access boundaries.
+- 113 automated checks pass, including real PostgreSQL execution through PGlite for stock modes, reservations, expiry, payment/refund history, filtered expense pagination/totals, InstaPay eligibility and immutable recipient snapshots, localized payment-proof links, cost snapshots and customer/admin access boundaries.
 - Production static export passes using Node 22.23.1.
 - Local browser checks use synthetic data: actual checkout POST failure and success receipt; sign-in dialog cancellation and cart restoration; mobile stock changes; expense entry and missing-cost completion; payment save and order confirmation; notification read status; failed delivery-zone save preserving entries followed by successful retry.
 - English/Arabic and narrow/desktop layouts were checked at 320, 390 and 1280 pixels. Finance date controls were repaired after the narrow-screen check. Product images loaded and affected screens did not overflow horizontally.

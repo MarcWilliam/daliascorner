@@ -24,8 +24,27 @@ type Payment = {
   orders: { order_number: number } | null;
 };
 const field = "store-field mt-1";
-const panel =
-  "rounded-clay-lg border border-line bg-surface p-5 shadow-clay-sm sm:p-6";
+const panel = "rounded-2xl border border-line bg-surface p-4";
+function presetRange(key: "today" | "thisMonth" | "lastMonth" | "allTime") {
+  if (key === "allTime") return { from: "", to: "" };
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Africa/Cairo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const part = (type: string) =>
+    Number(parts.find((item) => item.type === type)!.value);
+  const year = part("year"),
+    month = part("month"),
+    day = part("day");
+  const iso = (y: number, m: number, d: number) =>
+    new Date(Date.UTC(y, m - 1, d)).toISOString().slice(0, 10);
+  const today = iso(year, month, day);
+  if (key === "today") return { from: today, to: today };
+  if (key === "thisMonth") return { from: iso(year, month, 1), to: today };
+  return { from: iso(year, month - 1, 1), to: iso(year, month, 0) };
+}
 export function FinancePanel({
   refreshKey = 0,
   hideRefresh = false,
@@ -137,35 +156,50 @@ export function FinancePanel({
   }
   return (
     <section className="space-y-5" aria-busy={loading || busy}>
-      <div className={panel}>
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-              <h2 className="text-xl">{hideRefresh ? (locale === "ar" ? "فترة التقرير" : "Report period") : copy.title}</h2>
-            <p className="mt-2 max-w-2xl text-sm text-ink-muted">
-              {copy.intro}
-            </p>
-          </div>
-          {!hideRefresh && (
+      <div className="space-y-3">
+        {!hideRefresh && (
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-xl">{copy.title}</h2>
             <button
               type="button"
-              aria-label={copy.refresh}
-              title={copy.refresh}
-              className="grid h-12 w-12 shrink-0 place-items-center rounded-full border border-line bg-surface text-brand focus-visible:ring-4 focus-visible:ring-brand/45 disabled:opacity-50"
               disabled={loading || busy}
-              onClick={() => {
-                setError("");
-                void load();
-              }}
+              onClick={() => void load()}
+              aria-label={copy.refresh}
+              className="grid h-11 w-11 place-items-center rounded-xl border border-line"
             >
-              <RefreshCw
-                aria-hidden="true"
-                className={`h-5 w-5 ${loading ? "animate-spin" : ""}`}
-              />
+              <RefreshCw className="h-4 w-4" aria-hidden="true" />
             </button>
+          </div>
+        )}
+        <fieldset
+          disabled={loading || busy}
+          className="flex flex-wrap gap-1.5 border-0 p-0"
+          aria-label={copy.presets}
+        >
+          {(["today", "thisMonth", "lastMonth", "allTime"] as const).map(
+            (key) => {
+              const value = presetRange(key);
+              const selected =
+                range.from === value.from && range.to === value.to;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  aria-pressed={selected}
+                  onClick={() => {
+                    setDraftRange(value);
+                    setRange(value);
+                  }}
+                  className={`min-h-11 rounded-xl border px-3 text-sm font-semibold focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/35 disabled:opacity-50 ${selected ? "border-brand bg-brand text-canvas" : "border-line bg-surface text-brand"}`}
+                >
+                  {copy[key]}
+                </button>
+              );
+            },
           )}
-        </div>
+        </fieldset>
         <form
-          className="mt-5 grid grid-cols-2 items-end gap-3 sm:flex sm:flex-wrap"
+          className="grid grid-cols-2 items-end gap-2 sm:flex sm:flex-wrap"
           onSubmit={(e) => {
             e.preventDefault();
             if (
@@ -204,19 +238,8 @@ export function FinancePanel({
           <ClayButton type="submit" disabled={loading || busy}>
             {copy.apply}
           </ClayButton>
-          <ClayButton
-            type="button"
-            variant="outline"
-            disabled={loading || busy}
-            onClick={() => {
-              setDraftRange({ from: "", to: "" });
-              setRange({ from: "", to: "" });
-            }}
-          >
-            {copy.allTime}
-          </ClayButton>
         </form>
-        <p className="mt-2 text-xs text-ink-muted">{copy.period}</p>
+        <p className="text-xs text-ink-muted">{copy.period}</p>
         {message && (
           <p role="status" className="mt-4 text-sm font-semibold text-brand">
             {message}
@@ -235,7 +258,7 @@ export function FinancePanel({
       </div>
       {totals && (
         <>
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid grid-cols-1 gap-2 min-[360px]:grid-cols-2 xl:grid-cols-4">
             {[
               [
                 copy.netCollected,
@@ -250,32 +273,23 @@ export function FinancePanel({
                 copy.operatingHint,
               ],
             ].map(([title, value, hint]) => (
-              <div key={title} className={panel}>
+              <div key={title} className={panel} title={hint}>
                 <h2 className="text-sm font-semibold text-ink-muted">
                   {title}
                 </h2>
-                <p className="mt-3 break-words font-display text-2xl font-bold tabular-nums">
+                <p className="mt-2 break-words font-display text-xl font-bold tabular-nums">
                   {value}
                 </p>
-                <p className="mt-2 text-xs leading-relaxed text-ink-muted">
-                  {hint}
-                </p>
+                {title === copy.operatingResult && (
+                  <p className="mt-1 text-xs text-ink-muted">
+                    {copy.margin}:{" "}
+                    <strong className="tabular-nums">
+                      {percent(totals.operating_margin)}
+                    </strong>
+                  </p>
+                )}
               </div>
             ))}
-          </div>
-          <div className="flex flex-wrap items-center justify-between gap-2 px-1 text-sm">
-            <p>
-              {copy.margin}:{" "}
-              <strong className="tabular-nums">
-                {percent(totals.operating_margin)}
-              </strong>
-            </p>
-            {(range.from || range.to) && (
-              <p className="text-ink-muted">
-                {range.from ? date(range.from) : "…"} –{" "}
-                {range.to ? date(range.to) : "…"}
-              </p>
-            )}
           </div>
           {totals.missing_cost_items > 0 && (
             <p
@@ -299,11 +313,11 @@ export function FinancePanel({
           <p className="mt-2 max-w-3xl text-sm text-ink-muted">
             {copy.missingHint}
           </p>
-          <div className="mt-4 divide-y divide-line">
+          <div className="mt-3 divide-y divide-line">
             {missing.map((item) => (
               <form
                 key={item.item_id}
-                className="flex flex-wrap items-end gap-3 py-4"
+                className="flex flex-wrap items-end gap-2 py-2"
                 onSubmit={(e) => {
                   e.preventDefault();
                   const values = new FormData(e.currentTarget);
@@ -356,7 +370,20 @@ export function FinancePanel({
           <summary className="min-h-11 cursor-pointer font-display text-lg font-semibold">
             {copy.breakdown}
           </summary>
-          <dl className="mt-4 grid gap-x-8 gap-y-3 text-sm sm:grid-cols-2">
+          <dl className="mt-3 grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
+            {[
+              [copy.netCollected, copy.receiptsHint],
+              [copy.spent, copy.spentHint],
+              [copy.cashBalance, copy.cashHint],
+              [copy.operatingResult, copy.operatingHint],
+            ].map(([label, description]) => (
+              <div key={label} className="border-b border-line pb-2">
+                <dt className="font-semibold">{label}</dt>
+                <dd className="mt-1 text-xs leading-5 text-ink-muted">
+                  {description}
+                </dd>
+              </div>
+            ))}
             {[
               [copy.payments, totals.collected],
               [copy.refunds, totals.refunded],
@@ -408,11 +435,11 @@ export function FinancePanel({
           {!payments.length && (
             <p className="mt-5 text-sm text-ink-muted">{copy.emptyPayments}</p>
           )}
-          <ul className="mt-4 divide-y divide-line">
+          <ul className="mt-3 divide-y divide-line">
             {payments.map((payment) => (
               <li
                 key={payment.id}
-                className="flex items-center justify-between gap-3 py-4 text-sm"
+                className="flex items-center justify-between gap-3 py-2.5 text-sm"
               >
                 <div>
                   <p className="font-semibold">

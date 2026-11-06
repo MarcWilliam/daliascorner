@@ -1,4 +1,6 @@
 "use client";
+import { NotificationsPanel, type AdminNotice } from "./NotificationsPanel";
+import { AdminDialog } from "./AdminDialog";
 import { MetaHealth } from "./MetaHealth";
 import { FinancePanel } from "./FinancePanel";
 import { ExpensesPanel } from "./ExpensesPanel";
@@ -22,12 +24,7 @@ import { enablePush, disablePush } from "@/lib/store/push";
 import { asset } from "@/lib/asset";
 
 type Status =
-  | "pending"
-  | "confirmed"
-  | "shipped"
-  | "delivered"
-  | "cancelled"
-  | "expired";
+  "pending" | "confirmed" | "shipped" | "delivered" | "cancelled" | "expired";
 type Order = {
   id: string;
   order_number: number;
@@ -55,13 +52,7 @@ type Order = {
     unit_price: number;
   }[];
 };
-type Notice = {
-  id: number;
-  kind: string;
-  read_at: string | null;
-  created_at: string;
-  product_id: string | null;
-};
+type Notice = AdminNotice;
 const field = "store-field mt-1";
 const panel =
   "rounded-clay-lg border border-line bg-surface p-5 shadow-clay-sm sm:p-6";
@@ -101,6 +92,12 @@ export function AdminDashboard() {
   const [orderSearch, setOrderSearch] = useState("");
   const [limit, setLimit] = useState(25);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const selectedOrderRef = useRef<string | null>(null);
+  selectedOrderRef.current = selectedOrderId;
+  const noticeRequests = useRef(accountRequestScope());
+  const [stockFocus, setStockFocus] = useState<string | undefined>();
+  const selectedOrder = orders.find((order) => order.id === selectedOrderId);
   const [stock, setStock] = useState<Stock[]>([]);
   const [notices, setNotices] = useState<Notice[]>([]);
   const [movements, setMovements] = useState<Movement[]>([]);
@@ -126,7 +123,10 @@ export function AdminDashboard() {
   }, []);
   useEffect(() => {
     dataRequests.current.cancel();
+    noticeRequests.current.cancel();
+    setStockFocus(undefined);
     setOrders([]);
+    setSelectedOrderId(null);
     setStock([]);
     setNotices([]);
     setMovements([]);
@@ -161,7 +161,9 @@ export function AdminDashboard() {
           .abortSignal(request.signal),
         db
           .from("admin_notifications")
-          .select("id,kind,read_at,created_at,product_id")
+          .select(
+            "id,kind,read_at,created_at,product_id,order_id,orders(order_number)",
+          )
           .order("created_at", { ascending: false })
           .limit(100)
           .abortSignal(request.signal),
@@ -173,10 +175,24 @@ export function AdminDashboard() {
           .order("id", { ascending: false })
           .limit(30)
           .abortSignal(request.signal),
+        selectedOrderRef.current
+          ? db
+              .from("orders")
+              .select("*,order_items(*)")
+              .eq("id", selectedOrderRef.current)
+              .abortSignal(request.signal)
+              .maybeSingle()
+          : Promise.resolve({ data: null, error: null }),
       ]);
       if (!current()) return;
       if (results.some((r) => r.error)) throw new Error();
-      setOrders(results[0].data as unknown as Order[]);
+      const nextOrders = results[0].data as unknown as Order[];
+      const detailOrder = results[4].data as unknown as Order | null;
+      setOrders(
+        detailOrder && !nextOrders.some((o) => o.id === detailOrder.id)
+          ? [...nextOrders, detailOrder]
+          : nextOrders,
+      );
       setStock(results[1].data as unknown as Stock[]);
       setNotices(results[2].data as unknown as Notice[]);
       setMovements(results[3].data as unknown as Movement[]);
@@ -240,6 +256,43 @@ export function AdminDashboard() {
       setBusy(false);
     }
   };
+  async function openNoticeOrder(id: string) {
+    if (!admin || !session) return;
+    const userId = session.user.id;
+    const request = noticeRequests.current.begin();
+    const current = () => request.current() && viewer.current === userId;
+    try {
+      const allowed = await refreshRole();
+      if (!current() || !allowed) return;
+      const { data, error } = await storeClient()
+        .from("orders")
+        .select("*,order_items(*)")
+        .eq("id", id)
+        .abortSignal(request.signal)
+        .maybeSingle();
+      if (!current()) return;
+      if (error || !data) {
+        setError(
+          locale === "ar"
+            ? "تعذر فتح هذا الطلب. حدّث القائمة وحاول مجددًا."
+            : "This order is unavailable. Refresh the list and try again.",
+        );
+        return;
+      }
+      setOrders((previous) => [
+        ...previous.filter((o) => o.id !== id),
+        data as unknown as Order,
+      ]);
+      setFilter("all");
+      setSource("all");
+      setOrderSearch("");
+      setSelectedOrderId(id);
+      setTab("orders");
+    } catch {
+      if (current()) setError(c.error);
+    }
+  }
+  useEffect(() => () => noticeRequests.current.cancel(), []);
   const login = () =>
     action(async () => {
       const { error } = await storeClient().auth.signInWithPassword({
@@ -273,9 +326,9 @@ export function AdminDashboard() {
     );
   };
   return (
-    <main dir={dir} className="min-h-screen bg-canvas pb-16 text-ink">
+    <main dir={dir} className="admin-ui min-h-screen bg-canvas pb-12 text-ink">
       <header className="border-b border-line bg-surface">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-4 py-5 sm:px-6">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-4 py-3 sm:px-6">
           <a
             href={asset("/")}
             className="inline-flex min-h-12 items-center gap-2 rounded-clay font-semibold text-brand focus-visible:ring-4 focus-visible:ring-brand/45"
@@ -297,7 +350,7 @@ export function AdminDashboard() {
           </div>
         </div>
       </header>
-      <div className="mx-auto max-w-7xl space-y-6 px-4 pt-8 sm:px-6">
+      <div className="mx-auto max-w-7xl space-y-4 px-4 pt-5 sm:px-6">
         {!admin && (
           <div>
             <p className="text-sm font-semibold text-brand">Dalia’s Corner</p>
@@ -314,7 +367,10 @@ export function AdminDashboard() {
           </p>
         )}
         {message && (
-          <p role="status" className="rounded-clay bg-leaf-soft p-4">
+          <p
+            role="status"
+            className="rounded-xl bg-leaf-soft px-3 py-2 text-sm"
+          >
             {message}
           </p>
         )}
@@ -472,27 +528,28 @@ export function AdminDashboard() {
               />
             }
           >
-            {showManualOrder && (
-              <div hidden={tab !== "orders"}>
-                <ManualOrderForm
-                  actorId={session.user.id}
-                  stock={stock}
-                  onSaved={refresh}
-                  onCancel={() => setShowManualOrder(false)}
-                  onViewOrder={(number) => {
-                    setFilter("all");
-                    setSource("all");
-                    setOrderSearch(`DC-${number}`);
-                    setLimit(25);
-                    setShowManualOrder(false);
-                  }}
-                />
-              </div>
-            )}
+            <ManualOrderForm
+              key={session.user.id}
+              open={showManualOrder && tab === "orders"}
+              actorId={session.user.id}
+              stock={stock}
+              onSaved={refresh}
+              onCancel={() => setShowManualOrder(false)}
+              onViewOrder={(number) => {
+                setFilter("all");
+                setSource("all");
+                setOrderSearch(`DC-${number}`);
+                const createdOrder = orders.find(
+                  (o) => o.order_number === number,
+                );
+                if (createdOrder) setSelectedOrderId(createdOrder.id);
+                setLimit(25);
+                setShowManualOrder(false);
+              }}
+            />
             {tab === "orders" && (
               <section aria-label={c.orders} className="space-y-4">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <h2 className="text-xl">{c.orders}</h2>
+                <div className="flex flex-wrap items-center justify-end gap-3">
                   {!showManualOrder && (
                     <ClayButton
                       onClick={() => setShowManualOrder(true)}
@@ -592,190 +649,89 @@ export function AdminDashboard() {
                         : "No loaded orders match your search. Change the search or load more orders."}
                     </p>
                   )}
-                {orders
-                  .filter((o) =>
-                    `DC-${o.order_number} ${o.customer_name} ${o.customer_phone}`
-                      .toLowerCase()
-                      .includes(orderSearch.trim().toLowerCase()),
-                  )
-                  .map((o) => (
-                    <article className={panel} key={o.id}>
-                      <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div>
-                          <h2 className="text-xl">DC-{o.order_number}</h2>
-                          <p className="mt-1 text-sm text-ink-muted">
-                            {o.is_historical
-                              ? new Date(
-                                  o.ordered_at ?? o.created_at,
-                                ).toLocaleDateString(
-                                  locale === "ar" ? "ar-EG" : "en-GB",
-                                  {
-                                    timeZone: "Africa/Cairo",
-                                    dateStyle: "medium",
-                                  },
-                                )
-                              : date(o.ordered_at ?? o.created_at)}
-                          </p>
-                          {o.is_historical && (
-                            <p className="mt-1 text-xs text-ink-muted">
-                              {locale === "ar" ? "تم التسجيل" : "Recorded"}:{" "}
-                              {date(o.created_at)} ·{" "}
-                              {o.stock_handling === "already_accounted"
+                <div className="overflow-hidden rounded-2xl border border-line bg-surface">
+                  <div
+                    className="hidden grid-cols-[1.2fr_1.4fr_1fr_1fr_1fr_auto] gap-3 border-b border-line bg-canvas px-4 py-2 text-xs font-semibold text-ink-muted md:grid"
+                    aria-hidden="true"
+                  >
+                    <span>{locale === "ar" ? "الطلب" : "Order"}</span>
+                    <span>{locale === "ar" ? "العميل" : "Customer"}</span>
+                    <span>{locale === "ar" ? "الحالة" : "Status"}</span>
+                    <span>{c.payment}</span>
+                    <span>{locale === "ar" ? "الإجمالي" : "Total"}</span>
+                    <span />
+                  </div>
+                  <ul className="divide-y divide-line">
+                    {orders
+                      .filter((o) =>
+                        `DC-${o.order_number} ${o.customer_name} ${o.customer_phone}`
+                          .toLowerCase()
+                          .includes(orderSearch.trim().toLowerCase()),
+                      )
+                      .map((o) => (
+                        <li
+                          key={o.id}
+                          className="grid grid-cols-2 items-center gap-2 px-4 py-3 text-sm md:grid-cols-[1.2fr_1.4fr_1fr_1fr_1fr_auto] md:gap-3"
+                        >
+                          <div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedOrderId(o.id);
+                                setError("");
+                                setMessage("");
+                              }}
+                              className="min-h-11 rounded-lg font-semibold text-brand underline decoration-brand/30 underline-offset-4 focus-visible:ring-4 focus-visible:ring-brand/35"
+                            >
+                              DC-{o.order_number}
+                            </button>
+                            <p className="text-xs text-ink-muted">
+                              {date(o.ordered_at ?? o.created_at)}
+                            </p>
+                            <p className="text-xs text-ink-muted">
+                              {o.source === "chat"
                                 ? locale === "ar"
-                                  ? "المخزون محسوب مسبقًا"
-                                  : "Stock already accounted for"
+                                  ? "محادثات"
+                                  : "Chat"
                                 : locale === "ar"
-                                  ? "تم خصم المخزون عند التسجيل"
-                                  : "Stock deducted when recorded"}
-                            </p>
-                          )}
-                          <p className="mt-2 text-xs font-semibold text-brand">
-                            {o.source === "chat"
-                              ? locale === "ar"
-                                ? o.is_historical
-                                  ? "طلب سابق من المحادثات"
-                                  : "طلب من المحادثات"
-                                : o.is_historical
-                                  ? "Past chat order"
-                                  : "Chat order"
-                              : locale === "ar"
-                                ? "طلب من الموقع"
-                                : "Website order"}
-                          </p>
-                          {o.status === "pending" && (
-                            <p className="mt-2 text-sm text-ink-muted">
-                              {o.payment_status === "paid"
+                                  ? "الموقع"
+                                  : "Website"}
+                              {o.is_historical
                                 ? locale === "ar"
-                                  ? "تم استلام الدفع — أكّد الطلب لبدء التجهيز."
-                                  : "Payment received — confirm the order to start preparing it."
-                                : `${locale === "ar" ? "محجوز حتى" : "Reserved until"} ${date(o.expires_at)}`}
+                                  ? " · سابق"
+                                  : " · Past"
+                                : ""}
                             </p>
-                          )}
-                        </div>
-                        <span className="rounded-full bg-leaf-soft px-3 py-1 font-semibold">
-                          {c[o.status]}
-                        </span>
-                      </div>
-                      <div className="mt-4 grid gap-4 md:grid-cols-2">
-                        <div className="space-y-1 break-words">
-                          <p className="font-semibold">{o.customer_name}</p>
-                          <a
-                            className="inline-block min-h-11 text-brand underline"
-                            dir="ltr"
-                            href={`tel:${o.customer_phone.replace(/[^+\d]/g, "")}`}
-                          >
-                            {o.customer_phone}
-                          </a>
-                          <p>{o.customer_address}</p>
-                          <p>{o.delivery_zone}</p>
-                          <p>
-                            {o.payment_method === "transfer"
-                              ? locale === "ar"
-                                ? "إنستا باي"
-                                : "InstaPay"
-                              : locale === "ar"
-                                ? "الدفع عند الاستلام"
-                                : "Cash on delivery"}
+                          </div>
+                          <p className="min-w-0 break-words font-medium">
+                            {o.customer_name}
                           </p>
-                        </div>
-                        <div>
-                          <ul className="space-y-2">
-                            {o.order_items.map((i) => (
-                              <li
-                                className="flex items-center justify-between gap-3"
-                                key={i.id}
-                              >
-                                <span className="flex items-center gap-3">
-                                  {PRODUCTS.find((p) => p.id === i.product_id)
-                                    ?.thumb && (
-                                    <img
-                                      alt=""
-                                      className="h-12 w-12 rounded-xl object-cover"
-                                      src={
-                                        PRODUCTS.find(
-                                          (p) => p.id === i.product_id,
-                                        )!.thumb
-                                      }
-                                    />
-                                  )}
-                                  {locale === "ar" ? i.name_ar : i.name_en} ×{" "}
-                                  {i.quantity}
-                                </span>
-                                <span className="whitespace-nowrap">
-                                  {i.quantity * i.unit_price} EGP
-                                </span>
-                              </li>
-                            ))}
-                          </ul>
-                          <p className="mt-3 border-t border-line pt-3 font-bold">
-                            {c.subtotal}: {o.subtotal} EGP
-                            <br />
-                            {locale === "ar" ? "التوصيل" : "Delivery"}:{" "}
-                            {o.delivery_fee ?? 0} EGP
-                            <br />
-                            {locale === "ar" ? "الإجمالي" : "Total"}:{" "}
+                          <span className="w-fit rounded-full bg-leaf-soft px-2 py-1 text-xs font-semibold">
+                            {c[o.status]}
+                          </span>
+                          <span className="text-xs text-ink-muted">
+                            {c[o.payment_status]}
+                          </span>
+                          <strong className="tabular-nums">
                             {Number(o.subtotal) + Number(o.delivery_fee ?? 0)}{" "}
                             EGP
-                          </p>
-                        </div>
-                      </div>
-                      {o.status === "cancelled" &&
-                        o.payment_status === "paid" && (
-                          <p
-                            role="status"
-                            className="mt-4 rounded-xl bg-orange/20 p-3 text-sm"
+                          </strong>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedOrderId(o.id);
+                              setError("");
+                              setMessage("");
+                            }}
+                            aria-label={`${locale === "ar" ? "عرض الطلب" : "View order"} DC-${o.order_number}`}
+                            className="min-h-11 justify-self-end rounded-xl px-3 text-sm font-semibold text-brand hover:bg-canvas-sunk focus-visible:ring-4 focus-visible:ring-brand/35"
                           >
-                            {locale === "ar"
-                              ? "الطلب ملغي والدفع ما زال مسجلاً كمستلم. سجّل الاسترداد بعد إعادة المبلغ فعليًا؛ الإلغاء لا يعيد المال تلقائيًا."
-                              : "This order is cancelled and payment is still marked received. Record a refund after returning the money; cancellation does not refund it automatically."}
-                          </p>
-                        )}
-                      <div className="mt-5 grid gap-3 sm:flex sm:flex-wrap sm:items-start">
-                        <OrderPaymentField
-                          orderId={o.id}
-                          payment={o.payment_status}
-                          disabled={busy}
-                          onSaved={refresh}
-                          onSavingChange={setBusy}
-                        />
-                        <div className="flex flex-wrap gap-3 sm:pt-6">
-                          {o.status === "pending" && (
-                            <ClayButton
-                              disabled={busy}
-                              onClick={() => changeStatus(o, "confirmed")}
-                            >
-                              {c.confirm}
-                            </ClayButton>
-                          )}
-                          {o.status === "confirmed" && (
-                            <ClayButton
-                              disabled={busy}
-                              onClick={() => changeStatus(o, "shipped")}
-                            >
-                              {c.ship}
-                            </ClayButton>
-                          )}
-                          {o.status === "shipped" && (
-                            <ClayButton
-                              disabled={busy}
-                              onClick={() => changeStatus(o, "delivered")}
-                            >
-                              {c.deliver}
-                            </ClayButton>
-                          )}
-                          {["pending", "confirmed"].includes(o.status) && (
-                            <ClayButton
-                              variant="outline"
-                              disabled={busy}
-                              onClick={() => changeStatus(o, "cancelled")}
-                            >
-                              {c.cancel}
-                            </ClayButton>
-                          )}
-                        </div>
-                      </div>
-                    </article>
-                  ))}
+                            {locale === "ar" ? "التفاصيل" : "Details"}
+                          </button>
+                        </li>
+                      ))}
+                  </ul>
+                </div>
                 {orders.length === limit && (
                   <ClayButton
                     variant="outline"
@@ -785,6 +741,209 @@ export function AdminDashboard() {
                   </ClayButton>
                 )}
               </section>
+            )}
+            {selectedOrder && tab === "orders" && (
+              <AdminDialog
+                open
+                title={`DC-${selectedOrder.order_number}`}
+                variant="drawer"
+                busy={busy}
+                onClose={() => setSelectedOrderId(null)}
+              >
+                {error && (
+                  <p
+                    role="alert"
+                    className="mb-4 rounded-xl bg-orange/15 p-3 text-sm"
+                  >
+                    {error}
+                  </p>
+                )}
+                {message && (
+                  <p
+                    role="status"
+                    className="mb-4 rounded-xl bg-leaf-soft p-3 text-sm"
+                  >
+                    {message}
+                  </p>
+                )}
+                {[selectedOrder].map((o) => (
+                  <article className="space-y-4" key={o.id}>
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <p className="mt-1 text-sm text-ink-muted">
+                          {o.is_historical
+                            ? new Date(
+                                o.ordered_at ?? o.created_at,
+                              ).toLocaleDateString(
+                                locale === "ar" ? "ar-EG" : "en-GB",
+                                {
+                                  timeZone: "Africa/Cairo",
+                                  dateStyle: "medium",
+                                },
+                              )
+                            : date(o.ordered_at ?? o.created_at)}
+                        </p>
+                        {o.is_historical && (
+                          <p className="mt-1 text-xs text-ink-muted">
+                            {locale === "ar" ? "تم التسجيل" : "Recorded"}:{" "}
+                            {date(o.created_at)} ·{" "}
+                            {o.stock_handling === "already_accounted"
+                              ? locale === "ar"
+                                ? "المخزون محسوب مسبقًا"
+                                : "Stock already accounted for"
+                              : locale === "ar"
+                                ? "تم خصم المخزون عند التسجيل"
+                                : "Stock deducted when recorded"}
+                          </p>
+                        )}
+                        <p className="mt-2 text-xs font-semibold text-brand">
+                          {o.source === "chat"
+                            ? locale === "ar"
+                              ? o.is_historical
+                                ? "طلب سابق من المحادثات"
+                                : "طلب من المحادثات"
+                              : o.is_historical
+                                ? "Past chat order"
+                                : "Chat order"
+                            : locale === "ar"
+                              ? "طلب من الموقع"
+                              : "Website order"}
+                        </p>
+                        {o.status === "pending" && (
+                          <p className="mt-2 text-sm text-ink-muted">
+                            {o.payment_status === "paid"
+                              ? locale === "ar"
+                                ? "تم استلام الدفع — أكّد الطلب لبدء التجهيز."
+                                : "Payment received — confirm the order to start preparing it."
+                              : `${locale === "ar" ? "محجوز حتى" : "Reserved until"} ${date(o.expires_at)}`}
+                          </p>
+                        )}
+                      </div>
+                      <span className="rounded-full bg-leaf-soft px-3 py-1 font-semibold">
+                        {c[o.status]}
+                      </span>
+                    </div>
+                    <div className="mt-4 grid gap-4 md:grid-cols-2">
+                      <div className="space-y-1 break-words">
+                        <p className="font-semibold">{o.customer_name}</p>
+                        <a
+                          className="inline-block min-h-11 text-brand underline"
+                          dir="ltr"
+                          href={`tel:${o.customer_phone.replace(/[^+\d]/g, "")}`}
+                        >
+                          {o.customer_phone}
+                        </a>
+                        <p>{o.customer_address}</p>
+                        <p>{o.delivery_zone}</p>
+                        <p>
+                          {o.payment_method === "transfer"
+                            ? locale === "ar"
+                              ? "إنستا باي"
+                              : "InstaPay"
+                            : locale === "ar"
+                              ? "الدفع عند الاستلام"
+                              : "Cash on delivery"}
+                        </p>
+                      </div>
+                      <div>
+                        <ul className="space-y-2">
+                          {o.order_items.map((i) => (
+                            <li
+                              className="flex items-center justify-between gap-3"
+                              key={i.id}
+                            >
+                              <span className="flex items-center gap-3">
+                                {PRODUCTS.find((p) => p.id === i.product_id)
+                                  ?.thumb && (
+                                  <img
+                                    alt=""
+                                    className="h-12 w-12 rounded-xl object-cover"
+                                    src={
+                                      PRODUCTS.find(
+                                        (p) => p.id === i.product_id,
+                                      )!.thumb
+                                    }
+                                  />
+                                )}
+                                {locale === "ar" ? i.name_ar : i.name_en} ×{" "}
+                                {i.quantity}
+                              </span>
+                              <span className="whitespace-nowrap">
+                                {i.quantity * i.unit_price} EGP
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                        <p className="mt-3 border-t border-line pt-3 font-bold">
+                          {c.subtotal}: {o.subtotal} EGP
+                          <br />
+                          {locale === "ar" ? "التوصيل" : "Delivery"}:{" "}
+                          {o.delivery_fee ?? 0} EGP
+                          <br />
+                          {locale === "ar" ? "الإجمالي" : "Total"}:{" "}
+                          {Number(o.subtotal) + Number(o.delivery_fee ?? 0)} EGP
+                        </p>
+                      </div>
+                    </div>
+                    {o.status === "cancelled" &&
+                      o.payment_status === "paid" && (
+                        <p
+                          role="status"
+                          className="mt-4 rounded-xl bg-orange/20 p-3 text-sm"
+                        >
+                          {locale === "ar"
+                            ? "الطلب ملغي والدفع ما زال مسجلاً كمستلم. سجّل الاسترداد بعد إعادة المبلغ فعليًا؛ الإلغاء لا يعيد المال تلقائيًا."
+                            : "This order is cancelled and payment is still marked received. Record a refund after returning the money; cancellation does not refund it automatically."}
+                        </p>
+                      )}
+                    <div className="mt-5 grid gap-3 sm:flex sm:flex-wrap sm:items-start">
+                      <OrderPaymentField
+                        key={o.id}
+                        orderId={o.id}
+                        payment={o.payment_status}
+                        disabled={busy}
+                        onSaved={refresh}
+                        onSavingChange={setBusy}
+                      />
+                      <div className="flex flex-wrap gap-3 sm:pt-6">
+                        {o.status === "pending" && (
+                          <ClayButton
+                            disabled={busy}
+                            onClick={() => changeStatus(o, "confirmed")}
+                          >
+                            {c.confirm}
+                          </ClayButton>
+                        )}
+                        {o.status === "confirmed" && (
+                          <ClayButton
+                            disabled={busy}
+                            onClick={() => changeStatus(o, "shipped")}
+                          >
+                            {c.ship}
+                          </ClayButton>
+                        )}
+                        {o.status === "shipped" && (
+                          <ClayButton
+                            disabled={busy}
+                            onClick={() => changeStatus(o, "delivered")}
+                          >
+                            {c.deliver}
+                          </ClayButton>
+                        )}
+                        {["pending", "confirmed"].includes(o.status) && (
+                          <ClayButton
+                            variant="outline"
+                            disabled={busy}
+                            onClick={() => changeStatus(o, "cancelled")}
+                          >
+                            {c.cancel}
+                          </ClayButton>
+                        )}
+                      </div>
+                    </div>
+                  </article>
+                ))}
+              </AdminDialog>
             )}
             {tab === "meta" && (
               <MetaHealth refreshKey={refreshKeys.meta} hideRefresh />
@@ -803,18 +962,24 @@ export function AdminDashboard() {
             {tab === "stock" && (
               <InventoryPanel
                 stock={stock}
+                initialProduct={stockFocus}
                 movements={movements}
                 loading={loading}
                 onRefresh={refresh}
               />
             )}
             {tab === "notifications" && (
-              <section aria-label={c.notifications} className="space-y-4">
-                <div className={panel}>
-                  <h2 className="text-xl">{c.notifications}</h2>
-                  <p className="my-3 max-w-xl text-sm text-ink-muted">
-                    {c.pushHelp}
-                  </p>
+              <NotificationsPanel
+                notices={notices}
+                push={push}
+                stock={stock}
+                orders={orders}
+                onOpenOrder={(id) => void openNoticeOrder(id)}
+                onOpenProduct={(id) => {
+                  setStockFocus(id);
+                  setTab("stock");
+                }}
+                actions={
                   <div className="flex flex-wrap gap-3">
                     <ClayButton
                       disabled={busy}
@@ -889,34 +1054,8 @@ export function AdminDashboard() {
                       {c.markRead}
                     </ClayButton>
                   </div>
-                </div>
-                <ul className={`${panel} divide-y divide-line`}>
-                  {!notices.length && <li>{c.empty}</li>}
-                  {notices.map((n) => (
-                    <li
-                      className="flex flex-wrap justify-between gap-2 py-4"
-                      key={n.id}
-                    >
-                      <div>
-                        <p className="font-semibold">
-                          {n.kind === "order" ? c.newOrder : c.low}
-                          {n.product_id
-                            ? ` · ${stock.find((s) => s.product_id === n.product_id)?.[locale === "ar" ? "name_ar" : "name_en"] ?? n.product_id}`
-                            : ""}
-                        </p>
-                        <p className="text-sm text-ink-muted">
-                          {date(n.created_at)}
-                        </p>
-                      </div>
-                      {!n.read_at && (
-                        <span className="text-sm font-semibold text-brand">
-                          {c.unread}
-                        </span>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              </section>
+                }
+              />
             )}
           </AdminWorkspace>
         )}
