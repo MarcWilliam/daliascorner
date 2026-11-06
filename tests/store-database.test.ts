@@ -20,6 +20,12 @@ async function setup() {
       "utf8",
     ),
   );
+  await db.exec(
+    readFileSync(
+      "supabase/migrations/20261106105238_website_retry_ownership.sql",
+      "utf8",
+    ),
+  );
   return db;
 }
 const customer = {
@@ -240,6 +246,52 @@ test("website checkout snapshots fees, protects guest orders and queues only con
     await assert.rejects(
       db.query("select * from meta_events"),
       /permission denied/,
+    );
+  } finally {
+    await db.close();
+  }
+});
+
+test("guest retry after sign-in reuses order; attaching it revokes anonymous retry access", async () => {
+  const db = await setup();
+  try {
+    const key = crypto.randomUUID(),
+      token = crypto.randomUUID(),
+      zone = crypto.randomUUID();
+    await db.query(
+      `insert into delivery_zones(id,name_en,name_ar,fee) values($1,'Zone','منطقة',50)`,
+      [zone],
+    );
+    const args = [
+      key,
+      "same-payload",
+      JSON.stringify(customer),
+      JSON.stringify([{ id: "test-pot", qty: 1 }]),
+      token,
+      zone,
+    ];
+    const request = (user: string | null) =>
+      db.query<{ o: { order_number: number } }>(
+        `select create_website_order($1,$2,$3::jsonb,$4::jsonb,'en',$5,$6,'cash',$7,false) as o`,
+        [...args, user],
+      );
+    const guest = await request(null);
+    const signed = await request(admin);
+    assert.equal(guest.rows[0].o.order_number, signed.rows[0].o.order_number);
+    assert.equal(
+      (await db.query<{ n: number }>("select count(*)::int as n from orders"))
+        .rows[0].n,
+      1,
+    );
+    await db.exec(
+      `select set_config('request.jwt.claim.sub','${admin}',false);`,
+    );
+    await db.query("select claim_order($1)", [token]);
+    await assert.rejects(request(null), /ORDER_NOT_AVAILABLE/);
+    await assert.rejects(request(crypto.randomUUID()), /ORDER_NOT_AVAILABLE/);
+    assert.equal(
+      (await request(admin)).rows[0].o.order_number,
+      guest.rows[0].o.order_number,
     );
   } finally {
     await db.close();

@@ -79,3 +79,5 @@ Workflow hardening: in-memory checkout retries now retain both idempotency and g
 Current handoff: Google is enabled for customers and a real Google identity was observed in Supabase after the owner tested it. Facebook provider configuration and OAuth redirect are verified; public publication is pending at the owner's request. Reviewer instructions have been auto-saved as a draft in Meta; nothing was submitted. The owner must complete verification and review operational declarations before public Facebook activation.
 
 The legacy `create-order` Edge Function returns HTTP 410. All website checkout uses `place-order`, which requires an active delivery zone and enabled payment method. This closes the old preview path that lacked delivery-fee selection. Public anonymous callers cannot invoke the privileged order-creation SQL functions directly.
+
+Retry ownership hardening: signing in does not change the checkout content fingerprint. A guest retry after sign-in reuses the saved order; once attached to an account, anonymous or other-account retries are rejected. Applied before any website orders existed. Regression suite now has 21 passing tests.

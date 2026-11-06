@@ -134,7 +134,6 @@ export function StoreCheckout({
             locale,
             zone,
             payment,
-            user: session?.user.id,
           }),
         ),
       );
@@ -213,17 +212,21 @@ export function StoreCheckout({
     } catch (e) {
       const code = e instanceof Error ? e.message : "";
       setError(
-        code === "OUT_OF_STOCK"
-          ? c.stockError
-          : code === "VERIFICATION_REQUIRED"
-            ? c.verification
-            : code === "IDEMPOTENCY_CONFLICT"
-              ? c.conflict
-              : code === "ORDER_EXPIRED"
-                ? c.expiredOrder
-                : code === "INVALID_ORDER"
-                  ? messages.cart.detailsRequired
-                  : c.saveError,
+        code === "ORDER_NOT_AVAILABLE"
+          ? locale === "ar"
+            ? "سجّل الدخول بالحساب المرتبط بهذا الطلب للمتابعة."
+            : "Sign in with the account linked to this order to continue."
+          : code === "OUT_OF_STOCK"
+            ? c.stockError
+            : code === "VERIFICATION_REQUIRED"
+              ? c.verification
+              : code === "IDEMPOTENCY_CONFLICT"
+                ? c.conflict
+                : code === "ORDER_EXPIRED"
+                  ? c.expiredOrder
+                  : code === "INVALID_ORDER"
+                    ? messages.cart.detailsRequired
+                    : c.saveError,
       );
     } finally {
       setBusy(false);

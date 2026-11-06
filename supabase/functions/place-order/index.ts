@@ -85,7 +85,6 @@ Deno.serve(async (req) => {
           locale: input.locale,
           zone: body.zone,
           payment: body.payment,
-          userId,
         }),
       ),
     );
@@ -111,6 +110,7 @@ Deno.serve(async (req) => {
         "INVALID_ORDER",
         "INVALID_DELIVERY",
         "INVALID_PAYMENT",
+        "ORDER_NOT_AVAILABLE",
       ].find((c) => error.message.includes(c));
       return respond({ error: code ?? "UNAVAILABLE" }, code ? 409 : 503);
     }
@@ -127,7 +127,7 @@ Deno.serve(async (req) => {
           context[key] = body[key];
       await client
         .from("orders")
-        .update({ meta_context: context, source_url: origin+"/" })
+        .update({ meta_context: context, source_url: origin + "/" })
         .eq("idempotency_key", input.key);
     }
     return respond(data);
