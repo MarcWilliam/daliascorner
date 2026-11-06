@@ -26,6 +26,18 @@ export const checkoutCopy = {
     beforeTotal: "Choose a delivery area to see your total.",
     secure: "Secure checkout",
     checking: "Verifying checkout…",
+    nameRequired: "Enter your full name (at least 2 characters).",
+    phoneRequired: "Enter a valid phone number with at least 7 digits.",
+    addressRequired:
+      "Enter a complete delivery address (at least 5 characters).",
+    zoneRequired: "Choose your delivery area to place the order.",
+    verificationRequired:
+      "Complete the security check below, then place your order again.",
+    retryVerification: "Retry security check",
+    signInAgain:
+      "Your sign-in expired. Sign in again or sign out to continue as a guest.",
+    optionsChanged:
+      "Delivery or payment options changed. Close and reopen checkout to reload them.",
     hold: "We hold your items for 24 hours while confirming your order.",
     unavailableButton: "Ordering unavailable",
   },
@@ -56,6 +68,15 @@ export const checkoutCopy = {
     beforeTotal: "اختر منطقة التوصيل لعرض الإجمالي.",
     secure: "طلب آمن",
     checking: "جارٍ التحقق…",
+    nameRequired: "أدخل اسمك الكامل (حرفان على الأقل).",
+    phoneRequired: "أدخل رقم هاتف صحيحًا يحتوي على ٧ أرقام على الأقل.",
+    addressRequired: "أدخل عنوان التوصيل كاملًا (٥ أحرف على الأقل).",
+    zoneRequired: "اختر منطقة التوصيل لإرسال طلبك.",
+    verificationRequired: "أكمل التحقق الأمني أدناه، ثم أرسل طلبك مرة أخرى.",
+    retryVerification: "إعادة التحقق الأمني",
+    signInAgain: "انتهت جلسة الدخول. سجّل الدخول مجددًا أو اخرج للمتابعة كضيف.",
+    optionsChanged:
+      "تغيرت خيارات التوصيل أو الدفع. أغلق السلة وافتحها لتحديثها.",
     hold: "نحجز المنتجات لمدة ٢٤ ساعة لحين تأكيد طلبك.",
     unavailableButton: "الطلب غير متاح",
   },

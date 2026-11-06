@@ -1,6 +1,14 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
-import type { Session } from "@supabase/supabase-js";
+import {
+  ShoppingBag,
+  PackageCheck,
+  UserRound,
+  LogOut,
+  RefreshCw,
+} from "lucide-react";
+import { useCustomerAuth } from "@/components/providers/CustomerAuthProvider";
+import { AUTH_RETURN_KEY, parseAuthReturn } from "@/lib/store/auth-return";
 import { storeClient, STORE_CONFIGURED } from "@/lib/store/client";
 import { storeCopy } from "@/lib/store/copy";
 import { useLocale } from "@/components/providers/LocaleProvider";
@@ -25,23 +33,20 @@ type Item = {
   quantity: number;
   unit_price: number;
 };
-const input =
-  "mt-1 w-full min-h-12 rounded-clay border border-line bg-surface px-4 focus-visible:ring-4 focus-visible:ring-brand/45";
 export function CustomerPortal() {
   const { locale } = useLocale();
   const ar = locale === "ar";
   const c = storeCopy[locale];
-  const [session, setSession] = useState<Session | null>(null),
-    [ready, setReady] = useState(false),
-    [guest, setGuest] = useState(""),
+  const { session, ready, signIn } = useCustomerAuth();
+  const [loading, setLoading] = useState(true);
+  const [guestReady, setGuestReady] = useState(false);
+  const [guest, setGuest] = useState(""),
     [orders, setOrders] = useState<Order[]>([]),
     [error, setError] = useState(""),
-    [message, setMessage] = useState(""),
-    [busy, setBusy] = useState(false),
-    [recover, setRecover] = useState(false);
+    [message, setMessage] = useState("");
   useEffect(() => {
     if (!STORE_CONFIGURED) {
-      setReady(true);
+      setGuestReady(true);
       return;
     }
     const fragment = new URLSearchParams(location.hash.slice(1)).get("order");
@@ -60,22 +65,18 @@ export function CustomerPortal() {
       } catch {}
     }
     setGuest(guestToken);
-    const db = storeClient();
-    void db.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      setReady(true);
-    });
-    const { data } = db.auth.onAuthStateChange((event, s) => {
-      setSession(s);
-    });
-    return () => data.subscription.unsubscribe();
+    setGuestReady(true);
   }, []);
   const refresh = useCallback(async () => {
-    if (!STORE_CONFIGURED || !ready) return;
+    // Shared auth may already be ready on client navigation. Do not consume
+    // the OAuth return until the private receipt has been captured locally.
+    if (!STORE_CONFIGURED || !ready || !guestReady) return;
     setError("");
+    setLoading(true);
     try {
       const db = storeClient();
       if (session) {
+        let attached = true;
         if (guest) {
           const result = await db.rpc("claim_order", { p_token: guest });
           if (!result.error) {
@@ -84,6 +85,7 @@ export function CustomerPortal() {
             } catch {}
             setGuest("");
           } else {
+            attached = false;
             setMessage(
               ar
                 ? "تعذر ربط الطلب بهذا الحساب. استخدم الحساب الأصلي إن كان مرتبطًا بالفعل."
@@ -101,6 +103,24 @@ export function CustomerPortal() {
           .limit(100);
         if (error) throw error;
         setOrders(data as Order[]);
+        // Attach a guest receipt before resuming checkout after OAuth.
+        try {
+          const destination = parseAuthReturn(
+            JSON.parse(localStorage.getItem(AUTH_RETURN_KEY) ?? "null"),
+          );
+          localStorage.removeItem(AUTH_RETURN_KEY);
+          if (
+            attached &&
+            destination &&
+            (destination.path !== "/account/" || destination.checkout)
+          ) {
+            location.replace(
+              destination.path + (destination.checkout ? "?checkout=1" : ""),
+            );
+          }
+        } catch {
+          /* Account still works when browser storage is unavailable. */
+        }
       } else if (guest) {
         const { data, error } = await db.rpc("guest_order", { p_token: guest });
         if (error) throw error;
@@ -114,8 +134,10 @@ export function CustomerPortal() {
       } else setOrders([]);
     } catch {
       setError(c.error);
+    } finally {
+      setLoading(false);
     }
-  }, [ready, session, guest, ar, c.error]);
+  }, [ready, guestReady, session, guest, ar, c.error]);
   useEffect(() => {
     void refresh();
     const t = setInterval(() => {
@@ -123,43 +145,94 @@ export function CustomerPortal() {
     }, 30000);
     return () => clearInterval(t);
   }, [refresh]);
-  async function social(provider: "google" | "facebook") {
-    setBusy(true);
-    setError("");
-    const { error } = await storeClient().auth.signInWithOAuth({
-      provider,
-      options: {
-        redirectTo: location.origin + "/account/",
-        ...(provider === "facebook" ? { scopes: "email" } : {}),
-      },
-    });
-    if (error) {
-      setError(c.error);
-      setBusy(false);
-    }
-  }
 
   return (
     <>
       <MiniNav />
-      <main className="container-page py-10 space-y-6">
-        <h1 className="text-3xl">
-          {ar ? "حسابي وطلباتي" : "My account & orders"}
-        </h1>
-        {session && <p className="text-sm text-ink-muted">{ar ? "مسجل الدخول باسم" : "Signed in as"}: {session.user.email ?? (ar ? "حسابك" : "your account")}</p>}
+      <main className="container-page max-w-4xl space-y-6 py-8 sm:py-12">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="mb-2 text-sm font-semibold text-brand">
+              Dalia’s Corner
+            </p>
+            <h1 className="text-3xl">
+              {ar ? "حسابي وطلباتي" : "My account & orders"}
+            </h1>
+            <p className="mt-2 text-sm text-ink-muted">
+              {ar
+                ? "كل تفاصيل طلباتك في مكان واحد."
+                : "Your orders, delivery updates and payment details in one place."}
+            </p>
+          </div>
+          {session && (
+            <button
+              type="button"
+              disabled={loading}
+              onClick={() => void refresh()}
+              className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-line bg-surface px-3 text-sm font-semibold text-brand disabled:opacity-50"
+            >
+              <RefreshCw
+                aria-hidden="true"
+                className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
+              />
+              {c.refresh}
+            </button>
+          )}
+        </div>
+        {session && (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-surface p-4">
+            <div className="flex min-w-0 items-center gap-3">
+              <UserRound
+                aria-hidden="true"
+                className="h-5 w-5 shrink-0 text-brand"
+              />
+              <div className="min-w-0">
+                <p className="text-xs text-ink-muted">
+                  {ar ? "مسجل الدخول باسم" : "Signed in as"}
+                </p>
+                <p className="break-all text-sm font-semibold">
+                  {session.user.email ?? (ar ? "حسابك" : "your account")}
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              className="inline-flex min-h-11 items-center gap-2 rounded-lg px-2 text-sm text-brand"
+              onClick={async () => {
+                const { error } = await storeClient().auth.signOut();
+                if (error) {
+                  setError(c.error);
+                  return;
+                }
+                setOrders([]);
+                setGuest("");
+                try {
+                  localStorage.removeItem("dc.guest.order");
+                } catch {}
+              }}
+            >
+              <LogOut aria-hidden="true" className="h-4 w-4" />
+              {c.logout}
+            </button>
+          </div>
+        )}
         {!STORE_CONFIGURED ? (
           <p>{c.setup}</p>
         ) : (
           <>
             {error && <p role="alert">{error}</p>}
             {message && <p role="status">{message}</p>}
-            {!ready && <p>{c.loading}</p>}
+            {(!ready || (loading && !orders.length)) && (
+              <p role="status" className="py-6 text-sm text-ink-muted">
+                {c.loading}
+              </p>
+            )}
             {guest && !session && (
               <div className="rounded-clay bg-leaf-soft p-4">
                 <p>
                   {ar
-                    ? "هذا رابط خاص لطلبك. احتفظ به ولا تشاركه. يمكنك إنشاء حساب وربط الطلب بعد تأكيد البريد."
-                    : "This is your private order link. Keep it safe. Create an account to attach the order after confirming your email."}
+                    ? "هذا رابط خاص لطلبك. احتفظ به ولا تشاركه. سجّل الدخول لحفظ الطلب في حسابك."
+                    : "This is your private order link. Keep it safe. Sign in to save this order to your account."}
                 </p>
                 <button
                   className="block min-h-12 text-brand underline"
@@ -256,71 +329,52 @@ export function CustomerPortal() {
                   )}
               </article>
             ))}
-            {session && !recover ? (
-              <div className="flex gap-3">
-                <ClayButton variant="outline" onClick={() => void refresh()}>
-                  {c.refresh}
+            {ready && !loading && !error && orders.length === 0 && (
+              <section className="flex flex-col items-center rounded-3xl border border-line bg-surface px-6 py-12 text-center sm:py-16">
+                <span className="mb-5 grid h-16 w-16 place-items-center rounded-2xl bg-leaf-soft text-brand">
+                  <ShoppingBag aria-hidden="true" className="h-7 w-7" />
+                </span>
+                <h2 className="text-2xl">
+                  {ar ? "لا توجد طلبات بعد" : "Your first order starts here"}
+                </h2>
+                <p className="mt-3 max-w-sm text-sm leading-6 text-ink-muted">
+                  {ar
+                    ? "ستظهر طلباتك هنا بمجرد تأكيدها من المتجر. اختر شيئًا مميزًا من مجموعتنا."
+                    : "Once you place an order, you can follow its progress here. Find something special in our collection."}
+                </p>
+                <ClayButton href="/#characters" className="mt-6 !rounded-xl">
+                  {ar ? "تصفح المجموعة" : "Explore the collection"}
                 </ClayButton>
-                <ClayButton
-                  variant="outline"
-                  onClick={async () => {
-                    await storeClient().auth.signOut();
-                    setOrders([]);
-                    setGuest("");
-                    try {
-                      localStorage.removeItem("dc.guest.order");
-                    } catch {}
-                  }}
-                >
-                  {c.logout}
-                </ClayButton>
-              </div>
-            ) : (
-              ready && (
-                <section className="max-w-md rounded-clay-lg border border-line bg-surface p-5 space-y-4">
-                  <h2 className="text-xl">
-                    {ar
-                      ? "تسجيل الدخول أو إنشاء حساب"
-                      : "Sign in or create an account"}
-                  </h2>
-                  <p>
-                    {ar
-                      ? "تابع بحسابك لحفظ الطلبات ومتابعتها."
-                      : "Continue with your account to save and track your orders."}
-                  </p>
-                  {process.env.NEXT_PUBLIC_GOOGLE_LOGIN_ENABLED === "true" && (
-                    <ClayButton
-                      className="w-full"
-                      disabled={busy}
-                      onClick={() => void social("google")}
-                    >
-                      {ar ? "المتابعة باستخدام Google" : "Continue with Google"}
-                    </ClayButton>
-                  )}
-                  {process.env.NEXT_PUBLIC_FACEBOOK_LOGIN_ENABLED ===
-                    "true" && (
-                    <ClayButton
-                      className="w-full"
-                      variant="outline"
-                      disabled={busy}
-                      onClick={() => void social("facebook")}
-                    >
+              </section>
+            )}
+            {ready && !session && (
+              <section className="flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-leaf-soft/60 p-5">
+                <div className="flex items-start gap-3">
+                  <PackageCheck
+                    aria-hidden="true"
+                    className="mt-1 h-5 w-5 shrink-0 text-brand"
+                  />
+                  <div>
+                    <h2 className="font-display text-lg font-semibold">
                       {ar
-                        ? "المتابعة باستخدام Facebook"
-                        : "Continue with Facebook"}
-                    </ClayButton>
-                  )}
-                  {process.env.NEXT_PUBLIC_GOOGLE_LOGIN_ENABLED !== "true" &&
-                    process.env.NEXT_PUBLIC_FACEBOOK_LOGIN_ENABLED !==
-                      "true" && (
-                      <p>
-                        {ar
-                          ? "تسجيل الدخول الاجتماعي قيد الإعداد. يمكنك الطلب كضيف والاحتفاظ برابط الطلب."
-                          : "Social sign-in is being configured. You can order as a guest and keep your private order link."}
-                      </p>
-                    )}
-                </section>
-              )
+                        ? "احفظ طلباتك في حساب واحد"
+                        : "Keep your orders together"}
+                    </h2>
+                    <p className="mt-1 text-sm text-ink-muted">
+                      {ar
+                        ? "تسجيل الدخول اختياري، ويمكنك المتابعة كضيف."
+                        : "Sign in or create an account. Guest checkout is always available."}
+                    </p>
+                  </div>
+                </div>
+                <ClayButton
+                  onClick={signIn}
+                  variant="outline"
+                  className="!rounded-xl"
+                >
+                  {ar ? "تسجيل الدخول" : "Sign in / create account"}
+                </ClayButton>
+              </section>
             )}
 
             <p className="text-sm">

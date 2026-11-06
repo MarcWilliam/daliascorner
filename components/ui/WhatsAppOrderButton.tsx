@@ -1,5 +1,6 @@
 "use client";
 
+import { ShoppingBag } from "lucide-react";
 import { useCart } from "@/components/providers/CartProvider";
 import { useLocale } from "@/components/providers/LocaleProvider";
 import { WhatsAppIcon } from "@/components/ui/BrandIcons";
@@ -22,8 +23,8 @@ export function WhatsAppOrderButton({
   const hasItems = lines.length > 0;
   if (hasItems)
     return (
-      <ClayButton variant="whatsapp" className={className} onClick={open}>
-        <WhatsAppIcon className="h-5 w-5" />
+      <ClayButton variant="primary" className={className} onClick={open}>
+        <ShoppingBag aria-hidden="true" className="h-5 w-5" />
         {t("cart.checkout")}
       </ClayButton>
     );

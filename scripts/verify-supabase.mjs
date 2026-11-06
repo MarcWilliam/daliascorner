@@ -29,12 +29,22 @@ for (const table of [
   "admin_users",
   "stock_movements",
   "push_subscriptions",
+  "product_costs",
+  "order_item_costs",
+  "finance_entries",
+  "finance_payment_events",
 ]) {
   const response = await fetch(`${base}/rest/v1/${table}?select=*`, {
     headers,
   });
-  if (response.ok) throw new Error(`Unexpected public access: ${table}`);
+  if (![401, 403].includes(response.status))
+    throw new Error(`Unexpected private-table response: ${table} ${response.status}`);
 }
+const finance = await fetch(`${base}/rest/v1/rpc/finance_overview`, {
+  method: "POST", headers, body: "{}",
+});
+if (![401, 403].includes(finance.status))
+  throw new Error(`Unexpected public finance response: ${finance.status}`);
 const rejected = await fetch(`${base}/functions/v1/place-order`, {
   method: "POST",
   headers: { ...headers, Origin: "https://untrusted.example" },

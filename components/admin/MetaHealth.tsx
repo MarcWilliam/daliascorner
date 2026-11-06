@@ -67,6 +67,16 @@ export function MetaHealth() {
     void refresh();
   }, [refresh]);
   const missing = ar ? "غير متاح" : "Not available";
+  const number = (value: number) =>
+    new Intl.NumberFormat(ar ? "ar-EG" : "en-EG", {
+      maximumFractionDigits: 2,
+    }).format(value);
+  const frequency = (value?: string) =>
+    value === "real_time"
+      ? ar
+        ? "في الوقت الفعلي"
+        : "Real time"
+      : (value?.replaceAll("_", " ") ?? missing);
   return (
     <section className="space-y-5">
       <div className="rounded-clay-lg border border-line bg-surface p-5 space-y-3">
@@ -76,6 +86,24 @@ export function MetaHealth() {
             ? "مقاييس Meta تشمل كل مصادر البيانات المتصلة، وقد تتأخر. نحدّث القراءة كل خمس دقائق."
             : "Meta metrics cover all connected integrations and may lag. Readings are cached for five minutes."}
         </p>
+        <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-brand">
+          <a
+            href="https://business.facebook.com/events_manager2/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline underline-offset-4"
+          >
+            {ar ? "فتح مدير الأحداث ↗" : "Open Events Manager ↗"}
+          </a>
+          <a
+            href="https://adsmanager.facebook.com/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline underline-offset-4"
+          >
+            {ar ? "فتح مدير الإعلانات ↗" : "Open Ads Manager ↗"}
+          </a>
+        </div>
         <ClayButton
           variant="outline"
           disabled={busy}
@@ -111,6 +139,16 @@ export function MetaHealth() {
       </div>
       {data?.configured && (
         <>
+          {!!data.failed && (
+            <p
+              role="status"
+              className="rounded-xl border border-line bg-surface p-4"
+            >
+              {ar
+                ? "تحتاج بعض أحداث المتجر إلى المراجعة. تحقق من اتصال Meta قبل الاعتماد على تقارير الإعلانات."
+                : "Some website events need review. Check the Meta connection before relying on advertising reports."}
+            </p>
+          )}
           <div className="rounded-clay-lg border border-line bg-surface p-5">
             <h3 className="text-lg">
               {ar ? "أحداث هذا المتجر" : "This website’s event queue"}
@@ -152,17 +190,26 @@ export function MetaHealth() {
                   <h3 className="text-xl">{q.event_name}</h3>
                   <p>
                     {ar ? "جودة المطابقة" : "Match quality"}:{" "}
-                    {q.event_match_quality?.composite_score ?? missing}
+                    {q.event_match_quality?.composite_score == null
+                      ? missing
+                      : `${number(q.event_match_quality.composite_score)} / 10`}
                   </p>
                   <p>
                     {ar ? "تغطية الأحداث" : "Event coverage"}:{" "}
                     {q.event_coverage?.percentage == null
                       ? missing
-                      : `${q.event_coverage.percentage}%`}
+                      : `${number(q.event_coverage.percentage)}%`}
+                    {q.event_coverage?.goal_percentage != null && (
+                      <span className="text-sm text-ink-muted">
+                        {" "}
+                        {ar ? "· المستهدف" : "· goal"}{" "}
+                        {number(q.event_coverage.goal_percentage)}%
+                      </span>
+                    )}
                   </p>
                   <p>
                     {ar ? "تكرار الإرسال" : "Upload frequency"}:{" "}
-                    {q.data_freshness?.upload_frequency ?? missing}
+                    {frequency(q.data_freshness?.upload_frequency)}
                   </p>
                 </article>
               ))}
@@ -181,7 +228,7 @@ export function MetaHealth() {
             </h3>
             <p className="text-sm">
               {ar
-                ? "عرض للقراءة فقط. إدارة الحملات والميزانيات تتم في Ads Manager."
+                ? "عرض للقراءة فقط. إدارة الحملات والميزانيات تتم في Ads Manager. هذه الأرقام مرتبطة بالأحداث وليست إجمالي إنفاق الحساب."
                 : "Read-only view. Manage campaigns and budgets in Ads Manager. These are event-associated figures, not a complete account spend report."}
             </p>
             {data.campaign_error ? (
@@ -199,7 +246,8 @@ export function MetaHealth() {
                   <h4 className="font-bold">{e.event_name}</h4>
                   {e.event_spend && (
                     <p>
-                      {e.event_spend.amount} {e.event_spend.currency_code}
+                      {number(e.event_spend.amount)}{" "}
+                      {e.event_spend.currency_code}
                     </p>
                   )}
                   <ul className="space-y-3">
@@ -208,7 +256,10 @@ export function MetaHealth() {
                         <p>{a.ad_set_name}</p>
                         <p className="text-sm text-ink-muted">
                           {a.objective} · {a.event_use} ·{" "}
-                          {a.spend_amount ?? missing} {a.spend_currency_code}
+                          {a.spend_amount == null
+                            ? missing
+                            : number(a.spend_amount)}{" "}
+                          {a.spend_currency_code}
                         </p>
                       </li>
                     ))}

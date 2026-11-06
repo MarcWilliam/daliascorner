@@ -1,5 +1,6 @@
 "use client";
 
+import { CustomerAuthProvider } from "./CustomerAuthProvider";
 import { InventoryProvider } from "./InventoryProvider";
 import { PromotionProvider } from "./PromotionProvider";
 import { LazyMotion, domAnimation } from "framer-motion";
@@ -34,8 +35,10 @@ export function Providers({
             <PromotionProvider initialActive={saleActive}>
               <InventoryProvider>
                 <CartProvider>
-                  <DeviceTiltProvider>{children}</DeviceTiltProvider>
-                  <ConsentBanner />
+                  <CustomerAuthProvider>
+                    <DeviceTiltProvider>{children}</DeviceTiltProvider>
+                    <ConsentBanner />
+                  </CustomerAuthProvider>
                 </CartProvider>
               </InventoryProvider>
             </PromotionProvider>

@@ -13,9 +13,9 @@ Feature branch only. The custom domain has not been switched.
 
 ## Admin setup
 
-Under Stock, configure Delivery & payment settings. Add bilingual delivery zones and fees; enable manual transfer only with complete public transfer instructions. No delivery zones or bank details are invented. All quantities still need real values.
+Under Settings, configure Delivery & payment. Add bilingual delivery zones and fees; enable manual transfer only with complete public transfer instructions. No delivery zones or bank details are invented. Enter actual stock under Stock, or explicitly enable unlimited stock per product.
 
-Order cards show payment method, delivery zone, delivery fee and total. Only admins can mark payments paid/refunded. Existing reservation, cancellation, shipping and expiry rules remain. Pending orders expire after 24 hours, so confirm accepted orders promptly. Transfer instructions stop displaying after cancellation or expiry.
+Order cards show payment method, delivery zone, delivery fee and total. Only admins can mark payments paid/refunded. Unpaid pending orders expire after 24 hours, so confirm accepted orders promptly. Paid pending orders retain their reservations until an admin acts. Transfer instructions stop displaying after cancellation or expiry.
 
 ## Social provider activation
 

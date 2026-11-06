@@ -1,6 +1,7 @@
 "use client";
 
 import { useLocale } from "@/components/providers/LocaleProvider";
+import { CustomerAccountButton } from "@/components/customer/CustomerAccountButton";
 import { Logo } from "@/components/ui/Logo";
 import { LanguageToggle } from "@/components/ui/LanguageToggle";
 import { CartButton } from "@/components/ui/CartButton";
@@ -34,12 +35,7 @@ export function MiniNav() {
               to carry a fallback toggle, so hiding it below xs (≈360–399px, a
               large share of phones) would strand these pages in one language. */}
           <LanguageToggle />
-          <a
-            href="/account/"
-            className="inline-flex min-h-12 items-center rounded-clay px-2 text-brand text-sm font-semibold"
-          >
-            {t("nav.account")}
-          </a>
+          <CustomerAccountButton />
           <CartButton />
           <WhatsAppOrderButton className="hidden md:inline-flex" />
         </div>

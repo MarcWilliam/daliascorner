@@ -9,6 +9,8 @@ import {
   UserRound,
   Info,
 } from "lucide-react";
+import { checkoutIssue } from "@/lib/store/checkout-readiness";
+import { useCustomerAuth } from "@/components/providers/CustomerAuthProvider";
 import { checkoutCopy, checkoutFieldClass } from "@/lib/store/checkout-copy";
 import {
   checkoutAttempt,
@@ -67,7 +69,8 @@ export function StoreCheckout({
   const [configStatus, setConfigStatus] = useState<
     "loading" | "ready" | "error"
   >("loading");
-  const [signedIn, setSignedIn] = useState(false);
+  const { session, signIn } = useCustomerAuth();
+  const signedIn = !!session;
   const loadOptions = useCallback(async () => {
     if (!STORE_CONFIGURED) return;
     setConfigStatus("loading");
@@ -101,22 +104,6 @@ export function StoreCheckout({
   useEffect(() => {
     if (visible) void loadOptions();
   }, [visible, loadOptions]);
-  useEffect(() => {
-    if (!STORE_CONFIGURED) return;
-    let active = true;
-    void storeClient()
-      .auth.getSession()
-      .then(({ data }) => {
-        if (active) setSignedIn(!!data.session);
-      });
-    const { data } = storeClient().auth.onAuthStateChange((_event, session) =>
-      setSignedIn(!!session),
-    );
-    return () => {
-      active = false;
-      data.subscription.unsubscribe();
-    };
-  }, []);
   const { locale, messages } = useLocale();
   const { refresh } = useInventory();
   const c = storeCopy[locale];
@@ -130,6 +117,7 @@ export function StoreCheckout({
     configStatus === "ready" && zones.length > 0 && paymentAvailable;
 
   const [token, setToken] = useState("");
+  const [verificationRequested, setVerificationRequested] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState<{
@@ -159,7 +147,7 @@ export function StoreCheckout({
       action: "checkout",
       size: "flexible",
       theme: "light",
-      appearance: "interaction-only",
+      appearance: verificationRequested ? "always" : "interaction-only",
       language: locale,
       callback: (value: string) => setToken(value),
       "expired-callback": () => setToken(""),
@@ -176,6 +164,7 @@ export function StoreCheckout({
     };
   }, [
     visible,
+    verificationRequested,
     verificationAvailable,
     scriptReady,
     siteKey,
@@ -187,12 +176,27 @@ export function StoreCheckout({
     if (saved) receipt.current?.focus();
   }, [saved]);
   const submit = useCallback(async () => {
-    if (guard.current || !canCheckout) return;
+    if (guard.current) return;
+    const issue = checkoutIssue(customer, selectedZone?.id ?? "");
+    if (issue) {
+      setError(ui[`${issue}Required`]);
+      const field = document.getElementById(
+        issue === "zone" ? "checkout-zone" : `cart-${issue}`,
+      );
+      field?.focus();
+      field?.scrollIntoView({ block: "center", behavior: "smooth" });
+      return;
+    }
+    if (!token) {
+      setVerificationRequested(true);
+      setError(ui.verificationRequired);
+      widget.current?.scrollIntoView({ block: "center", behavior: "smooth" });
+      return;
+    }
     guard.current = true;
     setBusy(true);
     setError("");
     try {
-      if (!token) throw new Error("VERIFICATION_REQUIRED");
       const session = (await storeClient().auth.getSession()).data.session;
       const canonical = parseOrder({
         key: crypto.randomUUID(),
@@ -301,7 +305,12 @@ export function StoreCheckout({
                   ? c.expiredOrder
                   : code === "INVALID_ORDER"
                     ? messages.cart.detailsRequired
-                    : c.saveError,
+                    : code === "SIGN_IN_AGAIN"
+                      ? ui.signInAgain
+                      : code === "INVALID_DELIVERY" ||
+                          code === "INVALID_PAYMENT"
+                        ? ui.optionsChanged
+                        : c.saveError,
       );
     } finally {
       setBusy(false);
@@ -310,7 +319,8 @@ export function StoreCheckout({
       if (widgetId.current) window.turnstile?.reset(widgetId.current);
     }
   }, [
-    canCheckout,
+    selectedZone,
+    ui,
     token,
     customer,
     lines,
@@ -343,8 +353,22 @@ export function StoreCheckout({
             </li>
           ))}
         </ul>
-        <p className="font-bold">
-          {c.subtotal}: {saved.order.subtotal} EGP
+        <dl className="space-y-1 text-sm">
+          <div className="flex justify-between gap-3">
+            <dt>{ui.subtotal}</dt>
+            <dd>{saved.order.subtotal} EGP</dd>
+          </div>
+          <div className="flex justify-between gap-3">
+            <dt>{ui.deliveryFee}</dt>
+            <dd>{saved.order.delivery_fee} EGP</dd>
+          </div>
+          <div className="flex justify-between gap-3 border-t border-brand/20 pt-2 font-bold">
+            <dt>{ui.total}</dt>
+            <dd>{saved.order.total} EGP</dd>
+          </div>
+        </dl>
+        <p className="text-sm">
+          {saved.order.payment_method === "transfer" ? ui.transfer : ui.cash}
         </p>
         <ClayButton
           href={saved.href}
@@ -367,9 +391,7 @@ export function StoreCheckout({
             setSaved(null);
             attempt.current = null;
             try {
-              try {
-                localStorage.removeItem(storageKey);
-              } catch {}
+              localStorage.removeItem(storageKey);
             } catch {}
           }}
         >
@@ -429,11 +451,9 @@ export function StoreCheckout({
       )}
       <ClayButton
         disabled={
-          !canCheckout ||
           busy ||
-          !token ||
           !siteKey ||
-          !selectedZone ||
+          !zones.length ||
           !paymentAvailable ||
           configStatus !== "ready"
         }
@@ -443,7 +463,30 @@ export function StoreCheckout({
       >
         {busy ? c.saving : unavailable ? ui.unavailableButton : c.submit}
       </ClayButton>
-      <p className="flex items-center justify-center gap-1.5 text-xs text-ink-muted">
+      {error === ui.verificationRequired || error === c.verification ? (
+        <button
+          type="button"
+          className="min-h-11 w-full rounded-lg text-sm font-semibold text-brand underline"
+          onClick={() => {
+            setVerificationRequested(true);
+            if (!scriptReady) {
+              location.reload();
+              return;
+            }
+            if (widgetId.current) window.turnstile?.reset(widgetId.current);
+            widget.current?.scrollIntoView({
+              block: "center",
+              behavior: "smooth",
+            });
+          }}
+        >
+          {ui.retryVerification}
+        </button>
+      ) : null}
+      <p
+        className="flex items-center justify-center gap-1.5 text-xs text-ink-muted"
+        role="status"
+      >
         <ShieldCheck aria-hidden="true" className="h-3.5 w-3.5" />
         {verificationAvailable && canCheckout && !token
           ? ui.checking
@@ -458,12 +501,22 @@ export function StoreCheckout({
           <UserRound aria-hidden="true" className="h-4 w-4" />
           {signedIn ? ui.signedIn : ui.guest}
         </span>
-        <a
-          href="/account/"
-          className="inline-flex min-h-11 items-center rounded-lg px-1 font-semibold text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
-        >
-          {signedIn ? messages.nav.account : ui.signIn}
-        </a>
+        {signedIn ? (
+          <a
+            href="/account/"
+            className="inline-flex min-h-11 items-center font-semibold text-brand underline"
+          >
+            {messages.nav.account}
+          </a>
+        ) : (
+          <button
+            type="button"
+            onClick={signIn}
+            className="inline-flex min-h-11 items-center rounded-lg px-1 font-semibold text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
+          >
+            {ui.signIn}
+          </button>
+        )}
       </div>
       {children}
       <fieldset className="space-y-3 border-0 p-0">
@@ -488,7 +541,10 @@ export function StoreCheckout({
             }
             className={`${checkoutFieldClass} appearance-none pe-10`}
             value={zone}
-            onChange={(e) => setZone(e.target.value)}
+            onChange={(e) => {
+              setZone(e.target.value);
+              setError("");
+            }}
           >
             <option value="">
               {configStatus === "loading" ? ui.loading : ui.chooseArea}

@@ -16,7 +16,7 @@ import { ClayButton } from "@/components/ui/ClayButton";
 
 export function CartDrawer() {
   const active = useSaleActive();
-  const { lines, count, isOpen, close, increment, decrement, remove } =
+  const { lines, count, isOpen, open, close, increment, decrement, remove } =
     useCart();
   const { t, locale, dir, messages } = useLocale();
   const announce = useAnnouncer();
@@ -30,6 +30,15 @@ export function CartDrawer() {
   const [checkoutFooter, setCheckoutFooter] = useState<HTMLDivElement | null>(
     null,
   );
+
+  // Resume the same saved basket after social sign-in's allowlisted callback.
+  useEffect(() => {
+    const url = new URL(location.href);
+    if (url.searchParams.get("checkout") !== "1") return;
+    url.searchParams.delete("checkout");
+    history.replaceState(null, "", url.pathname + url.search + url.hash);
+    open();
+  }, [open]);
 
   // Load any saved delivery details once on mount.
   useEffect(() => {

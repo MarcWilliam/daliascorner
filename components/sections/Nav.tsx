@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Menu, X } from "lucide-react";
 import { useLocale } from "@/components/providers/LocaleProvider";
+import { CustomerAccountButton } from "@/components/customer/CustomerAccountButton";
 import { Logo } from "@/components/ui/Logo";
 import { LanguageToggle } from "@/components/ui/LanguageToggle";
 import { CartButton } from "@/components/ui/CartButton";
@@ -103,12 +104,7 @@ export function Nav() {
         {/* Trailing: language + cart + order CTA + burger */}
         <div className="flex items-center gap-2">
           <LanguageToggle className="hidden xs:inline-flex" />
-          <a
-            href="/account/"
-            className="inline-flex min-h-12 items-center rounded-clay px-2 text-brand text-sm font-semibold"
-          >
-            {t("nav.account")}
-          </a>
+          <CustomerAccountButton />
           <CartButton />
           <WhatsAppOrderButton className="hidden md:inline-flex" />
 

@@ -8,15 +8,16 @@ export function StockAvailability({ id }: { id: string }) {
   const { locale } = useLocale();
   const c = storeCopy[locale];
   if (!STORE_CONFIGURED) return null;
+  const available = items[id]?.available;
+  if (available == null || available > 3 || (loading && !items[id]))
+    return null;
   return (
-    <p className="my-2 text-sm text-ink-muted" aria-live="polite">
-      {loading
-        ? c.stockChecking
-        : items[id]
-          ? items[id].available > 0
-            ? `${items[id].available} ${c.units}`
-            : c.outOfStock
-          : c.stockUnavailable}
+    <p className="my-2 text-sm font-semibold text-ink-muted" aria-live="polite">
+      {available === 0
+        ? c.outOfStock
+        : locale === "ar"
+          ? `متبقي ${available} فقط`
+          : `Only ${available} left`}
     </p>
   );
 }

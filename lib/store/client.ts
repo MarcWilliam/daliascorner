@@ -15,6 +15,9 @@ export type SavedOrder = {
   order_number: number;
   status: string;
   subtotal: number;
+  delivery_fee: number;
+  total: number;
+  payment_method: "cash" | "transfer";
   expires_at: string;
   items: {
     id: string;
