@@ -5,6 +5,7 @@ import { storeClient } from "@/lib/store/client";
 import { useLocale } from "@/components/providers/LocaleProvider";
 import { ClayButton } from "@/components/ui/ClayButton";
 import { instaPayConfigured, instaPaySettings } from "@/lib/store/instapay";
+import { WHATSAPP_NUMBER } from "@/lib/config";
 type Zone = {
   id: string;
   name_en: string;
@@ -26,7 +27,6 @@ export function CheckoutSettings({
     [settings, setSettings] = useState({
       cash_enabled: true,
       transfer_enabled: false,
-      transfer_instructions: "",
       instapay_link: "",
       instapay_number: "",
     });
@@ -70,7 +70,6 @@ export function CheckoutSettings({
         setSettings({
           cash_enabled: s.data.cash_enabled,
           transfer_enabled: s.data.transfer_enabled,
-          transfer_instructions: s.data.transfer_instructions ?? "",
           instapay_link: s.data.instapay_link ?? "",
           instapay_number: s.data.instapay_number ?? "",
         });
@@ -526,8 +525,6 @@ export function CheckoutSettings({
                       .update({
                         ...settings,
                         ...recipient,
-                        transfer_instructions:
-                          settings.transfer_instructions.trim(),
                       })
                       .eq("id", true),
                   true,
@@ -616,23 +613,32 @@ export function CheckoutSettings({
                     ? "انسخ رابط الدفع من تطبيق إنستا باي أو أدخل رقم الاستلام/عنوان IPA الخاص بالمتجر. لا تُدخل كلمة مرور أو IPN PIN. تُحفظ بيانات المستلم مع الطلبات الجديدة."
                     : "Copy the payment link from InstaPay or enter the shop’s receiving mobile/IPA. Never enter a password or IPN PIN. Recipient details are saved with new orders."}
                 </p>
-                <label className="block text-sm">
-                  {ar
-                    ? "تعليمات إنستا باي للعملاء (اختياري)"
-                    : "InstaPay instructions shown to customers (optional)"}
-                  <textarea
-                    className={field}
-                    rows={4}
-                    maxLength={3000}
-                    value={settings.transfer_instructions}
-                    onChange={(e) =>
-                      setSettings({
-                        ...settings,
-                        transfer_instructions: e.target.value,
-                      })
-                    }
-                  />
-                </label>
+                <div className="space-y-2 rounded-xl border border-line bg-canvas p-4 text-sm">
+                  <h3 className="font-semibold">
+                    {ar
+                      ? "صور الدفع عبر واتساب"
+                      : "Payment screenshots on WhatsApp"}
+                  </h3>
+                  <p className="text-ink-muted">
+                    {ar
+                      ? "بعد تسجيل الطلب، يمكن للعميل فتح واتساب برقم طلبه وإرفاق صورة الدفع. لا حاجة لكتابة تعليمات مخصصة."
+                      : "After placing an order, customers can open WhatsApp with their order number and attach a payment screenshot. No custom instructions are needed."}
+                  </p>
+                  <p className="text-ink-muted">
+                    {ar ? "رقم واتساب المتجر: " : "Shop WhatsApp: "}
+                    <span
+                      dir="ltr"
+                      className="inline-block font-semibold text-ink"
+                    >
+                      +{WHATSAPP_NUMBER}
+                    </span>
+                  </p>
+                  <p className="text-xs text-ink-muted">
+                    {ar
+                      ? "تحقق من وصول المبلغ قبل تحديد الطلب كمدفوع."
+                      : "Verify receipt of the money before marking the order paid."}
+                  </p>
+                </div>
                 {!settings.cash_enabled && !settings.transfer_enabled && (
                   <p className="rounded-xl bg-orange/20 p-3 text-sm">
                     {ar

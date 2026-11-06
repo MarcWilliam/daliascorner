@@ -1,6 +1,8 @@
 "use client";
 import { useEffect, useState } from "react";
 import { Copy, ExternalLink } from "lucide-react";
+import { WhatsAppIcon } from "./BrandIcons";
+import { paymentProofWhatsAppLink } from "@/lib/store/payment-proof";
 import { useLocale } from "@/components/providers/LocaleProvider";
 import {
   validInstaPayLink,
@@ -10,9 +12,11 @@ import {
 export function InstaPayDetails({
   details,
   legacy = false,
+  orderNumber,
 }: {
   details: Details;
   legacy?: boolean;
+  orderNumber?: number;
 }) {
   const { locale } = useLocale();
   const ar = locale === "ar";
@@ -23,6 +27,10 @@ export function InstaPayDetails({
     number = details.instapay_number?.trim() ?? "";
   const hasLink = validInstaPayLink(link),
     hasNumber = validInstaPayNumber(number);
+  const proofLink =
+    orderNumber === undefined
+      ? null
+      : paymentProofWhatsAppLink(orderNumber, locale);
   useEffect(() => setCopyState("idle"), [number]);
   return (
     <section
@@ -88,10 +96,25 @@ export function InstaPayDetails({
             : "Recipient details were not saved with this order. Contact the shop to confirm payment details before transferring."}
         </p>
       )}
-      {details.transfer_instructions && (
-        <p className="whitespace-pre-wrap break-words text-sm leading-6 text-ink-muted">
-          {details.transfer_instructions}
-        </p>
+      {proofLink && (
+        <div className="space-y-2 border-t border-line pt-3">
+          <a
+            href={proofLink}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex min-h-12 items-center gap-2 rounded-xl border border-brand px-4 py-2 text-sm font-semibold text-brand focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/45"
+          >
+            <WhatsAppIcon aria-hidden="true" className="h-5 w-5 shrink-0" />
+            {ar
+              ? "إرسال صورة الدفع عبر واتساب"
+              : "Send payment screenshot on WhatsApp"}
+          </a>
+          <p className="text-xs leading-5 text-ink-muted">
+            {ar
+              ? `تفتح المحادثة برقم طلبك DC-${orderNumber}. أرفق صورة الدفع في واتساب ثم أرسلها.`
+              : `WhatsApp opens with your order number DC-${orderNumber}. Attach your payment screenshot there, then send it.`}
+          </p>
+        </div>
       )}
       <p className="text-xs leading-5 text-ink-muted">
         {ar

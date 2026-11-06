@@ -541,7 +541,11 @@ export function CustomerPortal() {
                 {o.payment_method === "transfer" &&
                   o.payment_status === "unpaid" &&
                   ["pending", "confirmed"].includes(o.status) && (
-                    <InstaPayDetails details={o} legacy />
+                    <InstaPayDetails
+                      details={o}
+                      orderNumber={o.order_number}
+                      legacy
+                    />
                   )}
               </article>
             ))}

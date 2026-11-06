@@ -219,6 +219,25 @@ export function StoreCheckout({
   const receipt = useRef<HTMLHeadingElement>(null);
   const attempt = useRef<OwnedCheckoutAttempt | null>(null);
   useEffect(() => {
+    if (!authReady || savedState?.owner !== zoneOwner) return;
+    const sameBasket =
+      lines.length === savedState.order.items.length &&
+      lines.every((line) =>
+        savedState.order.items.some(
+          (item) => item.id === line.id && item.qty === line.qty,
+        ),
+      );
+    // Closing the successful receipt finishes this basket. An explicit basket edit
+    // starts a fresh checkout without clearing the customer's newly selected items.
+    if (sameBasket && visible) return;
+    if (sameBasket) clear();
+    setSaved(null);
+    attempt.current = null;
+    try {
+      localStorage.removeItem(storageKey);
+    } catch {}
+  }, [authReady, savedState, zoneOwner, lines, visible, clear]);
+  useEffect(() => {
     if (!authReady) return;
     submissions.current.invalidateOwner(zoneOwner);
     setBusyState((current) =>
@@ -510,7 +529,11 @@ export function StoreCheckout({
         {saved.order.payment_method === "transfer" &&
           saved.order.payment_status === "unpaid" &&
           ["pending", "confirmed"].includes(saved.order.status) && (
-            <InstaPayDetails details={saved.order} legacy />
+            <InstaPayDetails
+              details={saved.order}
+              orderNumber={saved.order.order_number}
+              legacy
+            />
           )}
 
         <ClayButton
@@ -526,19 +549,6 @@ export function StoreCheckout({
           {locale === "ar"
             ? "عرض طلبي وإنشاء حساب"
             : "View my order & create an account"}
-        </ClayButton>
-        <ClayButton
-          variant="outline"
-          onClick={() => {
-            clear();
-            setSaved(null);
-            attempt.current = null;
-            try {
-              localStorage.removeItem(storageKey);
-            } catch {}
-          }}
-        >
-          {c.newOrderAction}
         </ClayButton>
       </div>
     );
