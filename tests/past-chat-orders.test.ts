@@ -20,7 +20,7 @@ async function setup(legacy = false) {
   for (const name of readdirSync("supabase/migrations")
     .filter(
       (n) =>
-        n.endsWith(".sql") && !schedules.has(n) && (!legacy || n !== migration),
+        n.endsWith(".sql") && !schedules.has(n) && (!legacy || n < migration),
     )
     .sort())
     await db.exec(readFileSync(`supabase/migrations/${name}`, "utf8"));

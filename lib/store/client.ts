@@ -19,6 +19,9 @@ export type SavedOrder = {
   delivery_fee: number;
   total: number;
   payment_method: "cash" | "transfer";
+  instapay_link?: string | null;
+  instapay_number?: string | null;
+  transfer_instructions?: string | null;
   expires_at: string;
   items: {
     id: string;

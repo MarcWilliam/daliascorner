@@ -5,6 +5,8 @@ import { Banknote, Landmark, ShieldCheck, UserRound, Info } from "lucide-react";
 import { receiptExpired } from "@/lib/store/order-receipt";
 import { checkoutIssue } from "@/lib/store/checkout-readiness";
 import { useCustomerAuth } from "@/components/providers/CustomerAuthProvider";
+import { InstaPayDetails } from "@/components/ui/InstaPayDetails";
+import { instaPayConfigured } from "@/lib/store/instapay";
 import { checkoutCopy, checkoutFieldClass } from "@/lib/store/checkout-copy";
 import {
   checkoutAttemptForOwner,
@@ -76,6 +78,8 @@ export function StoreCheckout({
     cash_enabled: false,
     transfer_enabled: false,
     transfer_instructions: "",
+    instapay_link: "",
+    instapay_number: "",
   });
   const [configStatus, setConfigStatus] = useState<
     "loading" | "ready" | "error"
@@ -108,7 +112,7 @@ export function StoreCheckout({
           ? "cash"
           : current === "transfer" &&
               s.data.transfer_enabled &&
-              s.data.transfer_instructions.trim()
+              instaPayConfigured(s.data)
             ? "transfer"
             : s.data.cash_enabled
               ? "cash"
@@ -166,7 +170,7 @@ export function StoreCheckout({
   const paymentAvailable =
     payment === "cash"
       ? settings.cash_enabled
-      : settings.transfer_enabled && !!settings.transfer_instructions.trim();
+      : settings.transfer_enabled && instaPayConfigured(settings);
   const verificationAvailable =
     configStatus === "ready" && zones.length > 0 && paymentAvailable;
 
@@ -503,6 +507,12 @@ export function StoreCheckout({
         <p className="text-sm">
           {saved.order.payment_method === "transfer" ? ui.transfer : ui.cash}
         </p>
+        {saved.order.payment_method === "transfer" &&
+          saved.order.payment_status === "unpaid" &&
+          ["pending", "confirmed"].includes(saved.order.status) && (
+            <InstaPayDetails details={saved.order} legacy />
+          )}
+
         <ClayButton
           href={saved.href}
           onClick={() => {
@@ -736,8 +746,7 @@ export function StoreCheckout({
             {
               id: "transfer",
               enabled:
-                settings.transfer_enabled &&
-                !!settings.transfer_instructions.trim(),
+                settings.transfer_enabled && instaPayConfigured(settings),
               label: ui.transfer,
               hint: ui.transferHint,
               Icon: Landmark,
@@ -772,18 +781,11 @@ export function StoreCheckout({
         </div>
         {configStatus === "ready" &&
           !settings.cash_enabled &&
-          !(
-            settings.transfer_enabled && settings.transfer_instructions.trim()
-          ) && <p className="text-sm text-ink-muted">{ui.noPayment}</p>}
-        {payment === "transfer" && settings.transfer_instructions && (
-          <details className="mt-3 rounded-xl border border-line bg-surface p-3">
-            <summary className="cursor-pointer text-sm font-semibold text-brand">
-              {ui.transferDetails}
-            </summary>
-            <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-relaxed text-ink-muted">
-              {settings.transfer_instructions}
-            </p>
-          </details>
+          !(settings.transfer_enabled && instaPayConfigured(settings)) && (
+            <p className="text-sm text-ink-muted">{ui.noPayment}</p>
+          )}
+        {payment === "transfer" && instaPayConfigured(settings) && (
+          <InstaPayDetails details={settings} />
         )}
       </fieldset>
       <p className="text-xs leading-relaxed text-ink-muted">{ui.hold}</p>

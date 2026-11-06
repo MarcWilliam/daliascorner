@@ -26,7 +26,7 @@ async function setup() {
     .sort())
     await db.exec(readFileSync(`supabase/migrations/${name}`, "utf8"));
   await db.exec(
-    `insert into admin_users values('${admin}'),('${secondAdmin}');select set_config('request.jwt.claim.sub','${admin}',false);insert into inventory(product_id,name_en,name_ar,price,on_hand,unlimited_stock) values('finite','Finite TEST','محدود',100,5,false),('unlimited','Unlimited TEST','غير محدود',200,0,true);select set_product_unit_cost('finite',30);select set_product_unit_cost('unlimited',50);update checkout_settings set transfer_enabled=true,transfer_instructions='TEST transfer details';`,
+    `insert into admin_users values('${admin}'),('${secondAdmin}');select set_config('request.jwt.claim.sub','${admin}',false);insert into inventory(product_id,name_en,name_ar,price,on_hand,unlimited_stock) values('finite','Finite TEST','محدود',100,5,false),('unlimited','Unlimited TEST','غير محدود',200,0,true);select set_product_unit_cost('finite',30);select set_product_unit_cost('unlimited',50);update checkout_settings set transfer_enabled=true,transfer_instructions='TEST transfer details',instapay_number='test-shop@instapay';`,
   );
   const zone = crypto.randomUUID();
   await db.query(
@@ -350,7 +350,7 @@ test("chat creation validates contact and configured checkout options and rolls 
     await db.exec("update checkout_settings set cash_enabled=false");
     await assert.rejects(create(db, input(zone)), /INVALID_PAYMENT/);
     await db.exec(
-      "update checkout_settings set cash_enabled=true,transfer_instructions='';update delivery_zones set active=false",
+      "update checkout_settings set cash_enabled=true,transfer_instructions='',instapay_number='';update delivery_zones set active=false",
     );
     await assert.rejects(create(db, input(zone)), /INVALID_DELIVERY/);
     await db.exec("update delivery_zones set active=true");

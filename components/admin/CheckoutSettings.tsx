@@ -1,8 +1,10 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Plus, X } from "lucide-react";
 import { storeClient } from "@/lib/store/client";
 import { useLocale } from "@/components/providers/LocaleProvider";
 import { ClayButton } from "@/components/ui/ClayButton";
+import { instaPayConfigured, instaPaySettings } from "@/lib/store/instapay";
 type Zone = {
   id: string;
   name_en: string;
@@ -13,25 +15,48 @@ type Zone = {
 const field = "store-field mt-1";
 const panel =
   "rounded-clay-lg border border-line bg-surface p-5 shadow-clay-sm sm:p-6";
-export function CheckoutSettings() {
+export function CheckoutSettings({
+  refreshKey = 0,
+}: { refreshKey?: number } = {}) {
   const { locale } = useLocale();
   const ar = locale === "ar";
+  const arRef = useRef(ar);
+  arRef.current = ar;
   const [zones, setZones] = useState<Zone[]>([]),
     [settings, setSettings] = useState({
       cash_enabled: true,
       transfer_enabled: false,
       transfer_instructions: "",
+      instapay_link: "",
+      instapay_number: "",
     });
   const [savedMethods, setSavedMethods] = useState({
     cash_enabled: true,
     transfer_enabled: false,
+    instapay_link: "",
+    instapay_number: "",
   });
   const [loading, setLoading] = useState(true),
     [ready, setReady] = useState(false),
     [busy, setBusy] = useState(false),
     [message, setMessage] = useState(""),
     [error, setError] = useState("");
-  const load = useCallback(async () => {
+  const [showZoneForm, setShowZoneForm] = useState(false);
+  const [zoneDraft, setZoneDraft] = useState({ en: "", ar: "", fee: "" });
+  const [zoneError, setZoneError] = useState("");
+  const [zoneMessage, setZoneMessage] = useState("");
+  const addZoneButton = useRef<HTMLButtonElement>(null);
+  const zoneNameInput = useRef<HTMLInputElement>(null);
+  const addingZone = useRef(false);
+  useEffect(() => {
+    if (showZoneForm) zoneNameInput.current?.focus();
+  }, [showZoneForm]);
+  function closeZoneForm() {
+    setShowZoneForm(false);
+    setZoneError("");
+    requestAnimationFrame(() => addZoneButton.current?.focus());
+  }
+  const load = useCallback(async (preservePaymentDraft = false) => {
     setLoading(true);
     try {
       const db = storeClient();
@@ -41,17 +66,20 @@ export function CheckoutSettings() {
       ]);
       if (z.error || s.error) throw Error();
       setZones(z.data);
-      setSettings({
-        cash_enabled: s.data.cash_enabled,
-        transfer_enabled: s.data.transfer_enabled,
-        transfer_instructions: s.data.transfer_instructions ?? "",
-      });
+      if (!preservePaymentDraft)
+        setSettings({
+          cash_enabled: s.data.cash_enabled,
+          transfer_enabled: s.data.transfer_enabled,
+          transfer_instructions: s.data.transfer_instructions ?? "",
+          instapay_link: s.data.instapay_link ?? "",
+          instapay_number: s.data.instapay_number ?? "",
+        });
       setSavedMethods(s.data);
       setReady(true);
       return true;
     } catch {
       setError(
-        ar
+        arRef.current
           ? "تعذر تحميل الإعدادات. حاول مرة أخرى."
           : "Unable to load settings. Please try again.",
       );
@@ -59,18 +87,21 @@ export function CheckoutSettings() {
     } finally {
       setLoading(false);
     }
-  }, [ar]);
+  }, []);
   useEffect(() => {
     void load();
-  }, [load]);
-  async function save(fn: () => PromiseLike<{ error: unknown }>) {
+  }, [load, refreshKey]);
+  async function save(
+    fn: () => PromiseLike<{ error: unknown }>,
+    paymentSettings = false,
+  ) {
     setBusy(true);
     setError("");
     setMessage("");
     try {
       const r = await fn();
       if (r.error) throw r.error;
-      const refreshed = await load();
+      const refreshed = await load(!paymentSettings);
       setMessage(
         refreshed
           ? ar
@@ -120,13 +151,14 @@ export function CheckoutSettings() {
   }
   const paused =
     !zones.some((z) => z.active) ||
-    (!savedMethods.cash_enabled && !savedMethods.transfer_enabled);
+    (!savedMethods.cash_enabled &&
+      !(savedMethods.transfer_enabled && instaPayConfigured(savedMethods)));
   return (
     <section className="space-y-5" aria-busy={loading || busy}>
       <div className={panel}>
-        <h1 className="text-xl">
+        <h2 className="text-xl">
           {ar ? "التوصيل والدفع" : "Delivery & payment"}
-        </h1>
+        </h2>
         <p className="mt-2 text-sm text-ink-muted">
           {ar
             ? "اختر مناطق التوصيل والرسوم وطرق الدفع التي تظهر عند إتمام الطلب."
@@ -177,14 +209,41 @@ export function CheckoutSettings() {
       {ready && (
         <>
           <section className={panel}>
-            <h2 className="text-lg">
-              {ar ? "مناطق التوصيل" : "Delivery zones"}
-            </h2>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h2 className="text-lg">
+                {ar ? "مناطق التوصيل" : "Delivery zones"}
+              </h2>
+              <ClayButton
+                ref={addZoneButton}
+                type="button"
+                variant="outline"
+                disabled={busy || loading}
+                aria-expanded={showZoneForm}
+                aria-controls="add-delivery-zone-form"
+                onClick={() => {
+                  setZoneMessage("");
+                  setZoneError("");
+                  setShowZoneForm(true);
+                  requestAnimationFrame(() => zoneNameInput.current?.focus());
+                }}
+              >
+                <Plus className="h-4 w-4" aria-hidden="true" />
+                {ar ? "إضافة منطقة" : "Add zone"}
+              </ClayButton>
+            </div>
             <p className="mt-2 text-sm text-ink-muted">
               {ar
                 ? "المناطق المفعّلة فقط تظهر للعملاء. أوقف أي منطقة مؤقتًا دون حذفها."
                 : "Only active zones appear to customers. Pause a zone at any time without deleting it."}
             </p>
+            {zoneMessage && (
+              <p
+                role="status"
+                className="mt-3 rounded-xl bg-leaf-soft p-3 text-sm font-semibold text-brand"
+              >
+                {zoneMessage}
+              </p>
+            )}
             <div className="mt-4 divide-y divide-line">
               {zones.map((z) => (
                 <form
@@ -262,76 +321,170 @@ export function CheckoutSettings() {
             {!zones.length && (
               <p className="my-4 text-sm">
                 {ar
-                  ? "لا توجد مناطق توصيل. أضف أول منطقة أدناه."
-                  : "No delivery zones yet. Add your first zone below."}
+                  ? "لا توجد مناطق توصيل. اختر إضافة منطقة للبدء."
+                  : "No delivery zones yet. Choose Add zone to get started."}
               </p>
             )}
-            <details
-              open={!zones.length}
-              className="mt-4 rounded-2xl border border-line bg-canvas-sunk p-4"
-            >
-              <summary className="min-h-11 cursor-pointer font-semibold">
-                {ar ? "إضافة منطقة توصيل" : "Add a delivery zone"}
-              </summary>
-              <form
-                className="mt-3"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  const form = e.currentTarget;
-                  const v = { ...zoneValues(form), active: true };
-                  if (validZone(v))
+            {showZoneForm && (
+              <section
+                id="add-delivery-zone-form"
+                aria-labelledby="add-delivery-zone-title"
+                className="mt-4 rounded-2xl border border-line bg-canvas-sunk p-4"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h3 id="add-delivery-zone-title" className="text-lg">
+                      {ar ? "منطقة توصيل جديدة" : "New delivery zone"}
+                    </h3>
+                    <p className="mt-2 text-sm text-ink-muted">
+                      {ar
+                        ? "أدخل اسم المنطقة باللغتين ورسوم التوصيل. ستكون متاحة للعملاء عند الحفظ."
+                        : "Enter the area in both languages and its delivery fee. It will be available to customers when saved."}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={busy || loading}
+                    aria-label={ar ? "إغلاق نموذج المنطقة" : "Close zone form"}
+                    onClick={closeZoneForm}
+                    className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-line bg-surface text-brand focus-visible:ring-2 focus-visible:ring-brand disabled:opacity-50"
+                  >
+                    <X className="h-5 w-5" aria-hidden="true" />
+                  </button>
+                </div>
+                <form
+                  className="mt-3"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    if (addingZone.current || busy || loading) return;
+                    setZoneError("");
+                    const v = {
+                      name_en: zoneDraft.en.trim(),
+                      name_ar: zoneDraft.ar.trim(),
+                      fee: Number(zoneDraft.fee),
+                      active: true,
+                    };
+                    if (!zoneDraft.fee.trim() || !validZone(v)) {
+                      setZoneError(
+                        ar
+                          ? "أدخل اسم المنطقة باللغتين ورسومًا من 0 إلى 10000 جنيه."
+                          : "Enter both zone names and a delivery fee between 0 and 10,000 EGP.",
+                      );
+                      return;
+                    }
+                    addingZone.current = true;
                     void save(() =>
                       storeClient().from("delivery_zones").insert(v),
-                    ).then((ok) => {
-                      if (ok) form.reset();
-                    });
-                }}
-              >
-                <fieldset
-                  disabled={busy || loading}
-                  className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"
+                    )
+                      .then((ok) => {
+                        if (ok) {
+                          setZoneDraft({ en: "", ar: "", fee: "" });
+                          setZoneMessage(
+                            ar
+                              ? "تمت إضافة منطقة التوصيل وتفعيلها."
+                              : "Delivery zone added and activated.",
+                          );
+                          closeZoneForm();
+                        } else
+                          setZoneError(
+                            ar
+                              ? "تعذر إضافة المنطقة. احتفظنا بالبيانات؛ حاول مجددًا."
+                              : "Could not add the zone. Your entries have been kept; please try again.",
+                          );
+                      })
+                      .finally(() => {
+                        addingZone.current = false;
+                      });
+                  }}
                 >
-                  <label className="text-sm">
-                    English
-                    <input
-                      className={field}
-                      name="en"
-                      required
-                      maxLength={100}
-                    />
-                  </label>
-                  <label className="text-sm">
-                    العربية
-                    <input
-                      className={field}
-                      dir="rtl"
-                      name="ar"
-                      required
-                      maxLength={100}
-                    />
-                  </label>
-                  <label className="text-sm">
-                    {ar ? "الرسوم EGP" : "Delivery fee EGP"}
-                    <input
-                      className={field}
-                      type="number"
-                      inputMode="decimal"
-                      min={0}
-                      max={10000}
-                      step="0.01"
-                      name="fee"
-                      required
-                    />
-                  </label>
-                  <ClayButton
-                    className="sm:col-span-2 lg:col-span-3"
-                    type="submit"
+                  <fieldset
+                    disabled={busy || loading}
+                    className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"
                   >
-                    {ar ? "إضافة وتفعيل المنطقة" : "Add active zone"}
-                  </ClayButton>
-                </fieldset>
-              </form>
-            </details>
+                    <label className="text-sm">
+                      English
+                      <input
+                        ref={zoneNameInput}
+                        className={field}
+                        name="en"
+                        value={zoneDraft.en}
+                        onChange={(event) =>
+                          setZoneDraft((current) => ({
+                            ...current,
+                            en: event.target.value,
+                          }))
+                        }
+                        required
+                        maxLength={100}
+                      />
+                    </label>
+                    <label className="text-sm">
+                      العربية
+                      <input
+                        className={field}
+                        dir="rtl"
+                        name="ar"
+                        value={zoneDraft.ar}
+                        onChange={(event) =>
+                          setZoneDraft((current) => ({
+                            ...current,
+                            ar: event.target.value,
+                          }))
+                        }
+                        required
+                        maxLength={100}
+                      />
+                    </label>
+                    <label className="text-sm">
+                      {ar ? "الرسوم EGP" : "Delivery fee EGP"}
+                      <input
+                        className={field}
+                        type="number"
+                        inputMode="decimal"
+                        min={0}
+                        max={10000}
+                        step="0.01"
+                        name="fee"
+                        value={zoneDraft.fee}
+                        onChange={(event) =>
+                          setZoneDraft((current) => ({
+                            ...current,
+                            fee: event.target.value,
+                          }))
+                        }
+                        required
+                      />
+                    </label>
+                    {zoneError && (
+                      <p
+                        role="alert"
+                        className="rounded-xl bg-destructive/10 p-3 text-sm text-destructive sm:col-span-2 lg:col-span-3"
+                      >
+                        {zoneError}
+                      </p>
+                    )}
+                    <div className="flex flex-wrap gap-3 sm:col-span-2 lg:col-span-3">
+                      <ClayButton type="submit">
+                        {busy
+                          ? ar
+                            ? "جارٍ الحفظ…"
+                            : "Saving…"
+                          : ar
+                            ? "حفظ المنطقة"
+                            : "Save new zone"}
+                      </ClayButton>
+                      <ClayButton
+                        type="button"
+                        variant="outline"
+                        onClick={closeZoneForm}
+                      >
+                        {ar ? "إلغاء" : "Cancel"}
+                      </ClayButton>
+                    </div>
+                  </fieldset>
+                </form>
+              </section>
+            )}
           </section>
           <section className={panel}>
             <h2 className="text-lg">{ar ? "طرق الدفع" : "Payment methods"}</h2>
@@ -339,26 +492,45 @@ export function CheckoutSettings() {
               className="mt-4"
               onSubmit={(e) => {
                 e.preventDefault();
-                if (
-                  settings.transfer_enabled &&
-                  !settings.transfer_instructions.trim()
-                ) {
+                let recipient;
+                try {
+                  recipient = instaPaySettings(settings);
+                } catch (error) {
                   setError(
-                    ar
-                      ? "أضف تعليمات التحويل أولاً."
-                      : "Add transfer instructions first.",
+                    error instanceof Error &&
+                      error.message === "INVALID_INSTAPAY_LINK"
+                      ? ar
+                        ? "استخدم رابط إنستا باي آمنًا يبدأ بـ https://ipn.eg/."
+                        : "Use an InstaPay payment link beginning with https://ipn.eg/."
+                      : ar
+                        ? "أدخل رقم هاتف مصري أو عنوانًا صالحًا مثل name@instapay."
+                        : "Enter an Egyptian mobile number or an address such as name@instapay.",
                   );
                   return;
                 }
-                void save(() =>
-                  storeClient()
-                    .from("checkout_settings")
-                    .update({
-                      ...settings,
-                      transfer_instructions:
-                        settings.transfer_instructions.trim(),
-                    })
-                    .eq("id", true),
+                if (
+                  settings.transfer_enabled &&
+                  !instaPayConfigured(recipient)
+                ) {
+                  setError(
+                    ar
+                      ? "أضف رابط الدفع أو رقم/عنوان المستلم لتفعيل إنستا باي."
+                      : "Add an InstaPay payment link or recipient number/address before enabling it.",
+                  );
+                  return;
+                }
+                void save(
+                  () =>
+                    storeClient()
+                      .from("checkout_settings")
+                      .update({
+                        ...settings,
+                        ...recipient,
+                        transfer_instructions:
+                          settings.transfer_instructions.trim(),
+                      })
+                      .eq("id", true),
+                  true,
                 );
               }}
             >
@@ -389,17 +561,69 @@ export function CheckoutSettings() {
                       })
                     }
                   />
-                  {ar ? "تحويل يدوي" : "Manual transfer"}
+                  {ar ? "إنستا باي" : "InstaPay"}
                 </label>
+                {settings.transfer_enabled && !instaPayConfigured(settings) && (
+                  <p
+                    role="status"
+                    className="rounded-xl bg-orange/20 p-3 text-sm"
+                  >
+                    {ar
+                      ? "إنستا باي غير جاهز عند الدفع حتى تضيف رابطًا أو رقم/عنوان مستلم صالحًا. لا نستخدم رقم واتساب تلقائيًا كجهة دفع."
+                      : "InstaPay is unavailable at checkout until you add a valid payment link or recipient number/address. Your WhatsApp number is not used as a payment recipient automatically."}
+                  </p>
+                )}
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <label className="block text-sm">
+                    {ar ? "رابط دفع إنستا باي" : "InstaPay payment link"}
+                    <input
+                      className={field}
+                      type="url"
+                      dir="ltr"
+                      maxLength={2048}
+                      placeholder="https://ipn.eg/..."
+                      value={settings.instapay_link}
+                      onChange={(event) =>
+                        setSettings({
+                          ...settings,
+                          instapay_link: event.target.value,
+                        })
+                      }
+                    />
+                  </label>
+                  <label className="block text-sm">
+                    {ar
+                      ? "رقم أو عنوان مستلم إنستا باي"
+                      : "InstaPay recipient number or address"}
+                    <input
+                      className={field}
+                      type="text"
+                      dir="ltr"
+                      maxLength={110}
+                      placeholder="01012345678 or name@instapay"
+                      value={settings.instapay_number}
+                      onChange={(event) =>
+                        setSettings({
+                          ...settings,
+                          instapay_number: event.target.value,
+                        })
+                      }
+                    />
+                  </label>
+                </div>
+                <p className="text-xs leading-5 text-ink-muted">
+                  {ar
+                    ? "انسخ رابط الدفع من تطبيق إنستا باي أو أدخل رقم الاستلام/عنوان IPA الخاص بالمتجر. لا تُدخل كلمة مرور أو IPN PIN. تُحفظ بيانات المستلم مع الطلبات الجديدة."
+                    : "Copy the payment link from InstaPay or enter the shop’s receiving mobile/IPA. Never enter a password or IPN PIN. Recipient details are saved with new orders."}
+                </p>
                 <label className="block text-sm">
                   {ar
-                    ? "تعليمات التحويل للعملاء"
-                    : "Transfer instructions shown to customers"}
+                    ? "تعليمات إنستا باي للعملاء (اختياري)"
+                    : "InstaPay instructions shown to customers (optional)"}
                   <textarea
                     className={field}
                     rows={4}
                     maxLength={3000}
-                    required={settings.transfer_enabled}
                     value={settings.transfer_instructions}
                     onChange={(e) =>
                       setSettings({

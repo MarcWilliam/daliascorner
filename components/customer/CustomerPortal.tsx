@@ -20,6 +20,7 @@ import { CustomerProfile } from "./CustomerProfile";
 import { customerCopy } from "@/lib/store/customer-copy";
 import { MiniNav } from "@/components/sections/MiniNav";
 import { ClayButton } from "@/components/ui/ClayButton";
+import { InstaPayDetails } from "@/components/ui/InstaPayDetails";
 import { CartDrawer } from "@/components/sections/CartDrawer";
 type Order = {
   created_at?: string;
@@ -33,6 +34,8 @@ type Order = {
   delivery_zone: string;
   payment_method: string;
   transfer_instructions?: string;
+  instapay_link?: string | null;
+  instapay_number?: string | null;
   items?: Item[];
   order_items?: Item[];
 };
@@ -142,7 +145,7 @@ export function CustomerPortal() {
             const { data, error } = await db
               .from("orders")
               .select(
-                "order_number,status,payment_status,subtotal,delivery_fee,delivery_zone,payment_method,transfer_instructions,created_at,ordered_at,is_historical,order_items(name_en,name_ar,quantity,unit_price)",
+                "order_number,status,payment_status,subtotal,delivery_fee,delivery_zone,payment_method,transfer_instructions,instapay_link,instapay_number,created_at,ordered_at,is_historical,order_items(name_en,name_ar,quantity,unit_price)",
               )
               .eq("customer_id", session!.user.id)
               .order("ordered_at", { ascending: false })
@@ -532,15 +535,13 @@ export function CustomerPortal() {
                       ? "الدفع عند الاستلام"
                       : "Cash on delivery"
                     : ar
-                      ? "تحويل يدوي — نراجع وصول المبلغ قبل تأكيد الدفع"
-                      : "Manual transfer — payment is verified by our team"}
+                      ? "إنستا باي — يؤكد المتجر استلام المبلغ"
+                      : "InstaPay — payment is confirmed by the shop"}
                 </p>
                 {o.payment_method === "transfer" &&
                   o.payment_status === "unpaid" &&
                   ["pending", "confirmed"].includes(o.status) && (
-                    <p className="whitespace-pre-wrap">
-                      {o.transfer_instructions}
-                    </p>
+                    <InstaPayDetails details={o} legacy />
                   )}
               </article>
             ))}

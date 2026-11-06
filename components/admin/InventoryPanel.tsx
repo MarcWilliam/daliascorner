@@ -1,6 +1,7 @@
 "use client";
-import { useEffect, useState } from "react";
-import { Package, Search } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { LayoutGrid, List, Search } from "lucide-react";
+import { InventoryItem } from "./InventoryItem";
 import { ClayButton } from "@/components/ui/ClayButton";
 import { useLocale } from "@/components/providers/LocaleProvider";
 import { storeClient } from "@/lib/store/client";
@@ -27,276 +28,6 @@ export type Movement = {
 const field = "store-field mt-1";
 const panel =
   "rounded-clay-lg border border-line bg-surface p-5 shadow-clay-sm sm:p-6";
-function StockCard({
-  stock: s,
-  cost,
-  costAvailable,
-  onSaved,
-}: {
-  stock: Stock;
-  cost?: number | null;
-  costAvailable: boolean;
-  onSaved: () => Promise<void>;
-}) {
-  const { locale } = useLocale();
-  const ar = locale === "ar";
-  const [busy, setBusy] = useState(false),
-    [message, setMessage] = useState(""),
-    [error, setError] = useState("");
-  const [operation, setOperation] = useState("add");
-  const product = PRODUCTS.find((p) => p.id === s.product_id);
-  const category = PRODUCT_CATEGORIES.find((c) => c.id === product?.category);
-  async function save(
-    name: string,
-    args: Record<string, unknown>,
-    reset?: () => void,
-  ) {
-    setBusy(true);
-    setError("");
-    setMessage("");
-    try {
-      const result = await storeClient().rpc(name, args);
-      if (result.error) throw result.error;
-      reset?.();
-      await onSaved();
-      setMessage(ar ? "تم الحفظ" : "Saved");
-    } catch (e) {
-      const code =
-        typeof e === "object" && e && "message" in e ? String(e.message) : "";
-      setError(
-        code.includes("STOCK_BELOW_RESERVED")
-          ? ar
-            ? "لا يمكن أن تكون الكمية أقل من المحجوز للطلبات. ألغِ الطلبات أولاً أو عدّل الكمية."
-            : "Stock cannot be lower than the quantity reserved for orders. Cancel those orders first or use a higher count."
-          : ar
-            ? "تعذر الحفظ. حاول مرة أخرى."
-            : "Unable to save. Please try again.",
-      );
-    } finally {
-      setBusy(false);
-    }
-  }
-  const available = s.on_hand - s.reserved;
-  return (
-    <article className={panel} aria-busy={busy}>
-      <div className="flex items-start gap-4">
-        {product ? (
-          <img
-            src={product.thumb}
-            alt=""
-            className="h-20 w-20 shrink-0 rounded-2xl border border-line object-cover"
-          />
-        ) : (
-          <Package
-            aria-hidden="true"
-            className="h-16 w-16 shrink-0 text-brand"
-          />
-        )}
-        <div className="min-w-0 flex-1">
-          <p className="text-xs font-semibold text-ink-muted">
-            {category?.name[locale] ?? (ar ? "منتج" : "Product")}
-          </p>
-          <h2 className="mt-1 text-lg">{ar ? s.name_ar : s.name_en}</h2>
-          <p className="mt-1 text-sm text-ink-muted">{s.price} EGP</p>
-        </div>
-        <span
-          className={`shrink-0 rounded-full px-2 py-1 text-xs font-semibold ${!s.active || (!s.unlimited_stock && available <= s.low_stock_threshold) ? "bg-orange/20" : "bg-leaf-soft"}`}
-        >
-          {!s.active
-            ? ar
-              ? "متوقف"
-              : "Paused"
-            : s.unlimited_stock
-              ? ar
-                ? "غير محدود"
-                : "Unlimited"
-              : available === 0
-                ? ar
-                  ? "نفد"
-                  : "Sold out"
-                : available <= s.low_stock_threshold
-                  ? ar
-                    ? "مخزون منخفض"
-                    : "Low stock"
-                  : ar
-                    ? "متاح"
-                    : "In stock"}
-        </span>
-      </div>
-      <dl className="my-5 grid grid-cols-3 gap-2 rounded-2xl bg-canvas-sunk p-3">
-        {[
-          [ar ? "في المخزن" : "On hand", s.on_hand],
-          [ar ? "محجوز" : "Reserved", s.reserved],
-          [ar ? "متاح" : "Available", s.unlimited_stock ? "∞" : available],
-        ].map(([label, value]) => (
-          <div key={label}>
-            <dt className="text-xs text-ink-muted">{label}</dt>
-            <dd className="mt-1 text-xl font-bold">{value}</dd>
-          </div>
-        ))}
-      </dl>
-      <fieldset disabled={busy} className="space-y-3">
-        <label className="flex min-h-12 items-center gap-3 text-sm font-semibold">
-          <input
-            type="checkbox"
-            className="h-5 w-5 accent-brand"
-            checked={s.unlimited_stock}
-            onChange={(e) =>
-              void save("set_inventory_mode", {
-                p_product: s.product_id,
-                p_unlimited: e.target.checked,
-              })
-            }
-          />
-          {ar ? "مخزون غير محدود" : "Unlimited stock"}
-        </label>
-        {s.unlimited_stock ? (
-          <p className="text-sm text-ink-muted">
-            {ar
-              ? "الطلبات الجديدة لا تخصم من المخزون. عند إيقاف هذا الخيار، راجع كمية المخزون المحفوظة أعلاه."
-              : "New orders do not reduce stock. When switching back, check the saved on-hand count above."}
-          </p>
-        ) : (
-          <form
-            className="grid grid-cols-2 gap-3"
-            onSubmit={(e) => {
-              e.preventDefault();
-              const form = e.currentTarget;
-              const f = new FormData(form);
-              void save(
-                "restock_inventory",
-                {
-                  p_product: s.product_id,
-                  p_quantity: Number(f.get("quantity")),
-                  p_operation: operation,
-                },
-                () => form.reset(),
-              );
-            }}
-          >
-            <label className="text-sm">
-              {ar ? "الإجراء" : "Stock action"}
-              <select
-                className={field}
-                value={operation}
-                onChange={(e) => setOperation(e.target.value)}
-              >
-                <option value="add">{ar ? "إضافة مخزون" : "Add stock"}</option>
-                <option value="remove">
-                  {ar ? "إزالة مخزون" : "Remove stock"}
-                </option>
-                <option value="set">
-                  {ar ? "تصحيح العدد" : "Set on-hand count"}
-                </option>
-              </select>
-            </label>
-            <label className="text-sm">
-              {operation === "set"
-                ? ar
-                  ? "العدد الفعلي"
-                  : "Actual count"
-                : ar
-                  ? "الكمية"
-                  : "Quantity"}
-              <input
-                className={field}
-                name="quantity"
-                type="number"
-                inputMode="numeric"
-                min={operation === "set" ? 0 : 1}
-                max={10000}
-                step={1}
-                required
-              />
-            </label>
-            {operation === "set" && (
-              <p className="col-span-2 text-xs text-ink-muted">
-                {ar
-                  ? "أدخل إجمالي القطع الموجودة، بما فيها المحجوز للطلبات."
-                  : "Enter all pieces physically on hand, including pieces reserved for orders."}
-              </p>
-            )}
-            <ClayButton type="submit" className="col-span-2" variant="outline">
-              {busy
-                ? ar
-                  ? "جارٍ الحفظ…"
-                  : "Saving…"
-                : ar
-                  ? "حفظ المخزون"
-                  : "Save stock"}
-            </ClayButton>
-          </form>
-        )}
-        <label className="flex min-h-12 items-center gap-3 text-sm">
-          <input
-            type="checkbox"
-            className="h-5 w-5 accent-brand"
-            checked={s.active}
-            onChange={(e) =>
-              void save("set_inventory_active", {
-                p_product: s.product_id,
-                p_active: e.target.checked,
-              })
-            }
-          />
-          {ar ? "متاح للشراء على الموقع" : "Available for website orders"}
-        </label>
-        {costAvailable && (
-          <section className="border-t border-line pt-3">
-            <h3 className="text-sm font-semibold">
-              {ar ? "تكلفة القطعة للربح" : "Unit cost for profit tracking"}
-            </h3>
-            <form
-              className="mt-2 flex items-end gap-2"
-              onSubmit={(e) => {
-                e.preventDefault();
-                const f = new FormData(e.currentTarget);
-                const value = String(f.get("cost") ?? "");
-                void save("set_product_unit_cost", {
-                  p_product: s.product_id,
-                  p_cost: value.trim() === "" ? null : Number(value),
-                });
-              }}
-            >
-              <label className="min-w-0 flex-1 text-sm">
-                {ar
-                  ? "تكلفة القطعة EGP (اختياري)"
-                  : "Cost per piece EGP (optional)"}
-                <input
-                  key={cost ?? "unknown"}
-                  className={field}
-                  name="cost"
-                  type="number"
-                  min={0}
-                  step="0.01"
-                  defaultValue={cost ?? ""}
-                />
-              </label>
-              <ClayButton type="submit" variant="outline">
-                {ar ? "حفظ" : "Save"}
-              </ClayButton>
-            </form>
-            <p className="mt-2 text-xs text-ink-muted">
-              {ar
-                ? "للطلبيات الجديدة فقط. اتركها فارغة إذا كانت غير معروفة."
-                : "Applies to new orders. Leave blank when unknown."}
-            </p>
-          </section>
-        )}
-      </fieldset>
-      {message && (
-        <p role="status" className="mt-3 text-sm text-brand">
-          {message}
-        </p>
-      )}
-      {error && (
-        <p role="alert" className="mt-3 text-sm font-semibold">
-          {error}
-        </p>
-      )}
-    </article>
-  );
-}
 export function InventoryPanel({
   stock,
   movements,
@@ -310,6 +41,41 @@ export function InventoryPanel({
 }) {
   const { locale } = useLocale();
   const ar = locale === "ar";
+  const [view, setView] = useState<"table" | "cards">("cards");
+  const [viewReady, setViewReady] = useState(false);
+  const [pendingProducts, setPendingProducts] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const onBusyChange = useCallback((id: string, busy: boolean) => {
+    setPendingProducts((previous) => {
+      if (previous.has(id) === busy) return previous;
+      const next = new Set(previous);
+      if (busy) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }, []);
+  useEffect(() => {
+    let saved: string | null = null;
+    try {
+      saved = localStorage.getItem("dc.admin.stock-view");
+    } catch {}
+    setView(
+      saved === "table" || saved === "cards"
+        ? saved
+        : window.matchMedia("(min-width: 768px)").matches
+          ? "table"
+          : "cards",
+    );
+    setViewReady(true);
+  }, []);
+  useEffect(() => {
+    if (viewReady) {
+      try {
+        localStorage.setItem("dc.admin.stock-view", view);
+      } catch {}
+    }
+  }, [view, viewReady]);
   const [search, setSearch] = useState(""),
     [category, setCategory] = useState("all"),
     [filter, setFilter] = useState("all");
@@ -392,9 +158,39 @@ export function InventoryPanel({
       aria-busy={loading}
     >
       <div className={panel}>
-        <h1 className="text-xl">
-          {ar ? "المنتجات والمخزون" : "Products & stock"}
-        </h1>
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <h2 className="text-xl">
+            {ar ? "المنتجات والمخزون" : "Products & stock"}
+          </h2>
+          <div
+            className="inline-flex rounded-xl border border-line bg-canvas-sunk p-1"
+            role="group"
+            aria-label={ar ? "طريقة عرض المخزون" : "Stock view"}
+          >
+            {(
+              [
+                { value: "table", label: ar ? "جدول" : "Table", Icon: List },
+                {
+                  value: "cards",
+                  label: ar ? "بطاقات" : "Cards",
+                  Icon: LayoutGrid,
+                },
+              ] as const
+            ).map(({ value, label, Icon }) => (
+              <button
+                key={value}
+                type="button"
+                aria-pressed={view === value}
+                disabled={pendingProducts.size > 0}
+                onClick={() => setView(value)}
+                className={`inline-flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm font-semibold disabled:opacity-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/45 ${view === value ? "bg-surface text-brand shadow-clay-sm" : "text-ink-muted hover:text-brand"}`}
+              >
+                <Icon aria-hidden="true" className="h-4 w-4" />
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
         <p className="mt-2 text-sm text-ink-muted">
           {ar
             ? "أضف القطع الجديدة، صحّح العدد الفعلي، أو اختر مخزوناً غير محدود لكل منتج."
@@ -484,16 +280,88 @@ export function InventoryPanel({
               : "No inventory products are available yet."}
         </p>
       )}
-      <div className="grid items-start gap-4 lg:grid-cols-2">
-        {shown.map((s) => (
-          <StockCard
-            key={s.product_id}
-            stock={s}
-            cost={costs[s.product_id]}
-            costAvailable={costAvailable}
-            onSaved={saved}
-          />
-        ))}
+      {view === "table" && (
+        <p className="text-xs text-ink-muted">
+          {ar
+            ? "التكلفة للقطعة بالجنيه وللطلبات الجديدة فقط؛ اتركها فارغة إن لم تكن معروفة."
+            : "Unit costs are EGP per piece and apply to new orders only; leave blank when unknown."}
+          <span className="ms-2">
+            {ar
+              ? "مرّر الجدول أفقيًا لرؤية كل الأعمدة."
+              : "Scroll sideways to see all columns."}
+          </span>
+        </p>
+      )}
+      <div
+        className={
+          view === "table"
+            ? "overflow-x-auto rounded-2xl border border-line bg-surface shadow-clay-sm"
+            : ""
+        }
+        role={view === "table" ? "region" : undefined}
+        aria-label={
+          view === "table"
+            ? ar
+              ? "جدول المنتجات والمخزون"
+              : "Products and stock table"
+            : undefined
+        }
+        tabIndex={view === "table" ? 0 : undefined}
+      >
+        <table
+          role={view === "cards" ? "presentation" : undefined}
+          className={
+            view === "table"
+              ? "w-full min-w-[66rem] border-collapse text-sm"
+              : "block w-full"
+          }
+        >
+          <caption className="sr-only">
+            {ar
+              ? "المنتجات والمخزون والتكلفة"
+              : "Products, stock and unit costs"}
+          </caption>
+          <thead
+            hidden={view === "cards"}
+            className="border-b border-line bg-canvas-sunk text-start text-xs text-ink-muted"
+          >
+            <tr>
+              {[
+                ar ? "المنتج" : "Product",
+                ar ? "الكميات" : "Quantities",
+                ar ? "تحديث المخزون" : "Update stock",
+                ar ? "تكلفة القطعة EGP" : "Unit cost EGP",
+                ar ? "الإتاحة" : "Availability",
+              ].map((label) => (
+                <th
+                  key={label}
+                  scope="col"
+                  className="px-3 py-3 text-start font-semibold"
+                >
+                  {label}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody
+            role={view === "cards" ? "presentation" : undefined}
+            className={
+              view === "cards" ? "grid items-start gap-4 lg:grid-cols-2" : ""
+            }
+          >
+            {shown.map((s) => (
+              <InventoryItem
+                key={s.product_id}
+                stock={s}
+                cost={costs[s.product_id]}
+                costAvailable={costAvailable}
+                onSaved={saved}
+                view={view}
+                onBusyChange={onBusyChange}
+              />
+            ))}
+          </tbody>
+        </table>
       </div>
       <section className={panel}>
         <h2 className="text-xl">

@@ -32,7 +32,7 @@ export type FinanceOverview = {
 };
 export const financeCopy = {
   en: {
-    title: "Finances",
+    title: "Financial report",
     intro:
       "See recorded money in, money out, and an estimate of profit on paid orders.",
     from: "From",
@@ -128,7 +128,7 @@ export const financeCopy = {
       "This cost has already been saved. Refresh to see the latest information.",
   },
   ar: {
-    title: "الماليات",
+    title: "التقرير المالي",
     intro: "تابع المقبوضات والمصروفات وتقدير ربح الطلبات المدفوعة.",
     from: "من",
     to: "إلى",

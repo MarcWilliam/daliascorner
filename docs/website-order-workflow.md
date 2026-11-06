@@ -11,7 +11,7 @@ Customer registration/profile steps and the verified guest/customer/admin bounda
 ## Customer journey
 
 1. Add products to the cart. Sign in via an enabled Google/Facebook provider before checkout, or continue as a guest.
-2. Enter delivery details, select an active admin-configured zone, choose cash on delivery or manual transfer, and pass Turnstile.
+2. Enter delivery details, select an active admin-configured zone, choose cash on delivery or configured InstaPay, and pass Turnstile.
 3. Place the order on the website. Backend prices and delivery fees determine totals. Transfer instructions and delivery fees are snapshotted with the order. No social message is required.
 4. Open the private order page. The guest token uses the URL fragment (not query parameters) and is removed from the address bar after capture. Private pages never load Meta Pixel.
 5. A guest can use social sign-in afterward to attach the order to the account. Attachment requires possession of the original private token, not merely knowing an order number or email. Once attached, anonymous token access stops.
@@ -19,7 +19,9 @@ Customer registration/profile steps and the verified guest/customer/admin bounda
 
 ## Admin setup
 
-Under Settings, configure Delivery & payment. Add bilingual delivery zones and fees; enable manual transfer only with complete public transfer instructions. No delivery zones or bank details are invented. Enter actual stock under Stock, or explicitly enable unlimited stock per product.
+Under Settings, configure Delivery & payment. **Add zone** opens the bilingual name/fee form. For InstaPay, enter the official payment link copied from the InstaPay app (`https://ipn.eg/...`) and/or receiving Egyptian mobile number or `name@instapay` address, review the recipient, enable InstaPay and save. Optional instructions are shown with these details. Until a recipient is configured, new InstaPay orders are unavailable; cash on delivery can remain enabled. The owner will enter the recipient after deployment. No delivery zones or payment details are invented. Enter actual stock under Stock, or explicitly enable unlimited stock per product.
+
+New website/chat InstaPay orders retain a snapshot of their recipient and instructions. The private unpaid order page lets the customer copy the recipient or open the saved payment link. Later Settings changes affect only new orders. Existing/historical orders are not backfilled with today's recipient. Opening InstaPay does not confirm payment: an admin verifies receipt before marking the order paid.
 
 Order cards show payment method, delivery zone, delivery fee and total. Only admins can mark payments paid/refunded. Unpaid pending orders expire after 24 hours, so confirm accepted orders promptly. Paid pending orders retain their reservations until an admin acts. Transfer instructions stop displaying after cancellation or expiry.
 
@@ -46,7 +48,7 @@ They default to hidden until configured. Admin email/password login remains avai
 
 ## Meta conversions
 
-Existing browser PageView/ViewContent/AddToCart/InitiateCheckout events remain consent-gated. Website order submission queues a server Lead; an admin marking a non-cancelled order paid queues Purchase. Neither a checkout click nor selecting manual transfer means paid. Stable per-order event IDs and unique queue keys prevent duplicate conversions on retries. Delivery fees are included in conversion value.
+Existing browser PageView/ViewContent/AddToCart/InitiateCheckout events remain consent-gated. Website order submission queues a server Lead; an admin marking a non-cancelled order paid queues Purchase. Neither a checkout click nor selecting InstaPay means paid. Stable per-order event IDs and unique queue keys prevent duplicate conversions on retries. Delivery fees are included in conversion value.
 
 Save `META_ACCESS_TOKEN`, `META_PIXEL_ID` and `META_GRAPH_VERSION` in Supabase Edge Function Secrets. Use the existing Pixel `1574733761109578` after verifying ownership in Events Manager. The verified dataset and Graph v27.0 are the defaults in `_shared/meta-config.ts`; environment variables can override them. The version was checked against Meta’s official Dataset Quality reference. Add `META_TEST_EVENT_CODE` for Events Manager tests, then remove it before genuine reporting.
 

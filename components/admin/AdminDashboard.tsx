@@ -1,6 +1,9 @@
 "use client";
 import { MetaHealth } from "./MetaHealth";
 import { FinancePanel } from "./FinancePanel";
+import { ExpensesPanel } from "./ExpensesPanel";
+import { AdminWorkspace, type AdminSection } from "./AdminWorkspace";
+import { AdminRefreshButton } from "./AdminRefreshButton";
 import { CheckoutSettings } from "./CheckoutSettings";
 import { InventoryPanel, type Stock, type Movement } from "./InventoryPanel";
 import { ManualOrderForm } from "./ManualOrderForm";
@@ -9,16 +12,7 @@ import { PRODUCTS } from "@/lib/products";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useCustomerAuth } from "@/components/providers/CustomerAuthProvider";
 import { accountRequestScope } from "@/lib/store/customer-account";
-import {
-  Package,
-  ShoppingBag,
-  Bell,
-  ArrowLeft,
-  Settings,
-  WalletCards,
-  ChartNoAxesCombined,
-  Plus,
-} from "lucide-react";
+import { ArrowLeft, Plus } from "lucide-react";
 import { ClayButton } from "@/components/ui/ClayButton";
 import { LanguageToggle } from "@/components/ui/LanguageToggle";
 import { useLocale } from "@/components/providers/LocaleProvider";
@@ -90,9 +84,17 @@ export function AdminDashboard() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [recovery, setRecovery] = useState(false);
-  const [tab, setTab] = useState<
-    "orders" | "stock" | "settings" | "notifications" | "meta" | "finance"
-  >("orders");
+  const [tab, setTab] = useState<AdminSection>("orders");
+  const [refreshKeys, setRefreshKeys] = useState<Record<AdminSection, number>>({
+    orders: 0,
+    stock: 0,
+    expenses: 0,
+    finance: 0,
+    settings: 0,
+    notifications: 0,
+    meta: 0,
+  });
+  const [expensesVisited, setExpensesVisited] = useState(false);
   const [filter, setFilter] = useState("all");
   const [source, setSource] = useState("all");
   const [showManualOrder, setShowManualOrder] = useState(false);
@@ -131,6 +133,7 @@ export function AdminDashboard() {
     setShowManualOrder(false);
     setPush(false);
     setBusy(false);
+    setExpensesVisited(false);
   }, [session?.user.id, admin]);
   const refresh = useCallback(async () => {
     if (!admin || !session) return;
@@ -272,7 +275,7 @@ export function AdminDashboard() {
   return (
     <main dir={dir} className="min-h-screen bg-canvas pb-16 text-ink">
       <header className="border-b border-line bg-surface">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-5 sm:px-6">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-4 py-5 sm:px-6">
           <a
             href={asset("/")}
             className="inline-flex min-h-12 items-center gap-2 rounded-clay font-semibold text-brand focus-visible:ring-4 focus-visible:ring-brand/45"
@@ -294,12 +297,14 @@ export function AdminDashboard() {
           </div>
         </div>
       </header>
-      <div className="mx-auto max-w-6xl space-y-6 px-4 pt-8 sm:px-6">
-        <div>
-          <p className="text-sm font-semibold text-brand">Dalia’s Corner</p>
-          <h1 className="mt-1 text-3xl sm:text-4xl">{c.admin}</h1>
-          <p className="mt-2 text-ink-muted">{c.subtitle}</p>
-        </div>
+      <div className="mx-auto max-w-7xl space-y-6 px-4 pt-8 sm:px-6">
+        {!admin && (
+          <div>
+            <p className="text-sm font-semibold text-brand">Dalia’s Corner</p>
+            <h1 className="mt-1 text-3xl sm:text-4xl">{c.admin}</h1>
+            <p className="mt-2 text-ink-muted">{c.subtitle}</p>
+          </div>
+        )}
         {error && (
           <p
             role="alert"
@@ -435,64 +440,38 @@ export function AdminDashboard() {
             </ClayButton>
           </section>
         ) : (
-          <>
-            <nav aria-label={c.admin} className="flex flex-wrap gap-2">
-              {(
-                [
-                  "orders",
-                  "stock",
-                  "finance",
-                  "settings",
-                  "notifications",
-                  "meta",
-                ] as const
-              ).map((key) => {
-                const Icon =
-                  key === "orders"
-                    ? ShoppingBag
-                    : key === "stock"
-                      ? Package
-                      : key === "finance"
-                        ? WalletCards
-                        : key === "settings"
-                          ? Settings
-                          : key === "meta"
-                            ? ChartNoAxesCombined
-                            : Bell;
-                return (
-                  <ClayButton
-                    key={key}
-                    variant={tab === key ? "primary" : "outline"}
-                    aria-pressed={tab === key}
-                    onClick={() => setTab(key)}
-                  >
-                    <Icon aria-hidden="true" className="h-5 w-5" />
-                    {key === "finance"
-                      ? locale === "ar"
-                        ? "المالية"
-                        : "Finance"
-                      : key === "settings"
-                        ? locale === "ar"
-                          ? "الإعدادات"
-                          : "Settings"
-                        : c[key]}
-                    {key === "notifications" &&
-                      notices.some((n) => !n.read_at) && (
-                        <span>
-                          ({notices.filter((n) => !n.read_at).length})
-                        </span>
-                      )}
-                  </ClayButton>
-                );
-              })}
-              <ClayButton
-                variant="outline"
-                disabled={loading || busy}
-                onClick={() => void refresh()}
-              >
-                {loading ? c.loading : c.refresh}
-              </ClayButton>
-            </nav>
+          <AdminWorkspace
+            section={tab}
+            onSectionChange={(section) => {
+              if (section === "expenses") {
+                setExpensesVisited(true);
+                if (tab !== section)
+                  setRefreshKeys((keys) => ({
+                    ...keys,
+                    expenses: keys.expenses + 1,
+                  }));
+              }
+              setTab(section);
+            }}
+            unreadCount={notices.filter((n) => !n.read_at).length}
+            refreshControl={
+              <AdminRefreshButton
+                loading={
+                  ["orders", "stock", "notifications"].includes(tab) && loading
+                }
+                disabled={busy}
+                onClick={() => {
+                  if (["orders", "stock", "notifications"].includes(tab))
+                    void refresh();
+                  else
+                    setRefreshKeys((keys) => ({
+                      ...keys,
+                      [tab]: keys[tab] + 1,
+                    }));
+                }}
+              />
+            }
+          >
             {showManualOrder && (
               <div hidden={tab !== "orders"}>
                 <ManualOrderForm
@@ -692,8 +671,8 @@ export function AdminDashboard() {
                           <p>
                             {o.payment_method === "transfer"
                               ? locale === "ar"
-                                ? "تحويل يدوي"
-                                : "Manual transfer"
+                                ? "إنستا باي"
+                                : "InstaPay"
                               : locale === "ar"
                                 ? "الدفع عند الاستلام"
                                 : "Cash on delivery"}
@@ -807,9 +786,20 @@ export function AdminDashboard() {
                 )}
               </section>
             )}
-            {tab === "meta" && <MetaHealth />}
-            {tab === "finance" && <FinancePanel />}
-            {tab === "settings" && <CheckoutSettings />}
+            {tab === "meta" && (
+              <MetaHealth refreshKey={refreshKeys.meta} hideRefresh />
+            )}
+            {tab === "finance" && (
+              <FinancePanel refreshKey={refreshKeys.finance} hideRefresh />
+            )}
+            {expensesVisited && (
+              <div hidden={tab !== "expenses"}>
+                <ExpensesPanel refreshKey={refreshKeys.expenses} hideRefresh />
+              </div>
+            )}
+            {tab === "settings" && (
+              <CheckoutSettings refreshKey={refreshKeys.settings} />
+            )}
             {tab === "stock" && (
               <InventoryPanel
                 stock={stock}
@@ -928,7 +918,7 @@ export function AdminDashboard() {
                 </ul>
               </section>
             )}
-          </>
+          </AdminWorkspace>
         )}
       </div>
     </main>

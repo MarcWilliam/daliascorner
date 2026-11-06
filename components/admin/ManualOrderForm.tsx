@@ -13,6 +13,7 @@ import {
   originalUnitCost,
   manualOrderPricePreview,
 } from "@/lib/store/manual-order-history";
+import { instaPayConfigured } from "@/lib/store/instapay";
 import { storeCopy } from "@/lib/store/copy";
 import { parseOrder } from "@/lib/store/validation";
 import {
@@ -114,7 +115,9 @@ export function ManualOrderForm({
           .order("name_en"),
         db
           .from("checkout_settings")
-          .select("cash_enabled,transfer_enabled,transfer_instructions")
+          .select(
+            "cash_enabled,transfer_enabled,transfer_instructions,instapay_link,instapay_number",
+          )
           .single(),
       ]);
       if (z.error || s.error || !s.data) throw Error();
@@ -129,8 +132,7 @@ export function ManualOrderForm({
       );
       const enabled = {
         cash: !!s.data.cash_enabled,
-        transfer:
-          !!s.data.transfer_enabled && !!s.data.transfer_instructions?.trim(),
+        transfer: !!s.data.transfer_enabled && instaPayConfigured(s.data),
       };
       setMethods(enabled);
       setPayment((value) =>

@@ -2,7 +2,9 @@
 
 Mark an order **Paid** only when the money is received. This records a payment for the full order total, including delivery. **Refunded** records a full refund of a previously paid order. Changing **Paid → Unpaid** is a correction of a mistaken paid flag; it reverses the receipt and recognized product costs. This panel does not support partial payments or partial refunds.
 
-Record actual business outgoings in **Finances → Record an expense**: amount, category, date paid; note is optional. Use **Stock purchases** for buying inventory, and the other categories for advertising, carrier charges, packaging and overhead. Entries can be voided to correct mistakes; they remain in the history. Exact retries reuse an idempotency key and cannot duplicate the same expense.
+Record actual business outgoings in **Expenses → Add expense**: amount, category, date paid; note is optional. Use **Stock purchases** for buying inventory, and the other categories for advertising, carrier charges, packaging and overhead. Entries can be voided to correct mistakes; they remain in the register. Exact retries reuse an idempotency key and cannot duplicate the same expense. The register supports date/category/status/note filters and pagination; displayed totals cover the entire filtered result, not just the current page. Switching to **Financial report** preserves an unsaved expense draft.
+
+**Financial report** contains period-based cash/profit summaries, missing order costs and the payment/refund history. Expense entry and management live on the separate Expenses page.
 
 Set a product’s optional **Unit cost** in **Products & stock** before new orders are placed. Each order item receives a private cost snapshot at order creation. Changing the current product cost affects future orders only. Costs missing at order time can be completed once under **Finances → Complete missing product costs**, using the original cost for that order. Unknown costs remain unknown; zero is allowed only when deliberately entered. Customer order APIs do not expose these costs.
 

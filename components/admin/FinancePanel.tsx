@@ -1,30 +1,14 @@
 "use client";
 
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  type FormEvent,
-} from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { storeClient } from "@/lib/store/client";
+import { useCustomerAuth } from "@/components/providers/CustomerAuthProvider";
+import { accountRequestScope } from "@/lib/store/customer-account";
 import { useLocale } from "@/components/providers/LocaleProvider";
 import { ClayButton } from "@/components/ui/ClayButton";
-import {
-  expenseCategories,
-  financeCopy,
-  type ExpenseCategory,
-  type FinanceOverview,
-} from "@/lib/store/finance-copy";
+import { RefreshCw } from "lucide-react";
+import { financeCopy, type FinanceOverview } from "@/lib/store/finance-copy";
 
-type Expense = {
-  id: string;
-  entry_date: string;
-  category: ExpenseCategory;
-  amount: number;
-  note: string;
-  voided_at: string | null;
-};
 type MissingCost = {
   item_id: number;
   order_number: number;
@@ -42,21 +26,19 @@ type Payment = {
 const field = "store-field mt-1";
 const panel =
   "rounded-clay-lg border border-line bg-surface p-5 shadow-clay-sm sm:p-6";
-function cairoDate() {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Africa/Cairo",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date());
-}
-
-export function FinancePanel() {
+export function FinancePanel({
+  refreshKey = 0,
+  hideRefresh = false,
+}: { refreshKey?: number; hideRefresh?: boolean } = {}) {
   const { locale } = useLocale();
   const copy = financeCopy[locale];
+  const { session } = useCustomerAuth();
+  const identity = session?.user.id ?? "guest";
+  const currentIdentity = useRef(identity);
+  currentIdentity.current = identity;
+  const requests = useRef(accountRequestScope());
   const [totals, setTotals] = useState<FinanceOverview | null>(null);
-  const [expenses, setExpenses] = useState<Expense[]>([]),
-    [payments, setPayments] = useState<Payment[]>([]),
+  const [payments, setPayments] = useState<Payment[]>([]),
     [missing, setMissing] = useState<MissingCost[]>([]);
   const [range, setRange] = useState({ from: "", to: "" }),
     [draftRange, setDraftRange] = useState(range);
@@ -64,7 +46,6 @@ export function FinancePanel() {
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [message, setMessage] = useState("");
-  const expenseAttempt = useRef<{ id: string; signature: string } | null>(null);
   const money = (value: number | null) =>
     value === null
       ? copy.incomplete
@@ -85,46 +66,50 @@ export function FinancePanel() {
       year: "numeric",
     }).format(new Date(value.length === 10 ? `${value}T12:00:00Z` : value));
   const load = useCallback(async () => {
+    const request = requests.current.begin();
+    const current = () =>
+      request.current() && currentIdentity.current === identity;
     setLoading(true);
     try {
       const db = storeClient();
-      const [summary, entries, costs, activity] = await Promise.all([
-        db.rpc("finance_overview", {
-          p_from: range.from || null,
-          p_to: range.to || null,
-        }),
+      const [summary, costs, activity] = await Promise.all([
         db
-          .from("finance_entries")
-          .select("id,entry_date,category,amount,note,voided_at")
-          .order("entry_date", { ascending: false })
-          .order("created_at", { ascending: false })
-          .limit(100),
-        db.rpc("finance_missing_costs"),
+          .rpc("finance_overview", {
+            p_from: range.from || null,
+            p_to: range.to || null,
+          })
+          .abortSignal(request.signal),
+        db.rpc("finance_missing_costs").abortSignal(request.signal),
         db
           .from("finance_payment_events")
           .select("id,event_type,amount,occurred_at,orders(order_number)")
           .order("recorded_at", { ascending: false })
           .order("id", { ascending: false })
-          .limit(30),
+          .limit(30)
+          .abortSignal(request.signal),
       ]);
-      if (summary.error || entries.error || costs.error || activity.error)
+      if (!current()) return false;
+      if (summary.error || costs.error || activity.error)
         throw new Error("LOAD_FAILED");
       setTotals(summary.data as FinanceOverview);
-      setExpenses(entries.data as Expense[]);
       setMissing(costs.data as MissingCost[]);
       setPayments(activity.data as unknown as Payment[]);
       return true;
     } catch {
-      setError(copy.loadError);
+      if (current()) setError(copy.loadError);
       return false;
     } finally {
-      setLoading(false);
+      if (current()) setLoading(false);
     }
-  }, [range.from, range.to, copy.loadError]);
+  }, [range.from, range.to, copy.loadError, identity]);
   useEffect(() => {
     setError("");
     void load();
-  }, [load]);
+    return () => requests.current.cancel();
+  }, [load, refreshKey]);
+  useEffect(() => {
+    setTotals(null);
+  }, [range.from, range.to]);
   async function save(
     fn: () => PromiseLike<{ error: { message?: string } | null }>,
   ) {
@@ -150,58 +135,34 @@ export function FinancePanel() {
       setBusy(false);
     }
   }
-  function addExpense(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const form = event.currentTarget;
-    const values = new FormData(form);
-    const amount = Number(values.get("amount"));
-    if (
-      !Number.isFinite(amount) ||
-      amount <= 0 ||
-      Math.abs(amount * 100 - Math.round(amount * 100)) > 0.00001
-    ) {
-      setError(copy.invalidAmount);
-      return;
-    }
-    const payload = {
-      p_date: values.get("date"),
-      p_category: values.get("category"),
-      p_amount: amount,
-      p_note: String(values.get("note") ?? "").trim(),
-    };
-    const signature = JSON.stringify(payload);
-    if (expenseAttempt.current?.signature !== signature)
-      expenseAttempt.current = { id: crypto.randomUUID(), signature };
-    const attemptId = expenseAttempt.current!.id;
-    void save(() =>
-      storeClient().rpc("add_finance_entry", { ...payload, p_id: attemptId }),
-    ).then((ok) => {
-      if (ok) {
-        form.reset();
-        expenseAttempt.current = null;
-      }
-    });
-  }
   return (
     <section className="space-y-5" aria-busy={loading || busy}>
       <div className={panel}>
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h1 className="text-xl">{copy.title}</h1>
+              <h2 className="text-xl">{hideRefresh ? (locale === "ar" ? "فترة التقرير" : "Report period") : copy.title}</h2>
             <p className="mt-2 max-w-2xl text-sm text-ink-muted">
               {copy.intro}
             </p>
           </div>
-          <ClayButton
-            variant="outline"
-            disabled={loading || busy}
-            onClick={() => {
-              setError("");
-              void load();
-            }}
-          >
-            {copy.refresh}
-          </ClayButton>
+          {!hideRefresh && (
+            <button
+              type="button"
+              aria-label={copy.refresh}
+              title={copy.refresh}
+              className="grid h-12 w-12 shrink-0 place-items-center rounded-full border border-line bg-surface text-brand focus-visible:ring-4 focus-visible:ring-brand/45 disabled:opacity-50"
+              disabled={loading || busy}
+              onClick={() => {
+                setError("");
+                void load();
+              }}
+            >
+              <RefreshCw
+                aria-hidden="true"
+                className={`h-5 w-5 ${loading ? "animate-spin" : ""}`}
+              />
+            </button>
+          )}
         </div>
         <form
           className="mt-5 grid grid-cols-2 items-end gap-3 sm:flex sm:flex-wrap"
@@ -332,69 +293,6 @@ export function FinancePanel() {
           )}
         </>
       )}
-      {totals && (
-        <section className={panel}>
-          <h2 className="text-lg">{copy.addExpense}</h2>
-          <p className="mt-2 max-w-3xl text-sm text-ink-muted">
-            {copy.expenseIntro}
-          </p>
-          <form className="mt-4" onSubmit={addExpense}>
-            <fieldset
-              disabled={busy || loading}
-              className="grid gap-4 sm:grid-cols-3"
-            >
-              <label className="text-sm">
-                {copy.amount}
-                <input
-                  className={field}
-                  type="number"
-                  inputMode="decimal"
-                  min="0.01"
-                  step="0.01"
-                  max="9999999999.99"
-                  name="amount"
-                  required
-                />
-              </label>
-              <label className="text-sm">
-                {copy.category}
-                <select className={field} name="category" defaultValue="other">
-                  {expenseCategories.map((category) => (
-                    <option key={category} value={category}>
-                      {copy.categories[category]}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="min-w-0 text-sm">
-                {copy.date}
-                <input
-                  className={field}
-                  type="date"
-                  name="date"
-                  defaultValue={cairoDate()}
-                  max={cairoDate()}
-                  required
-                />
-              </label>
-              <label className="text-sm sm:col-span-3">
-                {copy.note}
-                <input
-                  className={field}
-                  name="note"
-                  maxLength={1000}
-                  placeholder={copy.notePlaceholder}
-                />
-              </label>
-              <div className="sm:col-span-3">
-                <ClayButton type="submit">
-                  {busy ? copy.saving : copy.add}
-                </ClayButton>
-              </div>
-            </fieldset>
-          </form>
-        </section>
-      )}
       {missing.length > 0 && (
         <section className={panel}>
           <h2 className="text-lg">{copy.missingTitle}</h2>
@@ -504,97 +402,36 @@ export function FinancePanel() {
         </details>
       )}
       {totals && (
-        <div className="grid items-start gap-5 lg:grid-cols-2">
-          <section className={panel}>
-            <h2 className="text-lg">{copy.history}</h2>
-            <p className="mt-2 text-xs text-ink-muted">{copy.entriesHint}</p>
-            {!expenses.length && (
-              <p className="mt-5 text-sm text-ink-muted">
-                {copy.emptyExpenses}
-              </p>
-            )}
-            <ul className="mt-4 divide-y divide-line">
-              {expenses.map((entry) => (
-                <li
-                  key={entry.id}
-                  className={`flex flex-wrap items-center justify-between gap-3 py-4 ${entry.voided_at ? "text-ink-muted" : ""}`}
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold">
-                      {copy.categories[entry.category]}
-                      {entry.voided_at && (
-                        <span className="ms-2 rounded-full bg-canvas-sunk px-2 py-1 text-xs">
-                          {copy.voided}
-                        </span>
-                      )}
-                    </p>
-                    <p className="mt-1 text-xs text-ink-muted">
-                      {date(entry.entry_date)}
-                    </p>
-                    {entry.note && (
-                      <p className="mt-2 break-words text-sm text-ink-muted">
-                        {entry.note}
-                      </p>
-                    )}
-                  </div>
-                  <p
-                    className={`font-semibold tabular-nums ${entry.voided_at ? "line-through" : ""}`}
-                  >
-                    {money(entry.amount)}
+        <section className={panel}>
+          <h2 className="text-lg">{copy.recentPayments}</h2>
+          <p className="mt-2 text-xs text-ink-muted">{copy.activityHint}</p>
+          {!payments.length && (
+            <p className="mt-5 text-sm text-ink-muted">{copy.emptyPayments}</p>
+          )}
+          <ul className="mt-4 divide-y divide-line">
+            {payments.map((payment) => (
+              <li
+                key={payment.id}
+                className="flex items-center justify-between gap-3 py-4 text-sm"
+              >
+                <div>
+                  <p className="font-semibold">
+                    {copy[payment.event_type]} · {copy.order} #
+                    {payment.orders?.order_number ?? "—"}
                   </p>
-                  {!entry.voided_at && (
-                    <button
-                      className="min-h-11 rounded-xl px-3 text-sm text-brand underline focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/45 disabled:opacity-50"
-                      disabled={busy || loading}
-                      onClick={() => {
-                        if (window.confirm(copy.voidConfirm))
-                          void save(() =>
-                            storeClient().rpc("void_finance_entry", {
-                              p_id: entry.id,
-                            }),
-                          );
-                      }}
-                    >
-                      {copy.void}
-                    </button>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </section>
-          <section className={panel}>
-            <h2 className="text-lg">{copy.recentPayments}</h2>
-            <p className="mt-2 text-xs text-ink-muted">{copy.activityHint}</p>
-            {!payments.length && (
-              <p className="mt-5 text-sm text-ink-muted">
-                {copy.emptyPayments}
-              </p>
-            )}
-            <ul className="mt-4 divide-y divide-line">
-              {payments.map((payment) => (
-                <li
-                  key={payment.id}
-                  className="flex items-center justify-between gap-3 py-4 text-sm"
-                >
-                  <div>
-                    <p className="font-semibold">
-                      {copy[payment.event_type]} · {copy.order} #
-                      {payment.orders?.order_number ?? "—"}
-                    </p>
-                    <p className="mt-1 text-xs text-ink-muted">
-                      {payment.occurred_at
-                        ? date(payment.occurred_at)
-                        : copy.undated}
-                    </p>
-                  </div>
-                  <p className="shrink-0 font-semibold tabular-nums">
-                    {money(payment.amount)}
+                  <p className="mt-1 text-xs text-ink-muted">
+                    {payment.occurred_at
+                      ? date(payment.occurred_at)
+                      : copy.undated}
                   </p>
-                </li>
-              ))}
-            </ul>
-          </section>
-        </div>
+                </div>
+                <p className="shrink-0 font-semibold tabular-nums">
+                  {money(payment.amount)}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
     </section>
   );
