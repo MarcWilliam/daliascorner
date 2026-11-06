@@ -287,7 +287,7 @@ export function OrderPaymentField({
         className="mt-1 max-w-sm text-xs leading-5"
         aria-live="polite"
       >
-        {saving && (
+        {saving && view.feedback === "saving" && (
           <p className="text-ink-muted">{ar ? "جارٍ الحفظ…" : "Saving…"}</p>
         )}
         {view.feedback === "saved" && (
