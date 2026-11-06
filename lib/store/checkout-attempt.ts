@@ -23,3 +23,18 @@ export function checkoutAttempt(
     return p as CheckoutAttempt;
   return { fingerprint, key: newId(), orderToken: newId() };
 }
+
+/** A failed storage write must never replace a live retry with older disk state. */
+export function restoreCheckoutAttempt(
+  memory: unknown,
+  persisted: unknown,
+  fingerprint: string,
+  newId: () => string,
+): CheckoutAttempt {
+  const matches = (value: unknown) => {
+    const p = value as Partial<CheckoutAttempt> | null;
+    return p && p.fingerprint === fingerprint && typeof p.key === "string" &&
+      typeof p.orderToken === "string" && uuid.test(p.key) && uuid.test(p.orderToken);
+  };
+  return checkoutAttempt(matches(memory) ? memory : persisted, fingerprint, newId);
+}

@@ -9,11 +9,12 @@ import {
   UserRound,
   Info,
 } from "lucide-react";
+import { receiptExpired } from "@/lib/store/order-receipt";
 import { checkoutIssue } from "@/lib/store/checkout-readiness";
 import { useCustomerAuth } from "@/components/providers/CustomerAuthProvider";
 import { checkoutCopy, checkoutFieldClass } from "@/lib/store/checkout-copy";
 import {
-  checkoutAttempt,
+  restoreCheckoutAttempt,
   type CheckoutAttempt,
 } from "@/lib/store/checkout-attempt";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -219,13 +220,15 @@ export function StoreCheckout({
       const fingerprint = Array.from(new Uint8Array(bytes), (b) =>
         b.toString(16).padStart(2, "0"),
       ).join("");
-      let previous = attempt.current;
+      let persisted: unknown = null;
       try {
-        previous =
-          JSON.parse(localStorage.getItem(storageKey) ?? "null") ?? previous;
+        persisted = JSON.parse(localStorage.getItem(storageKey) ?? "null");
       } catch {}
-      const nextAttempt = checkoutAttempt(previous, fingerprint, () =>
-        crypto.randomUUID(),
+      const nextAttempt = restoreCheckoutAttempt(
+        attempt.current,
+        persisted,
+        fingerprint,
+        () => crypto.randomUUID(),
       );
       const { key, orderToken } = nextAttempt;
       attempt.current = nextAttempt;
@@ -274,12 +277,7 @@ export function StoreCheckout({
       const result = await response.json();
       if (!response.ok) throw new Error(result.error);
       const order = result as SavedOrder;
-      if (
-        ["expired", "cancelled"].includes(order.status) ||
-        (order.status === "pending" &&
-          Date.parse(order.expires_at) <= Date.now())
-      )
-        throw new Error("ORDER_EXPIRED");
+      if (receiptExpired(order)) throw new Error("ORDER_EXPIRED");
       try {
         localStorage.setItem("dc.guest.order", orderToken);
       } catch {

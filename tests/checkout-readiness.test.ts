@@ -1,5 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { receiptExpired } from "../lib/store/order-receipt";
 import { checkoutIssue } from "../lib/store/checkout-readiness";
 import { parseOrder } from "../lib/store/validation";
 import { parseAuthReturn } from "../lib/store/auth-return";
@@ -53,4 +54,14 @@ test("OAuth resumes only local customer routes and rejects external or admin des
   ]) {
     assert.equal(parseAuthReturn({ path, checkout: true }), null);
   }
+});
+
+test("paid pending retry remains a valid receipt after the unpaid reservation window", () => {
+  const now = Date.parse("2026-11-06T12:00:00Z");
+  const elapsed = { status: "pending", payment_status: "unpaid", expires_at: "2026-11-05T12:00:00Z" };
+  assert.equal(receiptExpired(elapsed, now), true);
+  assert.equal(receiptExpired({ ...elapsed, payment_status: "paid" }, now), false);
+  assert.equal(receiptExpired({ ...elapsed, status: "confirmed" }, now), false);
+  assert.equal(receiptExpired({ ...elapsed, status: "cancelled", payment_status: "paid" }, now), true);
+  assert.equal(receiptExpired({ ...elapsed, status: "expired", payment_status: "paid" }, now), true);
 });

@@ -13,6 +13,7 @@ async function setup() {
     "20261106092940_website_orders_accounts.sql",
     "20261106105238_website_retry_ownership.sql",
     "20261106115543_unlimited_inventory.sql",
+    "20261106121715_return_order_payment_status.sql",
   ])
     await db.exec(readFileSync(`supabase/migrations/${migration}`, "utf8"));
   await db.exec(
@@ -212,6 +213,67 @@ test("unlimited products do not create low-stock notifications", async () => {
         )
       ).rows[0].count,
       1,
+    );
+  } finally {
+    await db.close();
+  }
+});
+
+test("paid pending retries expose current payment state after expiry without duplicating stock or notifications", async () => {
+  const db = await setup();
+  try {
+    const key = crypto.randomUUID();
+    const args = [
+      key,
+      "hash",
+      JSON.stringify({
+        name: "Test customer",
+        phone: "01000000000",
+        address: "Test address",
+      }),
+      JSON.stringify([{ id: "pot", qty: 2 }]),
+    ];
+    const create = async () =>
+      (
+        await db.query<{
+          result: {
+            payment_status: string;
+            status: string;
+            expires_at: string;
+          };
+        }>(
+          "select create_store_order($1,$2,$3::jsonb,$4::jsonb,'en') result",
+          args,
+        )
+      ).rows[0].result;
+    assert.equal((await create()).payment_status, "unpaid");
+    await db.query(
+      "select set_order_payment(id,'paid') from orders where idempotency_key=$1",
+      [key],
+    );
+    await db.query(
+      "update orders set expires_at=now()-interval '1 minute' where idempotency_key=$1",
+      [key],
+    );
+    await db.exec("select expire_pending_orders()");
+    const retried = await create();
+    assert.equal(retried.status, "pending");
+    assert.equal(retried.payment_status, "paid");
+    assert.ok(Date.parse(retried.expires_at) < Date.now());
+    assert.deepEqual(await counts(db), { on_hand: 5, reserved: 2 });
+    assert.equal(
+      (
+        await db.query<{ count: number }>(
+          "select count(*)::int count from admin_notifications where kind='order'",
+        )
+      ).rows[0].count,
+      1,
+    );
+    await db.exec("select transition_order(id,'confirmed') from orders");
+    assert.equal(
+      (await db.query<{ status: string }>("select status from orders")).rows[0]
+        .status,
+      "confirmed",
     );
   } finally {
     await db.close();

@@ -14,6 +14,7 @@ export function storeClient() {
 export type SavedOrder = {
   order_number: number;
   status: string;
+  payment_status: "unpaid" | "paid" | "refunded";
   subtotal: number;
   delivery_fee: number;
   total: number;

@@ -4,6 +4,8 @@ For the current website checkout, social accounts and Meta review state, use [we
 
 Implementation branch: `codex/supabase-store-admin`. Cloudflare review deployment: https://dalias-corner.pages.dev (admin: /admin/), built from the feature branch. The existing GitHub Pages deployment and live custom domain are unchanged. Do not merge or switch the live domain until the acceptance checks below pass.
 
+Current notification worker acknowledgement is **HTTP 202** for accepted background processing. It runs mobile push and Meta independently; use queue state and an actual phone alert to verify delivery. See [the integrated test evidence](e2e-order-verification.md). Older HTTP 200 notes below describe earlier versions.
+
 ## Connected project
 
 - Supabase project: `daliascorner` (`yevttogvgoubjxolqkpy`), Frankfurt, Free organization.
