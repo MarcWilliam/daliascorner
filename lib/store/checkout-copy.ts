@@ -81,5 +81,4 @@ export const checkoutCopy = {
     unavailableButton: "الطلب غير متاح",
   },
 };
-export const checkoutFieldClass =
-  "w-full min-h-12 rounded-xl border border-line bg-surface px-3.5 py-3 text-base leading-6 text-ink placeholder:text-ink-muted/70 transition-shadow focus-visible:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/25 disabled:bg-canvas-sunk disabled:text-ink-muted";
+export const checkoutFieldClass = "store-field";

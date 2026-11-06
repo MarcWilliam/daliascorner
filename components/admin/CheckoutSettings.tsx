@@ -10,8 +10,7 @@ type Zone = {
   fee: number;
   active: boolean;
 };
-const field =
-  "mt-1 block w-full min-h-12 rounded-xl border border-line bg-surface px-3 py-2 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/45";
+const field = "store-field mt-1";
 const panel =
   "rounded-clay-lg border border-line bg-surface p-5 shadow-clay-sm sm:p-6";
 export function CheckoutSettings() {

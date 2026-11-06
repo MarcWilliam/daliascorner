@@ -4,7 +4,6 @@ import { createPortal } from "react-dom";
 import {
   Banknote,
   Landmark,
-  ChevronDown,
   ShieldCheck,
   UserRound,
   Info,
@@ -537,7 +536,7 @@ export function StoreCheckout({
                 ? "checkout-delivery-message"
                 : undefined
             }
-            className={`${checkoutFieldClass} appearance-none pe-10`}
+            className={checkoutFieldClass}
             value={zone}
             onChange={(e) => {
               setZone(e.target.value);
@@ -554,10 +553,6 @@ export function StoreCheckout({
               </option>
             ))}
           </select>
-          <ChevronDown
-            aria-hidden="true"
-            className="pointer-events-none absolute end-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted"
-          />
         </div>
         {configStatus === "error" ? (
           <div

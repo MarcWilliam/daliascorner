@@ -60,8 +60,7 @@ type Notice = {
   created_at: string;
   product_id: string | null;
 };
-const field =
-  "mt-1 min-h-[48px] w-full rounded-clay border border-line bg-surface px-3 py-2 text-ink focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/45";
+const field = "store-field mt-1";
 const panel =
   "rounded-clay-lg border border-line bg-surface p-5 shadow-clay-sm sm:p-6";
 export function AdminDashboard() {

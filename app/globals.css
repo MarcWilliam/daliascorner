@@ -115,6 +115,80 @@
 }
 
 @layer components {
+  /* One field surface for checkout and admin. Normalize native select chrome
+     without replacing browser menus, keyboard navigation or mobile pickers. */
+  .store-field {
+    -webkit-appearance: none;
+    appearance: none;
+    box-sizing: border-box;
+    display: block;
+    width: 100%;
+    min-width: 0;
+    height: 3rem;
+    border: 1px solid rgb(var(--line));
+    border-radius: 0.75rem;
+    background-color: rgb(var(--surface));
+    padding: 0.625rem 0.875rem;
+    color: rgb(var(--ink));
+    font-family: inherit;
+    font-size: 1rem;
+    font-weight: 400;
+    line-height: 1.5;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  .store-field::placeholder {
+    color: rgb(var(--ink-muted) / 0.7);
+    opacity: 1;
+  }
+  .store-field:focus-visible {
+    border-color: rgb(var(--brand));
+    outline: 2px solid transparent;
+    outline-offset: 2px;
+    box-shadow: 0 0 0 3px rgb(var(--brand) / 0.25);
+  }
+  .store-field:disabled {
+    background-color: rgb(var(--canvas-sunk));
+    color: rgb(var(--ink-muted));
+    -webkit-text-fill-color: rgb(var(--ink-muted));
+    cursor: not-allowed;
+    opacity: 1;
+  }
+  select.store-field {
+    /* The SVG stroke matches the ink-muted token. */
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%235c6b5a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-size: 1rem;
+    background-position: right 0.875rem center;
+    padding-inline-end: 2.75rem;
+    text-overflow: ellipsis;
+    cursor: pointer;
+  }
+  [dir="rtl"] select.store-field {
+    background-position: left 0.875rem center;
+  }
+  select.store-field:disabled {
+    cursor: not-allowed;
+  }
+  textarea.store-field {
+    height: auto;
+    min-height: 6rem;
+    resize: vertical;
+  }
+  .store-field::-webkit-date-and-time-value {
+    min-height: 1.5rem;
+    text-align: start;
+  }
+  @media (forced-colors: active) {
+    select.store-field {
+      appearance: auto;
+      background-image: none;
+      padding-inline-end: 0.875rem;
+    }
+    .store-field:focus-visible {
+      outline-color: Highlight;
+    }
+  }
+
   /* Reusable section rhythm */
   .section {
     padding-block: clamp(3.5rem, 8vw, 6.5rem);

@@ -24,8 +24,7 @@ export type Movement = {
   reason: string;
   created_at: string;
 };
-const field =
-  "mt-1 min-h-12 w-full rounded-xl border border-line bg-surface px-3 py-2 text-ink focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/45";
+const field = "store-field mt-1";
 const panel =
   "rounded-clay-lg border border-line bg-surface p-5 shadow-clay-sm sm:p-6";
 function StockCard({

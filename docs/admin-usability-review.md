@@ -15,6 +15,7 @@ Scope: feature branch `codex/supabase-store-admin`, using the existing catalog, 
 - Orders have search, item photos, explicit payment saves, reservation deadlines and payment/refund guidance. Paid pending orders retain stock after the unpaid reservation deadline.
 - Finance has its own tab for expenses, cash movement and paid-order profit estimates. Product costs are admin-only and snapshotted for new orders. See the finance workflow documentation for calculation rules.
 - Meta monitoring links to the relevant management tools, labels score scales and coverage goals, and distinguishes missing data from zero. Event-associated ad spend remains separate from the store's recorded expenses.
+- Checkout and all admin fields share `.store-field`: single-line inputs, dates and dropdowns are 48px high with 12px corners, matching typography, borders, focus and disabled states. Dropdown arrows mirror in Arabic; textareas keep their multiline height. Native selection and picker behavior is retained.
 
 ## Boundaries
 
