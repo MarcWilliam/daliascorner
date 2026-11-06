@@ -11,7 +11,7 @@ Customer registration/profile steps and the verified guest/customer/admin bounda
 ## Customer journey
 
 1. Add products to the cart. Sign in via an enabled Google/Facebook provider before checkout, or continue as a guest.
-2. Enter delivery details, select an active admin-configured zone, choose cash on delivery or configured InstaPay, and pass Turnstile.
+2. Enter delivery details, select an active admin-configured zone, choose cash on delivery or configured InstaPay, and place the order.
 3. Place the order on the website. Backend prices and delivery fees determine totals. Transfer instructions and delivery fees are snapshotted with the order. No social message is required.
 4. Open the private order page. The guest token uses the URL fragment (not query parameters) and is removed from the address bar after capture. Private pages never load Meta Pixel.
 5. A guest can use social sign-in afterward to attach the order to the account. Attachment requires possession of the original private token, not merely knowing an order number or email. Once attached, anonymous token access stops.
@@ -93,3 +93,7 @@ Current handoff: Google is enabled for customers and a real Google identity was 
 The legacy `create-order` Edge Function returns HTTP 410. All website checkout uses `place-order`, which requires an active delivery zone and enabled payment method. This closes the old preview path that lacked delivery-fee selection. Public anonymous callers cannot invoke the privileged order-creation SQL functions directly.
 
 Retry ownership hardening: signing in does not change the checkout content fingerprint. A guest retry after sign-in reuses the saved order; once attached to an account, anonymous or other-account retries are rejected. Applied before any website orders existed. Regression suite now has 21 passing tests.
+
+## Checkout abuse protection
+
+Checkout no longer loads or requires Cloudflare Turnstile. The Edge Function applies shared Postgres request counters: global 100/10 minutes, connection 20/10 minutes, normalized phone 5/hour. Retries count as attempts; 429 responses include Retry-After. Database failure blocks submission with 503. Phone/IP keys use HMAC-SHA256 with the backend secret, and only hashes/counters/expiry are stored in a private RLS table. Stale rows are purged on later limiter calls. Connection headers are gateway signals; phone and global limits also apply independently. A hidden website honeypot rejects filled submissions. Existing origin checks, payload validation, server pricing, stock reservations and idempotency remain enforced. Payment remains manually verified.

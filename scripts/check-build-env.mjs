@@ -3,7 +3,6 @@ if (process.env.CF_PAGES === '1') {
   const required = [
     'NEXT_PUBLIC_SUPABASE_URL',
     'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY',
-    'NEXT_PUBLIC_TURNSTILE_SITE_KEY',
     'NEXT_PUBLIC_VAPID_PUBLIC_KEY',
   ];
   const missing = required.filter(name => !process.env[name]?.trim());

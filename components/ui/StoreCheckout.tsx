@@ -1,7 +1,6 @@
 "use client";
-import Script from "next/script";
 import { createPortal } from "react-dom";
-import { Banknote, Landmark, ShieldCheck, UserRound, Info } from "lucide-react";
+import { Banknote, Landmark, UserRound, Info } from "lucide-react";
 import { receiptExpired } from "@/lib/store/order-receipt";
 import { checkoutIssue } from "@/lib/store/checkout-readiness";
 import { useCustomerAuth } from "@/components/providers/CustomerAuthProvider";
@@ -28,20 +27,9 @@ import {
 import { storeCopy } from "@/lib/store/copy";
 import { parseOrder } from "@/lib/store/validation";
 import type { Customer } from "@/lib/whatsapp";
-type Turnstile = {
-  render: (el: HTMLElement, opts: Record<string, unknown>) => string;
-  remove: (id: string) => void;
-  reset: (id: string) => void;
-};
-declare global {
-  interface Window {
-    turnstile?: Turnstile;
-  }
-}
 const storageKey = "dalias-corner.checkout-attempt";
 export function StoreCheckout({
   customer,
-  canCheckout,
   visible,
   footerTarget,
   children,
@@ -171,19 +159,7 @@ export function StoreCheckout({
     payment === "cash"
       ? settings.cash_enabled
       : settings.transfer_enabled && instaPayConfigured(settings);
-  const verificationAvailable =
-    configStatus === "ready" && zones.length > 0 && paymentAvailable;
-
-  const [tokenState, setTokenState] = useState({ owner: zoneOwner, value: "" });
-  const token = tokenState.owner === zoneOwner ? tokenState.value : "";
-  const setToken = useCallback(
-    (value: string) => {
-      if (currentZoneOwner.current === zoneOwner)
-        setTokenState({ owner: zoneOwner, value });
-    },
-    [zoneOwner],
-  );
-  const [verificationRequested, setVerificationRequested] = useState(false);
+  const [website, setWebsite] = useState("");
   const [busyState, setBusyState] = useState({
     owner: zoneOwner,
     value: false,
@@ -212,9 +188,6 @@ export function StoreCheckout({
   } | null>(null);
   const saved =
     authReady && savedState?.owner === zoneOwner ? savedState : null;
-  const [scriptReady, setScriptReady] = useState(false);
-  const widget = useRef<HTMLDivElement>(null);
-  const widgetId = useRef<string>();
   const submissions = useRef(checkoutRequestScope());
   const receipt = useRef<HTMLHeadingElement>(null);
   const attempt = useRef<OwnedCheckoutAttempt | null>(null);
@@ -249,7 +222,7 @@ export function StoreCheckout({
       current.owner === zoneOwner ? current : { owner: zoneOwner, value: "" },
     );
     setSaved((current) => (current?.owner === zoneOwner ? current : null));
-    setVerificationRequested(false);
+    setWebsite("");
     attempt.current = checkoutAttemptForOwner(attempt.current, zoneOwner);
     try {
       const persisted = checkoutAttemptForOwner(
@@ -262,51 +235,6 @@ export function StoreCheckout({
     } catch {}
   }, [zoneOwner, authReady]);
   useEffect(() => () => submissions.current.cancel(), []);
-  const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
-  useEffect(() => {
-    if (
-      !visible ||
-      !verificationAvailable ||
-      !scriptReady ||
-      !siteKey ||
-      !widget.current ||
-      !window.turnstile ||
-      saved
-    )
-      return;
-    const id = window.turnstile.render(widget.current, {
-      sitekey: siteKey,
-      action: "checkout",
-      size: "flexible",
-      theme: "light",
-      appearance: verificationRequested ? "always" : "interaction-only",
-      language: locale,
-      callback: (value: string) => setToken(value),
-      "expired-callback": () => setToken(""),
-      "error-callback": () => {
-        setToken("");
-        setError(c.verification);
-      },
-    });
-    widgetId.current = id;
-    return () => {
-      window.turnstile?.remove(id);
-      widgetId.current = undefined;
-      setToken("");
-    };
-  }, [
-    visible,
-    zoneOwner,
-    setToken,
-    setError,
-    verificationRequested,
-    verificationAvailable,
-    scriptReady,
-    siteKey,
-    saved,
-    c.verification,
-    locale,
-  ]);
   useEffect(() => {
     if (saved) receipt.current?.focus();
   }, [saved]);
@@ -320,12 +248,6 @@ export function StoreCheckout({
       );
       field?.focus();
       field?.scrollIntoView({ block: "center", behavior: "smooth" });
-      return;
-    }
-    if (!token) {
-      setVerificationRequested(true);
-      setError(ui.verificationRequired);
-      widget.current?.scrollIntoView({ block: "center", behavior: "smooth" });
       return;
     }
     const request = submissions.current.begin(zoneOwner);
@@ -412,7 +334,7 @@ export function StoreCheckout({
                     ]),
                 )
               : {}),
-            turnstileToken: token,
+            website,
           }),
           signal: request.signal,
         },
@@ -445,8 +367,10 @@ export function StoreCheckout({
             : "Sign in with the account linked to this order to continue."
           : code === "OUT_OF_STOCK"
             ? c.stockError
-            : code === "VERIFICATION_REQUIRED"
-              ? c.verification
+            : code === "RATE_LIMITED"
+              ? locale === "ar"
+                ? "طلبات كثيرة في وقت قصير. انتظر بضع دقائق ثم حاول مرة أخرى."
+                : "Too many attempts in a short time. Wait a few minutes, then try again."
               : code === "IDEMPOTENCY_CONFLICT"
                 ? c.conflict
                 : code === "ORDER_EXPIRED"
@@ -464,8 +388,6 @@ export function StoreCheckout({
       clearTimeout(timeout);
       if (request.finish(currentZoneOwner.current)) {
         setBusy(false);
-        setToken("");
-        if (widgetId.current) window.turnstile?.reset(widgetId.current);
       }
     }
   }, [
@@ -474,10 +396,9 @@ export function StoreCheckout({
     zoneOwner,
     setBusy,
     setError,
-    setToken,
     selectedZone,
     ui,
-    token,
+    website,
     customer,
     lines,
     locale,
@@ -606,7 +527,6 @@ export function StoreCheckout({
         disabled={
           !authReady ||
           busy ||
-          !siteKey ||
           !zones.length ||
           !paymentAvailable ||
           configStatus !== "ready"
@@ -617,35 +537,6 @@ export function StoreCheckout({
       >
         {busy ? c.saving : unavailable ? ui.unavailableButton : c.submit}
       </ClayButton>
-      {error === ui.verificationRequired || error === c.verification ? (
-        <button
-          type="button"
-          className="min-h-11 w-full rounded-lg text-sm font-semibold text-brand underline"
-          onClick={() => {
-            setVerificationRequested(true);
-            if (!scriptReady) {
-              location.reload();
-              return;
-            }
-            if (widgetId.current) window.turnstile?.reset(widgetId.current);
-            widget.current?.scrollIntoView({
-              block: "center",
-              behavior: "smooth",
-            });
-          }}
-        >
-          {ui.retryVerification}
-        </button>
-      ) : null}
-      <p
-        className="flex items-center justify-center gap-1.5 text-xs text-ink-muted"
-        role="status"
-      >
-        <ShieldCheck aria-hidden="true" className="h-3.5 w-3.5" />
-        {verificationAvailable && canCheckout && !token
-          ? ui.checking
-          : ui.secure}
-      </p>
     </div>
   );
   return (
@@ -799,22 +690,18 @@ export function StoreCheckout({
         )}
       </fieldset>
       <p className="text-xs leading-relaxed text-ink-muted">{ui.hold}</p>
-      {visible && siteKey && verificationAvailable && (
-        <>
-          <Script
-            src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
-            strategy="afterInteractive"
-            onReady={() => setScriptReady(true)}
-            onError={() => setError(c.verification)}
-          />
-          <div ref={widget} />
-        </>
-      )}
-      {!siteKey && (
-        <p role="status" className="text-sm text-ink-muted">
-          {ui.unavailable}
-        </p>
-      )}
+      <div aria-hidden="true" className="sr-only">
+        <label htmlFor="checkout-website">Website</label>
+        <input
+          id="checkout-website"
+          name="website"
+          type="text"
+          value={website}
+          onChange={(event) => setWebsite(event.target.value)}
+          autoComplete="off"
+          tabIndex={-1}
+        />
+      </div>
       {footerTarget ? createPortal(footer, footerTarget) : footer}
     </div>
   );

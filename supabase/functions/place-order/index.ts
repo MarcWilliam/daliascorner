@@ -26,42 +26,69 @@ Deno.serve(async (req) => {
     const raw = await req.text();
     if (raw.length > 16000) return respond({ error: "INVALID_ORDER" }, 400);
     const body = JSON.parse(raw);
-    const input = parseOrder(body);
-    // Fail closed: Turnstile must be configured, including during preview tests.
-    const secret = Deno.env.get("TURNSTILE_SECRET_KEY");
-    if (!secret) return respond({ error: "UNAVAILABLE" }, 503);
-    if (
-      typeof body.turnstileToken !== "string" ||
-      body.turnstileToken.length > 2048
-    )
-      return respond({ error: "VERIFICATION_REQUIRED" }, 400);
-    const verification = await fetch(
-      "https://challenges.cloudflare.com/turnstile/v0/siteverify",
-      {
-        method: "POST",
-        body: new URLSearchParams({ secret, response: body.turnstileToken }),
-        signal: AbortSignal.timeout(10000),
-      },
-    ).then((r) => r.json());
-    const hosts = allowed.map((s) => {
-      try {
-        return new URL(s).hostname;
-      } catch {
-        return "";
-      }
-    });
-    if (
-      !verification.success ||
-      verification.action !== "checkout" ||
-      !hosts.includes(verification.hostname)
-    )
-      return respond({ error: "VERIFICATION_REQUIRED" }, 400);
-    const client = createClient(
-      Deno.env.get("SUPABASE_URL")!,
+    const secret =
       JSON.parse(Deno.env.get("SUPABASE_SECRET_KEYS") ?? "{}").default ??
-        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-      { auth: { persistSession: false } },
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (!secret) return respond({ error: "UNAVAILABLE" }, 503);
+    const client = createClient(Deno.env.get("SUPABASE_URL")!, secret, {
+      auth: { persistSession: false },
+    });
+    // Counters live in Postgres so separate Edge isolates share the same limits.
+    // HMAC prevents recovering phone/IP values from the private counter keys.
+    const signingKey = await crypto.subtle.importKey(
+      "raw",
+      new TextEncoder().encode(secret),
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["sign"],
     );
+    async function consume(value: string, limit: number, seconds: number) {
+      const bytes = await crypto.subtle.sign(
+        "HMAC",
+        signingKey,
+        new TextEncoder().encode(value),
+      );
+      const key = Array.from(new Uint8Array(bytes), (b) =>
+        b.toString(16).padStart(2, "0"),
+      ).join("");
+      const result = await client.rpc("consume_checkout_limit", {
+        p_key: key,
+        p_limit: limit,
+        p_seconds: seconds,
+      });
+      if (result.error) throw Error("LIMIT_UNAVAILABLE");
+      return result.data === true;
+    }
+    const ip = (
+      req.headers.get("x-real-ip") ??
+      req.headers.get("cf-connecting-ip") ??
+      req.headers.get("x-forwarded-for")?.split(",")[0] ??
+      "unknown"
+    )
+      .trim()
+      .slice(0, 128);
+    if (
+      !(await consume("global", 100, 600)) ||
+      !(await consume("ip:" + ip, 20, 600))
+    )
+      return new Response(JSON.stringify({ error: "RATE_LIMITED" }), {
+        status: 429,
+        headers: { ...headers, "Retry-After": "600" },
+      });
+    if (
+      body.website !== undefined &&
+      (typeof body.website !== "string" || body.website.trim() !== "")
+    )
+      return respond({ error: "INVALID_ORDER" }, 400);
+    const input = parseOrder(body);
+    let phone = input.customer.phone.replace(/[^0-9]/g, "");
+    if (phone.startsWith("0020")) phone = "0" + phone.slice(4);
+    else if (phone.startsWith("20")) phone = "0" + phone.slice(2);
+    if (!(await consume("phone:" + phone, 5, 3600)))
+      return new Response(JSON.stringify({ error: "RATE_LIMITED" }), {
+        status: 429,
+        headers: { ...headers, "Retry-After": "3600" },
+      });
     let userId: string | null = null;
     const authorization = req.headers.get("authorization");
     if (authorization) {
@@ -131,7 +158,9 @@ Deno.serve(async (req) => {
         .eq("idempotency_key", input.key);
     }
     return respond(data);
-  } catch {
+  } catch (error) {
+    if (error instanceof Error && error.message === "LIMIT_UNAVAILABLE")
+      return respond({ error: "UNAVAILABLE" }, 503);
     return respond({ error: "INVALID_ORDER" }, 400);
   }
 });
