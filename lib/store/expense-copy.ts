@@ -35,6 +35,16 @@ export const expenseCopy = {
     filtersHint:
       "Dates are inclusive Cairo calendar days. Search matches note text literally.",
     register: "Expense register",
+    view: "Expense view",
+    table: "Table",
+    cards: "Cards",
+    tableLabel: "Expense register table",
+    byCategory: "Spending by category",
+    categoryHint:
+      "Active spending across all matching entries, including other pages.",
+    categoryUnavailable:
+      "Category totals are unavailable. Refresh to try again.",
+    noActiveSpending: "No active spending in this selection.",
     empty: "No expenses match these filters.",
     emptyHint: "Change the filters or record your first expense.",
     previous: "Previous",
@@ -101,6 +111,16 @@ export const expenseCopy = {
     filtersHint:
       "التواريخ تشمل يوم البداية والنهاية بتوقيت القاهرة. البحث يطابق نص الملاحظة كما هو.",
     register: "سجل المصروفات",
+    view: "طريقة عرض المصروفات",
+    table: "جدول",
+    cards: "بطاقات",
+    tableLabel: "جدول سجل المصروفات",
+    byCategory: "المصروفات حسب الفئة",
+    categoryHint:
+      "المصروفات السارية في كل القيود المطابقة، بما فيها الصفحات الأخرى.",
+    categoryUnavailable:
+      "إجماليات الفئات غير متاحة. حدّث البيانات للمحاولة مجددًا.",
+    noActiveSpending: "لا توجد مصروفات سارية ضمن هذا الاختيار.",
     empty: "لا توجد مصروفات تطابق الفلاتر.",
     emptyHint: "غيّر الفلاتر أو سجّل أول مصروف.",
     previous: "السابق",

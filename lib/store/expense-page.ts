@@ -23,6 +23,11 @@ export type ExpensePage = {
   active_count: number;
   voided_count: number;
   active_total: number;
+  category_totals?: {
+    category: ExpenseCategory;
+    amount: number;
+    count: number;
+  }[];
   voided_total: number;
   offset: number;
   limit: number;

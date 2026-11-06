@@ -227,16 +227,21 @@ export function CheckoutSettings({
                   key={zone.id}
                   className="flex flex-wrap items-center gap-x-4 gap-y-2 py-3"
                 >
-                  <div className="min-w-0 flex-1">
-                    <p className="break-words font-semibold">
+                  <div className="flex min-w-0 flex-1 flex-col items-start gap-0.5 text-start">
+                    <bdi
+                      className="max-w-full break-words font-semibold"
+                      lang={ar ? "ar" : "en"}
+                      dir={ar ? "rtl" : "ltr"}
+                    >
                       {ar ? zone.name_ar : zone.name_en}
-                    </p>
-                    <p
-                      className="break-words text-xs text-ink-muted"
+                    </bdi>
+                    <bdi
+                      className="max-w-full break-words text-xs text-ink-muted"
+                      lang={ar ? "en" : "ar"}
                       dir={ar ? "ltr" : "rtl"}
                     >
                       {ar ? zone.name_en : zone.name_ar}
-                    </p>
+                    </bdi>
                   </div>
                   <span className="text-sm tabular whitespace-nowrap">
                     {zone.fee} EGP

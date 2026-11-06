@@ -1,6 +1,7 @@
 "use client";
 import { NotificationsPanel, type AdminNotice } from "./NotificationsPanel";
 import { AdminDialog } from "./AdminDialog";
+import { AdminOrderMessages } from "./AdminOrderMessages";
 import { MetaHealth } from "./MetaHealth";
 import { FinancePanel } from "./FinancePanel";
 import { ExpensesPanel } from "./ExpensesPanel";
@@ -14,7 +15,7 @@ import { PRODUCTS } from "@/lib/products";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useCustomerAuth } from "@/components/providers/CustomerAuthProvider";
 import { accountRequestScope } from "@/lib/store/customer-account";
-import { ArrowLeft, Plus } from "lucide-react";
+import { ArrowLeft, Plus, ChevronRight } from "lucide-react";
 import { ClayButton } from "@/components/ui/ClayButton";
 import { LanguageToggle } from "@/components/ui/LanguageToggle";
 import { useLocale } from "@/components/providers/LocaleProvider";
@@ -33,6 +34,7 @@ type Order = {
   customer_name: string;
   customer_phone: string;
   customer_address: string;
+  locale?: "en" | "ar";
   subtotal: number;
   delivery_fee: number;
   delivery_zone: string;
@@ -651,14 +653,25 @@ export function AdminDashboard() {
                   )}
                 <div className="overflow-hidden rounded-2xl border border-line bg-surface">
                   <div
-                    className="hidden grid-cols-[1.2fr_1.4fr_1fr_1fr_1fr_auto] gap-3 border-b border-line bg-canvas px-4 py-2 text-xs font-semibold text-ink-muted md:grid"
+                    className="hidden grid-cols-[1.25fr_1.5fr_1.1fr_1fr_auto] gap-4 border-b border-line bg-canvas-sunk px-4 py-2 text-xs font-semibold text-ink-muted lg:grid"
                     aria-hidden="true"
                   >
-                    <span>{locale === "ar" ? "الطلب" : "Order"}</span>
-                    <span>{locale === "ar" ? "العميل" : "Customer"}</span>
-                    <span>{locale === "ar" ? "الحالة" : "Status"}</span>
-                    <span>{c.payment}</span>
-                    <span>{locale === "ar" ? "الإجمالي" : "Total"}</span>
+                    <span>
+                      {locale === "ar" ? "الطلب والمنتجات" : "Order & products"}
+                    </span>
+                    <span>
+                      {locale === "ar"
+                        ? "العميل والتوصيل"
+                        : "Customer & delivery"}
+                    </span>
+                    <span>
+                      {locale === "ar"
+                        ? "حالة الطلب والدفع"
+                        : "Order & payment status"}
+                    </span>
+                    <span className="text-end">
+                      {locale === "ar" ? "الإجمالي" : "Total"}
+                    </span>
                     <span />
                   </div>
                   <ul className="divide-y divide-line">
@@ -669,53 +682,7 @@ export function AdminDashboard() {
                           .includes(orderSearch.trim().toLowerCase()),
                       )
                       .map((o) => (
-                        <li
-                          key={o.id}
-                          className="grid grid-cols-2 items-center gap-2 px-4 py-3 text-sm md:grid-cols-[1.2fr_1.4fr_1fr_1fr_1fr_auto] md:gap-3"
-                        >
-                          <div>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setSelectedOrderId(o.id);
-                                setError("");
-                                setMessage("");
-                              }}
-                              className="min-h-11 rounded-lg font-semibold text-brand underline decoration-brand/30 underline-offset-4 focus-visible:ring-4 focus-visible:ring-brand/35"
-                            >
-                              DC-{o.order_number}
-                            </button>
-                            <p className="text-xs text-ink-muted">
-                              {date(o.ordered_at ?? o.created_at)}
-                            </p>
-                            <p className="text-xs text-ink-muted">
-                              {o.source === "chat"
-                                ? locale === "ar"
-                                  ? "محادثات"
-                                  : "Chat"
-                                : locale === "ar"
-                                  ? "الموقع"
-                                  : "Website"}
-                              {o.is_historical
-                                ? locale === "ar"
-                                  ? " · سابق"
-                                  : " · Past"
-                                : ""}
-                            </p>
-                          </div>
-                          <p className="min-w-0 break-words font-medium">
-                            {o.customer_name}
-                          </p>
-                          <span className="w-fit rounded-full bg-leaf-soft px-2 py-1 text-xs font-semibold">
-                            {c[o.status]}
-                          </span>
-                          <span className="text-xs text-ink-muted">
-                            {c[o.payment_status]}
-                          </span>
-                          <strong className="tabular-nums">
-                            {Number(o.subtotal) + Number(o.delivery_fee ?? 0)}{" "}
-                            EGP
-                          </strong>
+                        <li key={o.id}>
                           <button
                             type="button"
                             onClick={() => {
@@ -723,10 +690,108 @@ export function AdminDashboard() {
                               setError("");
                               setMessage("");
                             }}
-                            aria-label={`${locale === "ar" ? "عرض الطلب" : "View order"} DC-${o.order_number}`}
-                            className="min-h-11 justify-self-end rounded-xl px-3 text-sm font-semibold text-brand hover:bg-canvas-sunk focus-visible:ring-4 focus-visible:ring-brand/35"
+                            aria-label={`${locale === "ar" ? "عرض الطلب" : "View order"} DC-${o.order_number} — ${o.customer_name}`}
+                            aria-describedby={`order-status-${o.id} order-total-${o.id}`}
+                            className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-3 border-s-4 border-brand/30 px-4 py-4 text-start text-sm transition-colors hover:bg-leaf-soft/25 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-brand/40 lg:grid-cols-[1.25fr_1.5fr_1.1fr_1fr_auto]"
                           >
-                            {locale === "ar" ? "التفاصيل" : "Details"}
+                            <span className="col-span-2 flex min-w-0 items-center gap-3 lg:col-span-1">
+                              <span className="flex shrink-0 -space-x-3 rtl:space-x-reverse">
+                                {o.order_items.slice(0, 3).map((item) => {
+                                  const product = PRODUCTS.find(
+                                    (p) => p.id === item.product_id,
+                                  );
+                                  return product?.thumb ? (
+                                    <img
+                                      key={item.id}
+                                      src={product.thumb}
+                                      alt=""
+                                      className="h-11 w-11 rounded-xl border-2 border-surface object-cover"
+                                    />
+                                  ) : null;
+                                })}
+                              </span>
+                              <span className="min-w-0">
+                                <span className="block font-display text-base font-bold text-brand">
+                                  DC-{o.order_number}
+                                </span>
+                                <span className="mt-0.5 block text-xs text-ink-muted">
+                                  {date(o.ordered_at ?? o.created_at)}
+                                </span>
+                                <span className="mt-1 block text-xs text-ink-muted">
+                                  {o.source === "chat"
+                                    ? locale === "ar"
+                                      ? "محادثات"
+                                      : "Chat"
+                                    : locale === "ar"
+                                      ? "الموقع"
+                                      : "Website"}
+                                  {o.is_historical
+                                    ? locale === "ar"
+                                      ? " · سابق"
+                                      : " · Past"
+                                    : ""}{" "}
+                                  ·{" "}
+                                  {o.order_items.reduce(
+                                    (sum, item) => sum + item.quantity,
+                                    0,
+                                  )}{" "}
+                                  {locale === "ar" ? "قطع" : "pieces"}
+                                </span>
+                              </span>
+                            </span>
+                            <span className="col-span-2 min-w-0 border-t border-line/60 pt-2 lg:col-span-1 lg:border-0 lg:pt-0">
+                              <span className="mb-1 block text-[11px] text-ink-muted lg:sr-only">
+                                {locale === "ar" ? "إلى" : "Deliver to"}
+                              </span>
+                              <span className="block break-words font-semibold">
+                                {o.customer_name}
+                              </span>
+                              <span
+                                dir="ltr"
+                                className="mt-0.5 inline-block text-xs text-ink-muted"
+                              >
+                                {o.customer_phone}
+                              </span>
+                              {o.delivery_zone && (
+                                <span className="mt-0.5 block break-words text-xs text-ink-muted">
+                                  {o.delivery_zone}
+                                </span>
+                              )}
+                            </span>
+                            <span
+                              id={`order-status-${o.id}`}
+                              className="flex flex-wrap items-center gap-1.5"
+                            >
+                              <span
+                                className={`rounded-full px-2 py-1 text-xs font-semibold ${["cancelled", "expired"].includes(o.status) ? "bg-orange/20 text-ink" : "bg-leaf-soft text-brand"}`}
+                              >
+                                {c[o.status]}
+                              </span>
+                              <span
+                                className={`rounded-full border px-2 py-1 text-xs ${o.payment_status === "paid" ? "border-brand/20 bg-brand/5 text-brand" : "border-line text-ink-muted"}`}
+                              >
+                                {c[o.payment_status]}
+                              </span>
+                            </span>
+                            <span
+                              id={`order-total-${o.id}`}
+                              className="text-end"
+                            >
+                              <span className="block font-display text-base font-bold tabular-nums">
+                                {Number(o.subtotal) +
+                                  Number(o.delivery_fee ?? 0)}{" "}
+                                EGP
+                              </span>
+                              <span className="mt-1 block text-[11px] text-ink-muted">
+                                {locale === "ar"
+                                  ? "شامل التوصيل"
+                                  : "Including delivery"}
+                              </span>
+                            </span>
+                            <ChevronRight
+                              aria-hidden="true"
+                              className="hidden h-4 w-4 text-brand rtl:rotate-180 lg:block"
+                            />
                           </button>
                         </li>
                       ))}
@@ -771,6 +836,9 @@ export function AdminDashboard() {
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
                         <p className="mt-1 text-sm text-ink-muted">
+                          <span className="font-semibold">
+                            {locale === "ar" ? "تاريخ الطلب: " : "Order date: "}
+                          </span>
                           {o.is_historical
                             ? new Date(
                                 o.ordered_at ?? o.created_at,
@@ -823,67 +891,129 @@ export function AdminDashboard() {
                         {c[o.status]}
                       </span>
                     </div>
-                    <div className="mt-4 grid gap-4 md:grid-cols-2">
-                      <div className="space-y-1 break-words">
-                        <p className="font-semibold">{o.customer_name}</p>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <section
+                        aria-label={locale === "ar" ? "العميل" : "Customer"}
+                        className="rounded-xl border border-line bg-surface p-4"
+                      >
+                        <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-ink-muted">
+                          {locale === "ar" ? "العميل" : "Customer"}
+                        </h3>
+                        <p className="break-words font-semibold">
+                          {o.customer_name}
+                        </p>
                         <a
-                          className="inline-block min-h-11 text-brand underline"
+                          className="mt-1 inline-flex min-h-11 items-center text-sm font-semibold text-brand underline underline-offset-4"
                           dir="ltr"
                           href={`tel:${o.customer_phone.replace(/[^+\d]/g, "")}`}
                         >
                           {o.customer_phone}
                         </a>
-                        <p>{o.customer_address}</p>
-                        <p>{o.delivery_zone}</p>
-                        <p>
-                          {o.payment_method === "transfer"
-                            ? locale === "ar"
-                              ? "إنستا باي"
-                              : "InstaPay"
-                            : locale === "ar"
-                              ? "الدفع عند الاستلام"
-                              : "Cash on delivery"}
+                      </section>
+                      <section
+                        aria-label={locale === "ar" ? "التوصيل" : "Delivery"}
+                        className="rounded-xl border border-line bg-canvas/60 p-4"
+                      >
+                        <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-ink-muted">
+                          {locale === "ar"
+                            ? "عنوان التوصيل"
+                            : "Delivery address"}
+                        </h3>
+                        <p className="break-words text-sm leading-6">
+                          {o.customer_address}
                         </p>
-                      </div>
-                      <div>
-                        <ul className="space-y-2">
-                          {o.order_items.map((i) => (
+                        <p className="mt-2 text-sm font-semibold text-brand">
+                          {o.delivery_zone}
+                        </p>
+                      </section>
+                    </div>
+                    <section
+                      aria-label={locale === "ar" ? "المنتجات" : "Items"}
+                      className="overflow-hidden rounded-xl border border-line"
+                    >
+                      <h3 className="border-b border-line bg-canvas-sunk px-4 py-2 text-sm font-semibold">
+                        {locale === "ar" ? "المنتجات" : "Items"}
+                      </h3>
+                      <ul className="divide-y divide-line">
+                        {o.order_items.map((i) => {
+                          const product = PRODUCTS.find(
+                            (p) => p.id === i.product_id,
+                          );
+                          return (
                             <li
-                              className="flex items-center justify-between gap-3"
+                              className="flex min-w-0 items-center gap-3 px-4 py-3"
                               key={i.id}
                             >
-                              <span className="flex items-center gap-3">
-                                {PRODUCTS.find((p) => p.id === i.product_id)
-                                  ?.thumb && (
-                                  <img
-                                    alt=""
-                                    className="h-12 w-12 rounded-xl object-cover"
-                                    src={
-                                      PRODUCTS.find(
-                                        (p) => p.id === i.product_id,
-                                      )!.thumb
-                                    }
-                                  />
-                                )}
-                                {locale === "ar" ? i.name_ar : i.name_en} ×{" "}
-                                {i.quantity}
-                              </span>
-                              <span className="whitespace-nowrap">
+                              {product?.thumb && (
+                                <img
+                                  alt=""
+                                  className="h-14 w-14 shrink-0 rounded-xl object-cover"
+                                  src={product.thumb}
+                                />
+                              )}
+                              <div className="min-w-0 flex-1">
+                                <p className="break-words text-sm font-semibold">
+                                  {locale === "ar" ? i.name_ar : i.name_en}
+                                </p>
+                                <p className="mt-1 text-xs text-ink-muted">
+                                  {locale === "ar" ? "الكمية" : "Qty"}:{" "}
+                                  {i.quantity} · {i.unit_price} EGP{" "}
+                                  {locale === "ar" ? "للقطعة" : "each"}
+                                </p>
+                              </div>
+                              <strong className="shrink-0 text-sm tabular-nums">
                                 {i.quantity * i.unit_price} EGP
-                              </span>
+                              </strong>
                             </li>
-                          ))}
-                        </ul>
-                        <p className="mt-3 border-t border-line pt-3 font-bold">
-                          {c.subtotal}: {o.subtotal} EGP
-                          <br />
-                          {locale === "ar" ? "التوصيل" : "Delivery"}:{" "}
-                          {o.delivery_fee ?? 0} EGP
-                          <br />
-                          {locale === "ar" ? "الإجمالي" : "Total"}:{" "}
-                          {Number(o.subtotal) + Number(o.delivery_fee ?? 0)} EGP
-                        </p>
-                      </div>
+                          );
+                        })}
+                      </ul>
+                    </section>
+                    <section
+                      aria-label={
+                        locale === "ar" ? "ملخص المبلغ" : "Order total"
+                      }
+                      className="rounded-xl border border-brand/15 bg-leaf-soft/45 p-4"
+                    >
+                      <dl className="space-y-2 text-sm">
+                        <div className="flex justify-between gap-4">
+                          <dt className="text-ink-muted">{c.subtotal}</dt>
+                          <dd className="font-semibold tabular-nums">
+                            {o.subtotal} EGP
+                          </dd>
+                        </div>
+                        <div className="flex justify-between gap-4">
+                          <dt className="text-ink-muted">
+                            {locale === "ar" ? "رسوم التوصيل" : "Delivery fee"}
+                          </dt>
+                          <dd className="font-semibold tabular-nums">
+                            {o.delivery_fee ?? 0} EGP
+                          </dd>
+                        </div>
+                        <div className="flex justify-between gap-4 border-t border-brand/15 pt-2 text-base font-bold">
+                          <dt>
+                            {locale === "ar" ? "إجمالي الطلب" : "Order total"}
+                          </dt>
+                          <dd className="tabular-nums">
+                            {Number(o.subtotal) + Number(o.delivery_fee ?? 0)}{" "}
+                            EGP
+                          </dd>
+                        </div>
+                      </dl>
+                    </section>
+                    <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-line px-4 py-3 text-sm">
+                      <span className="text-ink-muted">
+                        {locale === "ar" ? "طريقة الدفع" : "Payment method"}
+                      </span>
+                      <span className="font-semibold">
+                        {o.payment_method === "transfer"
+                          ? locale === "ar"
+                            ? "إنستا باي"
+                            : "InstaPay"
+                          : locale === "ar"
+                            ? "الدفع عند الاستلام"
+                            : "Cash on delivery"}
+                      </span>
                     </div>
                     {o.status === "cancelled" &&
                       o.payment_status === "paid" && (
@@ -896,51 +1026,72 @@ export function AdminDashboard() {
                             : "This order is cancelled and payment is still marked received. Record a refund after returning the money; cancellation does not refund it automatically."}
                         </p>
                       )}
-                    <div className="mt-5 grid gap-3 sm:flex sm:flex-wrap sm:items-start">
-                      <OrderPaymentField
-                        key={o.id}
-                        orderId={o.id}
-                        payment={o.payment_status}
-                        disabled={busy}
-                        onSaved={refresh}
-                        onSavingChange={setBusy}
-                      />
-                      <div className="flex flex-wrap gap-3 sm:pt-6">
-                        {o.status === "pending" && (
-                          <ClayButton
-                            disabled={busy}
-                            onClick={() => changeStatus(o, "confirmed")}
-                          >
-                            {c.confirm}
-                          </ClayButton>
-                        )}
-                        {o.status === "confirmed" && (
-                          <ClayButton
-                            disabled={busy}
-                            onClick={() => changeStatus(o, "shipped")}
-                          >
-                            {c.ship}
-                          </ClayButton>
-                        )}
-                        {o.status === "shipped" && (
-                          <ClayButton
-                            disabled={busy}
-                            onClick={() => changeStatus(o, "delivered")}
-                          >
-                            {c.deliver}
-                          </ClayButton>
-                        )}
-                        {["pending", "confirmed"].includes(o.status) && (
-                          <ClayButton
-                            variant="outline"
-                            disabled={busy}
-                            onClick={() => changeStatus(o, "cancelled")}
-                          >
-                            {c.cancel}
-                          </ClayButton>
-                        )}
+                    <section
+                      aria-label={
+                        locale === "ar"
+                          ? "إدارة الطلب والدفع"
+                          : "Manage order and payment"
+                      }
+                      className="rounded-xl border border-line bg-canvas/40 p-4"
+                    >
+                      <h3 className="mb-3 text-sm font-semibold">
+                        {locale === "ar"
+                          ? "إدارة الطلب والدفع"
+                          : "Manage order & payment"}
+                      </h3>
+                      <div className="grid gap-3 sm:flex sm:flex-wrap sm:items-start">
+                        <OrderPaymentField
+                          key={o.id}
+                          orderId={o.id}
+                          payment={o.payment_status}
+                          disabled={busy}
+                          onSaved={refresh}
+                          onSavingChange={setBusy}
+                        />
+                        <div className="flex flex-wrap gap-3 sm:pt-6">
+                          {o.status === "pending" && (
+                            <ClayButton
+                              disabled={busy}
+                              onClick={() => changeStatus(o, "confirmed")}
+                            >
+                              {c.confirm}
+                            </ClayButton>
+                          )}
+                          {o.status === "confirmed" && (
+                            <ClayButton
+                              disabled={busy}
+                              onClick={() => changeStatus(o, "shipped")}
+                            >
+                              {c.ship}
+                            </ClayButton>
+                          )}
+                          {o.status === "shipped" && (
+                            <ClayButton
+                              disabled={busy}
+                              onClick={() => changeStatus(o, "delivered")}
+                            >
+                              {c.deliver}
+                            </ClayButton>
+                          )}
+                          {["pending", "confirmed"].includes(o.status) && (
+                            <ClayButton
+                              variant="outline"
+                              disabled={busy}
+                              onClick={() => changeStatus(o, "cancelled")}
+                            >
+                              {c.cancel}
+                            </ClayButton>
+                          )}
+                        </div>
                       </div>
-                    </div>
+                    </section>
+                    <AdminOrderMessages
+                      orderNumber={o.order_number}
+                      phone={o.customer_phone}
+                      locale={o.locale}
+                      status={o.status}
+                      busy={busy}
+                    />
                   </article>
                 ))}
               </AdminDialog>

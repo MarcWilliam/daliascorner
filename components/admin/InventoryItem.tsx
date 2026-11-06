@@ -168,7 +168,9 @@ export function InventoryItem({
   const availability = (
     <fieldset
       disabled={busy}
-      className={table ? "min-w-32" : "grid grid-cols-2 gap-x-3"}
+      className={
+        table ? "min-w-32" : "flex min-w-0 flex-wrap items-center gap-x-3"
+      }
     >
       <legend className="sr-only">
         {ar ? "إتاحة" : "Availability"} — {name}
@@ -353,15 +355,28 @@ export function InventoryItem({
         );
       }}
     >
-      <fieldset disabled={busy} className="flex items-end gap-2">
-        <label className="min-w-0 flex-1">
+      <fieldset disabled={busy} className="flex min-w-0 items-center gap-2">
+        <label
+          className={
+            table ? "min-w-0 flex-1" : "flex min-w-0 flex-1 items-center gap-3"
+          }
+        >
           <span
-            className={table ? "sr-only" : "mb-1 block text-sm font-semibold"}
+            className={
+              table
+                ? "sr-only"
+                : "w-20 shrink-0 text-xs font-semibold leading-4"
+            }
           >
-            {ar ? "تكلفة القطعة EGP (اختياري)" : "Unit cost EGP (optional)"}
+            {ar ? "تكلفة القطعة (EGP)" : "Unit cost (EGP)"}
           </span>
           <input
-            className={field}
+            className={`${field} min-w-0`}
+            title={
+              ar
+                ? "للطلبات الجديدة فقط. فارغ يعني غير معروف."
+                : "New orders only. Blank means unknown."
+            }
             type="number"
             inputMode="decimal"
             min={0}
@@ -384,13 +399,6 @@ export function InventoryItem({
           <Check aria-hidden="true" className="h-5 w-5" />
         </button>
       </fieldset>
-      {!table && (
-        <p className="mt-1 text-xs leading-5 text-ink-muted">
-          {ar
-            ? "للطلبات الجديدة فقط. فارغ يعني غير معروف."
-            : "New orders only. Blank means unknown."}
-        </p>
-      )}
     </form>
   ) : (
     <p className="text-xs text-ink-muted">
@@ -429,9 +437,11 @@ export function InventoryItem({
           >
             {productInfo}
             {counts}
-            {availability}
-            {stockControl}
-            <section className="border-t border-line pt-3">{costForm}</section>
+            <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+              {availability}
+              {stockControl}
+            </div>
+            <section>{costForm}</section>
             {feedback}
           </article>
         </td>

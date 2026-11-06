@@ -13,6 +13,8 @@ import {
   ChevronLeft,
   ChevronRight,
   SlidersHorizontal,
+  List,
+  LayoutGrid,
 } from "lucide-react";
 import { AdminDialog } from "./AdminDialog";
 import { storeClient } from "@/lib/store/client";
@@ -73,6 +75,29 @@ export function ExpensesPanel({
   const [formOpen, setFormOpen] = useState(false),
     [draft, setDraft] = useState(newDraft);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [view, setView] = useState<"table" | "cards">("cards");
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem("dc.admin.expense-view");
+      setView(
+        stored === "table" || stored === "cards"
+          ? stored
+          : window.matchMedia("(min-width: 768px)").matches
+            ? "table"
+            : "cards",
+      );
+    } catch {
+      setView(
+        window.matchMedia("(min-width: 768px)").matches ? "table" : "cards",
+      );
+    }
+  }, []);
+  function changeView(next: "table" | "cards") {
+    setView(next);
+    try {
+      localStorage.setItem("dc.admin.expense-view", next);
+    } catch {}
+  }
   const [voidEntry, setVoidEntry] = useState<ExpenseEntry | null>(null);
   const filterButton = useRef<HTMLButtonElement>(null),
     firstFilter = useRef<HTMLInputElement>(null);
@@ -677,87 +702,207 @@ export function ExpensesPanel({
                 </div>
               )}
             </dl>
+            <div className="mt-3 border-t border-line pt-3">
+              <h2 className="text-sm font-semibold">{c.byCategory}</h2>
+              <p className="mt-1 text-xs leading-5 text-ink-muted">
+                {c.categoryHint}
+              </p>
+              {page.category_totals?.length ? (
+                <dl className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                  {page.category_totals.map((item) => (
+                    <div
+                      key={item.category}
+                      className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-lg bg-canvas-sunk px-3 py-2"
+                    >
+                      <dt className="text-xs text-ink-muted">
+                        {common.categories[item.category]}
+                      </dt>
+                      <dd className="max-w-full break-words text-sm font-semibold tabular-nums">
+                        {money(item.amount)}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+              ) : (
+                <p className="mt-2 text-sm text-ink-muted">
+                  {page.active_total > 0
+                    ? c.categoryUnavailable
+                    : c.noActiveSpending}
+                </p>
+              )}
+            </div>
           </section>
           <section className={panel} aria-labelledby="expense-register-title">
-            <h2
-              id="expense-register-title"
-              ref={listTitle}
-              tabIndex={-1}
-              className="text-lg"
-            >
-              {c.register}
-            </h2>
-
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h2
+                id="expense-register-title"
+                ref={listTitle}
+                tabIndex={-1}
+                className="text-lg"
+              >
+                {c.register}
+              </h2>
+              <div
+                className="inline-flex rounded-xl border border-line bg-canvas-sunk p-1"
+                role="group"
+                aria-label={c.view}
+              >
+                {(
+                  [
+                    { value: "table", label: c.table, Icon: List },
+                    { value: "cards", label: c.cards, Icon: LayoutGrid },
+                  ] as const
+                ).map(({ value, label, Icon }) => (
+                  <button
+                    key={value}
+                    type="button"
+                    aria-pressed={view === value}
+                    onClick={() => changeView(value)}
+                    className={`inline-flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm font-semibold focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/35 ${view === value ? "bg-surface text-brand shadow-clay-sm" : "text-ink-muted hover:text-brand"}`}
+                  >
+                    <Icon aria-hidden="true" className="h-4 w-4" />
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
             {!page.entries.length ? (
               <div className="py-10 text-center">
                 <p className="font-semibold">{c.empty}</p>
                 <p className="mt-2 text-sm text-ink-muted">{c.emptyHint}</p>
               </div>
+            ) : view === "table" ? (
+              <div
+                className="mt-4 max-w-full overflow-x-auto rounded-xl border border-line [contain:paint]"
+                role="region"
+                aria-label={c.tableLabel}
+                tabIndex={0}
+              >
+                <table className="w-full min-w-[40rem] border-collapse text-start text-sm">
+                  <caption className="sr-only">{c.register}</caption>
+                  <thead className="border-b border-line bg-canvas-sunk text-xs text-ink-muted">
+                    <tr>
+                      {[
+                        c.paidDate,
+                        c.category,
+                        c.note,
+                        c.amount,
+                        c.actions,
+                      ].map((label) => (
+                        <th
+                          key={label}
+                          scope="col"
+                          className="px-3 py-3 text-start font-semibold"
+                        >
+                          {label}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-line">
+                    {page.entries.map((entry) => (
+                      <tr
+                        key={entry.id}
+                        className={entry.voided_at ? "text-ink-muted" : ""}
+                      >
+                        <td className="whitespace-nowrap px-3 py-2">
+                          <time dateTime={entry.entry_date}>
+                            {date(entry.entry_date)}
+                          </time>
+                        </td>
+                        <th
+                          scope="row"
+                          className="px-3 py-2 text-start font-semibold"
+                        >
+                          {common.categories[entry.category]}
+                          {entry.voided_at && (
+                            <span className="ms-2 rounded-full bg-canvas-sunk px-2 py-1 text-xs">
+                              {c.voided}
+                            </span>
+                          )}
+                        </th>
+                        <td className="max-w-sm break-words px-3 py-2 text-ink-muted">
+                          {entry.note || c.noNote}
+                        </td>
+                        <td
+                          className={`whitespace-nowrap px-3 py-2 font-semibold tabular-nums ${entry.voided_at ? "line-through" : ""}`}
+                        >
+                          {money(entry.amount)}
+                        </td>
+                        <td className="px-3 py-2">
+                          {!entry.voided_at ? (
+                            <button
+                              type="button"
+                              disabled={busy || loading}
+                              className="min-h-11 rounded-xl px-2 font-semibold text-brand underline focus-visible:ring-4 focus-visible:ring-brand/45 disabled:opacity-50"
+                              onClick={() => {
+                                setError("");
+                                setVoidEntry(entry);
+                              }}
+                              aria-label={`${c.voidAction} — ${common.categories[entry.category]}, ${money(entry.amount)}, ${date(entry.entry_date)}`}
+                            >
+                              {c.voidAction}
+                            </button>
+                          ) : (
+                            <span className="text-xs">{c.voided}</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             ) : (
-              <>
-                <div
-                  aria-hidden="true"
-                  className="mt-5 hidden gap-4 border-b border-line pb-2 text-xs font-semibold text-ink-muted lg:grid lg:grid-cols-[7rem_11rem_minmax(0,1fr)_9rem_6rem]"
-                >
-                  {[c.paidDate, c.category, c.note, c.amount, c.actions].map(
-                    (label) => (
-                      <span key={label}>{label}</span>
-                    ),
-                  )}
-                </div>
-                <ul className="mt-3 divide-y divide-line lg:mt-0">
-                  {page.entries.map((entry) => (
-                    <li
-                      key={entry.id}
-                      className={`grid grid-cols-2 items-start gap-x-4 gap-y-2 py-3 lg:grid-cols-[7rem_11rem_minmax(0,1fr)_9rem_6rem] ${entry.voided_at ? "text-ink-muted" : ""}`}
-                    >
-                      <div>
-                        <p className="mb-1 text-xs text-ink-muted lg:hidden">
-                          {c.paidDate}
+              <ul className="mt-4 grid gap-3 md:grid-cols-2">
+                {page.entries.map((entry) => (
+                  <li
+                    key={entry.id}
+                    className={`flex min-w-0 flex-col gap-3 rounded-xl border border-line bg-canvas/40 p-4 ${entry.voided_at ? "text-ink-muted" : ""}`}
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="font-semibold">
+                          {common.categories[entry.category]}
                         </p>
-                        <time dateTime={entry.entry_date} className="text-sm">
+                        <time
+                          dateTime={entry.entry_date}
+                          className="mt-1 block text-xs text-ink-muted"
+                        >
                           {date(entry.entry_date)}
                         </time>
                       </div>
-                      <div>
-                        <p className="text-sm font-semibold">
-                          {common.categories[entry.category]}
-                        </p>
-                        {entry.voided_at && (
-                          <span className="mt-1 inline-block rounded-full bg-canvas-sunk px-2 py-1 text-xs">
-                            {c.voided}
-                          </span>
-                        )}
-                      </div>
-                      <p className="col-span-2 min-w-0 break-words text-sm leading-6 text-ink-muted lg:col-span-1">
-                        {entry.note || c.noNote}
-                      </p>
                       <p
-                        className={`min-w-0 break-words text-sm font-semibold tabular-nums ${entry.voided_at ? "line-through" : ""}`}
+                        className={`max-w-full break-words text-base font-bold tabular-nums ${entry.voided_at ? "line-through" : "text-brand"}`}
                       >
                         {money(entry.amount)}
                       </p>
+                    </div>
+                    <p className="min-w-0 break-words text-sm leading-6 text-ink-muted">
+                      {entry.note || c.noNote}
+                    </p>
+                    <div className="mt-auto flex justify-end border-t border-line pt-1">
                       {!entry.voided_at ? (
                         <button
                           type="button"
                           disabled={busy || loading}
-                          className="min-h-11 justify-self-end rounded-xl px-2 text-sm font-semibold text-brand underline focus-visible:ring-4 focus-visible:ring-brand/45 disabled:opacity-50 lg:justify-self-start"
+                          className="min-h-11 rounded-xl px-2 text-sm font-semibold text-brand underline focus-visible:ring-4 focus-visible:ring-brand/45 disabled:opacity-50"
                           onClick={() => {
                             setError("");
                             setVoidEntry(entry);
                           }}
+                          aria-label={`${c.voidAction} — ${common.categories[entry.category]}, ${money(entry.amount)}, ${date(entry.entry_date)}`}
                         >
                           {c.voidAction}
                         </button>
                       ) : (
-                        <span className="text-end text-xs lg:text-start">
+                        <span className="inline-flex min-h-11 items-center text-xs">
                           {c.voided}
                         </span>
                       )}
-                    </li>
-                  ))}
-                </ul>
-              </>
+                    </div>
+                  </li>
+                ))}
+              </ul>
             )}
             <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-3">
               <p role="status" className="text-xs text-ink-muted">

@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import {
   Bell,
   ChartNoAxesCombined,
@@ -83,31 +83,20 @@ export function AdminWorkspace({
   const { locale } = useLocale();
   const ar = locale === "ar";
   const active = sections.find((item) => item.id === section)!;
+  const selectedButton = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (window.matchMedia("(max-width: 1023px)").matches)
+      selectedButton.current?.scrollIntoView({
+        block: "nearest",
+        inline: "nearest",
+      });
+  }, [section, locale]);
   return (
     <div className="admin-ui grid min-w-0 gap-3 lg:grid-cols-[11rem_minmax(0,1fr)] lg:gap-6">
       <aside className="min-w-0 lg:self-start lg:sticky lg:top-6">
-        <label className="block lg:hidden">
-          <span className="sr-only">{ar ? "القسم" : "Admin section"}</span>
-          <select
-            className="store-field"
-            value={section}
-            onChange={(event) =>
-              onSectionChange(event.target.value as AdminSection)
-            }
-          >
-            {sections.map((item) => (
-              <option key={item.id} value={item.id}>
-                {ar ? item.ar : item.en}
-                {item.id === "notifications" && unreadCount > 0
-                  ? ` (${unreadCount})`
-                  : ""}
-              </option>
-            ))}
-          </select>
-        </label>
         <nav
           aria-label={ar ? "أقسام إدارة المتجر" : "Store admin sections"}
-          className="hidden min-w-0 flex-col gap-1 lg:flex"
+          className="flex min-w-0 max-w-full gap-2 overflow-x-auto rounded-2xl border border-line bg-canvas-sunk p-1.5 lg:flex-col lg:gap-1 lg:overflow-visible lg:rounded-none lg:border-0 lg:bg-transparent lg:p-0"
         >
           {sections.map((item) => {
             const selected = section === item.id;
@@ -115,11 +104,12 @@ export function AdminWorkspace({
             return (
               <button
                 key={item.id}
+                ref={selected ? selectedButton : undefined}
                 type="button"
                 aria-pressed={selected}
                 aria-controls="admin-workspace-content"
                 onClick={() => onSectionChange(item.id)}
-                className={`flex min-h-12 shrink-0 items-center gap-2.5 rounded-xl px-3 text-start text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/35 lg:w-full ${selected ? "bg-brand text-canvas" : "text-ink-muted hover:bg-canvas-sunk hover:text-ink"}`}
+                className={`flex min-h-12 shrink-0 items-center gap-2.5 rounded-full border px-3 text-start lg:rounded-xl text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/35 lg:w-full ${selected ? "border-brand bg-brand text-canvas" : "border-line bg-surface text-brand hover:bg-canvas-sunk lg:border-transparent lg:bg-transparent lg:text-ink-muted lg:hover:text-ink"}`}
               >
                 <Icon
                   aria-hidden="true"

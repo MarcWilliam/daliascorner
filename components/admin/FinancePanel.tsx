@@ -366,10 +366,10 @@ export function FinancePanel({
         </section>
       )}
       {totals && (
-        <details className={panel}>
-          <summary className="min-h-11 cursor-pointer font-display text-lg font-semibold">
+        <section className={panel} aria-label={copy.breakdown}>
+          <h2 className="font-display text-lg font-semibold">
             {copy.breakdown}
-          </summary>
+          </h2>
           <dl className="mt-3 grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
             {[
               [copy.netCollected, copy.receiptsHint],
@@ -426,7 +426,7 @@ export function FinancePanel({
               {copy.legacyRefunds} {totals.untracked_refunded_orders}
             </p>
           )}
-        </details>
+        </section>
       )}
       {totals && (
         <section className={panel}>

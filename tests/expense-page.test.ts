@@ -9,7 +9,7 @@ import {
 
 const admin = "00000000-0000-4000-8000-000000000001",
   customer = "00000000-0000-4000-8000-000000000002";
-const migration = "20261106195451_expense_page.sql";
+const migration = "20261106213620_expense_category_totals.sql";
 const hosted = new Set([
   "20261106080241_expiry.sql",
   "20261106083056_notification_cron.sql",
@@ -45,6 +45,7 @@ type Page = {
   active_count: number;
   voided_count: number;
   active_total: number;
+  category_totals: { category: string; amount: number; count: number }[];
   voided_total: number;
   has_more: boolean;
 };
@@ -187,6 +188,33 @@ test("expense register read API denies guest/customer and respects admin revocat
       `reset role;delete from admin_users where user_id='${admin}';set role authenticated;`,
     );
     await assert.rejects(() => page(db), /FORBIDDEN/);
+  } finally {
+    await db.close();
+  }
+});
+
+test("expense category totals cover every matched page and exclude voided records", async () => {
+  const db = await setup();
+  try {
+    const first = await page(db, { p_status: "all", p_limit: 1 });
+    assert.equal(first.entries.length, 1);
+    assert.equal(first.category_totals.length, 2);
+    assert.equal(
+      first.category_totals.reduce((sum, c) => sum + c.amount, 0),
+      first.active_total,
+    );
+    assert.equal(
+      first.category_totals.reduce((sum, c) => sum + c.count, 0),
+      119,
+    );
+    const next = await page(db, { p_status: "all", p_offset: 25, p_limit: 1 });
+    assert.deepEqual(next.category_totals, first.category_totals);
+    const filtered = await page(db, { p_category: "shipping" });
+    assert.equal(filtered.category_totals.length, 1);
+    assert.equal(filtered.category_totals[0].category, "shipping");
+    assert.equal(filtered.category_totals[0].amount, filtered.active_total);
+    const voided = await page(db, { p_status: "voided" });
+    assert.deepEqual(voided.category_totals, []);
   } finally {
     await db.close();
   }
