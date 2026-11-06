@@ -2,7 +2,10 @@
 export function accountRequestScope() {
   let active: AbortController | null = null;
   return {
-    cancel() { active?.abort(); active = null; },
+    cancel() {
+      active?.abort();
+      active = null;
+    },
     begin() {
       active?.abort();
       const controller = new AbortController();
@@ -16,6 +19,7 @@ export function accountRequestScope() {
 }
 
 type Source<T> = {
+  isAdmin?: () => Promise<boolean>;
   claim: () => Promise<boolean>;
   ownOrders: () => Promise<T[]>;
   guestOrder: () => Promise<T | null>;
@@ -26,16 +30,43 @@ export async function loadCustomerAccount<T>(
   hasGuest: boolean,
   source: Source<T>,
   current: () => boolean,
-): Promise<{ orders: T[]; attached: boolean; claimed: boolean } | null> {
+): Promise<{
+  orders: T[];
+  attached: boolean;
+  claimed: boolean;
+  adminPreview: boolean;
+} | null> {
   if (!current()) return null;
   if (signedIn) {
-    const attached = !hasGuest || await source.claim();
+    const preview = hasGuest && source.isAdmin ? await source.isAdmin() : false;
+    if (!current()) return null;
+    if (preview) {
+      const order = await source.guestOrder();
+      if (!current()) return null;
+      return {
+        orders: order ? [order] : [],
+        attached: true,
+        claimed: false,
+        adminPreview: true,
+      };
+    }
+    const attached = !hasGuest || (await source.claim());
     if (!current()) return null;
     const orders = await source.ownOrders();
     if (!current()) return null;
-    return { orders, attached, claimed: hasGuest && attached };
+    return {
+      orders,
+      attached,
+      claimed: hasGuest && attached,
+      adminPreview: false,
+    };
   }
   const order = hasGuest ? await source.guestOrder() : null;
   if (!current()) return null;
-  return { orders: order ? [order] : [], attached: true, claimed: false };
+  return {
+    orders: order ? [order] : [],
+    attached: true,
+    claimed: false,
+    adminPreview: false,
+  };
 }

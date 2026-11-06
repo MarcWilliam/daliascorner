@@ -3,8 +3,9 @@ import { MetaHealth } from "./MetaHealth";
 import { FinancePanel } from "./FinancePanel";
 import { CheckoutSettings } from "./CheckoutSettings";
 import { InventoryPanel, type Stock, type Movement } from "./InventoryPanel";
+import { ManualOrderForm } from "./ManualOrderForm";
 import { PRODUCTS } from "@/lib/products";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import {
   Package,
@@ -14,6 +15,7 @@ import {
   Settings,
   WalletCards,
   ChartNoAxesCombined,
+  Plus,
 } from "lucide-react";
 import { ClayButton } from "@/components/ui/ClayButton";
 import { LanguageToggle } from "@/components/ui/LanguageToggle";
@@ -44,6 +46,7 @@ type Order = {
   payment_method: string;
   created_at: string;
   expires_at: string;
+  source: "website" | "chat";
   order_items: {
     id: number;
     product_id: string;
@@ -66,6 +69,8 @@ const panel =
 export function AdminDashboard() {
   const { locale, dir } = useLocale();
   const c = storeCopy[locale];
+  const authError = useRef(c.error);
+  authError.current = c.error;
   const [session, setSession] = useState<Session | null>(null);
   const [authReady, setAuthReady] = useState(false);
   const [admin, setAdmin] = useState(false);
@@ -77,6 +82,8 @@ export function AdminDashboard() {
     "orders" | "stock" | "settings" | "notifications" | "meta" | "finance"
   >("orders");
   const [filter, setFilter] = useState("all");
+  const [source, setSource] = useState("all");
+  const [showManualOrder, setShowManualOrder] = useState(false);
   const [orderSearch, setOrderSearch] = useState("");
   const [limit, setLimit] = useState(25);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -105,7 +112,7 @@ export function AdminDashboard() {
       if (active) {
         setSession(data.session);
         setAuthReady(true);
-        if (error) setError(c.error);
+        if (error) setError(authError.current);
       }
     });
     const { data } = db.auth.onAuthStateChange((event, next) => {
@@ -117,7 +124,7 @@ export function AdminDashboard() {
       active = false;
       data.subscription.unsubscribe();
     };
-  }, [c.error]);
+  }, []);
   useEffect(() => {
     setAdmin(false);
     setOrders([]);
@@ -136,13 +143,13 @@ export function AdminDashboard() {
         if (active) {
           setAdmin(data === true && !error);
           setChecking(false);
-          if (error) setError(c.error);
+          if (error) setError(authError.current);
         }
       });
     return () => {
       active = false;
     };
-  }, [session?.user.id, c.error]);
+  }, [session?.user.id]);
   const refresh = useCallback(async () => {
     if (!admin) return;
     setLoading(true);
@@ -154,6 +161,7 @@ export function AdminDashboard() {
         .order("created_at", { ascending: false })
         .limit(limit);
       if (filter !== "all") q = q.eq("status", filter);
+      if (source !== "all") q = q.eq("source", source);
       const results = await Promise.all([
         q,
         db.from("inventory").select("*").order("product_id"),
@@ -180,7 +188,7 @@ export function AdminDashboard() {
     } finally {
       setLoading(false);
     }
-  }, [admin, limit, filter, c.error]);
+  }, [admin, limit, filter, source, c.error]);
   useEffect(() => {
     void refresh();
     const timer = setInterval(() => {
@@ -456,9 +464,40 @@ export function AdminDashboard() {
                 {loading ? c.loading : c.refresh}
               </ClayButton>
             </nav>
+            {showManualOrder && (
+              <div hidden={tab !== "orders"}>
+                <ManualOrderForm
+                  actorId={session.user.id}
+                  stock={stock}
+                  onSaved={refresh}
+                  onCancel={() => setShowManualOrder(false)}
+                  onViewOrder={(number) => {
+                    setFilter("all");
+                    setSource("all");
+                    setOrderSearch(`DC-${number}`);
+                    setLimit(25);
+                    setShowManualOrder(false);
+                  }}
+                />
+              </div>
+            )}
             {tab === "orders" && (
               <section aria-label={c.orders} className="space-y-4">
-                <div className="grid gap-3 sm:grid-cols-2">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <h2 className="text-xl">{c.orders}</h2>
+                  {!showManualOrder && (
+                    <ClayButton
+                      onClick={() => setShowManualOrder(true)}
+                      disabled={loading}
+                    >
+                      <Plus aria-hidden="true" className="h-5 w-5" />
+                      {locale === "ar"
+                        ? "إضافة طلب من المحادثات"
+                        : "Add chat order"}
+                    </ClayButton>
+                  )}
+                </div>
+                <div className="grid gap-3 sm:grid-cols-3">
                   <label className="block">
                     {locale === "ar"
                       ? "البحث في الطلبات المحملة"
@@ -502,6 +541,27 @@ export function AdminDashboard() {
                       ))}
                     </select>
                   </label>
+                  <label className="block">
+                    {locale === "ar" ? "مصدر الطلب" : "Order source"}
+                    <select
+                      className={field}
+                      value={source}
+                      onChange={(e) => {
+                        setSource(e.target.value);
+                        setLimit(25);
+                      }}
+                    >
+                      <option value="all">
+                        {locale === "ar" ? "كل المصادر" : "All sources"}
+                      </option>
+                      <option value="website">
+                        {locale === "ar" ? "الموقع" : "Website"}
+                      </option>
+                      <option value="chat">
+                        {locale === "ar" ? "المحادثات" : "Chat"}
+                      </option>
+                    </select>
+                  </label>
                 </div>
                 <p className="text-sm text-ink-muted" role="status">
                   {loading
@@ -537,6 +597,15 @@ export function AdminDashboard() {
                           <h2 className="text-xl">DC-{o.order_number}</h2>
                           <p className="mt-1 text-sm text-ink-muted">
                             {date(o.created_at)}
+                          </p>
+                          <p className="mt-2 text-xs font-semibold text-brand">
+                            {o.source === "chat"
+                              ? locale === "ar"
+                                ? "طلب من المحادثات"
+                                : "Chat order"
+                              : locale === "ar"
+                                ? "طلب من الموقع"
+                                : "Website order"}
                           </p>
                           {o.status === "pending" && (
                             <p className="mt-2 text-sm text-ink-muted">

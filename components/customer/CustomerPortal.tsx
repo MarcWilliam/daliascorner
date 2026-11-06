@@ -9,7 +9,10 @@ import {
 } from "lucide-react";
 import { useCustomerAuth } from "@/components/providers/CustomerAuthProvider";
 import { AUTH_RETURN_KEY, parseAuthReturn } from "@/lib/store/auth-return";
-import { accountRequestScope, loadCustomerAccount } from "@/lib/store/customer-account";
+import {
+  accountRequestScope,
+  loadCustomerAccount,
+} from "@/lib/store/customer-account";
 import { storeClient, STORE_CONFIGURED } from "@/lib/store/client";
 import { storeCopy } from "@/lib/store/copy";
 import { useLocale } from "@/components/providers/LocaleProvider";
@@ -44,6 +47,7 @@ export function CustomerPortal() {
   const [guestReady, setGuestReady] = useState(false);
   const requests = useRef(accountRequestScope());
   const [loadedIdentity, setLoadedIdentity] = useState("");
+  const [loadedAdminPreview, setLoadedAdminPreview] = useState(false);
   const [guest, setGuest] = useState(""),
     [orders, setOrders] = useState<Order[]>([]),
     [error, setError] = useState(""),
@@ -53,8 +57,16 @@ export function CustomerPortal() {
   currentIdentity.current = identity;
   // Render-time identity gating hides old data before effect cleanup runs.
   const visibleOrders = loadedIdentity === identity ? orders : [];
-  const guestUnavailable = ready && guestReady && !loading && !error &&
-    !session && !!guest && loadedIdentity === identity && visibleOrders.length === 0;
+  const adminPreview = loadedIdentity === identity && loadedAdminPreview;
+  const guestUnavailable =
+    ready &&
+    guestReady &&
+    !loading &&
+    !error &&
+    (!session || adminPreview) &&
+    !!guest &&
+    loadedIdentity === identity &&
+    visibleOrders.length === 0;
   useEffect(() => {
     if (!STORE_CONFIGURED) {
       setGuestReady(true);
@@ -83,53 +95,90 @@ export function CustomerPortal() {
     // the OAuth return until the private receipt has been captured locally.
     if (!STORE_CONFIGURED || !ready || !guestReady || signingOut) return;
     const request = requests.current.begin();
-    const current = () => request.current() && currentIdentity.current === identity;
+    const current = () =>
+      request.current() && currentIdentity.current === identity;
     setError("");
     setMessage("");
     setLoading(true);
     try {
       const db = storeClient();
-      const result = await loadCustomerAccount<Order>(!!session, !!guest, {
-        claim: async () => {
-          const { error } = await db.rpc("claim_order", { p_token: guest }).abortSignal(request.signal);
-          return !error;
+      const result = await loadCustomerAccount<Order>(
+        !!session,
+        !!guest,
+        {
+          isAdmin: async () => {
+            const { data, error } = await db
+              .rpc("is_admin")
+              .abortSignal(request.signal);
+            if (error || typeof data !== "boolean")
+              throw error ?? Error("ADMIN_CHECK_FAILED");
+            return data;
+          },
+          claim: async () => {
+            const { error } = await db
+              .rpc("claim_order", { p_token: guest })
+              .abortSignal(request.signal);
+            return !error;
+          },
+          ownOrders: async () => {
+            const { data, error } = await db
+              .from("orders")
+              .select(
+                "order_number,status,payment_status,subtotal,delivery_fee,delivery_zone,payment_method,transfer_instructions,order_items(name_en,name_ar,quantity,unit_price)",
+              )
+              .eq("customer_id", session!.user.id)
+              .order("created_at", { ascending: false })
+              .limit(100)
+              .abortSignal(request.signal);
+            if (error) throw error;
+            return data as Order[];
+          },
+          guestOrder: async () => {
+            const { data, error } = await db
+              .rpc("guest_order", { p_token: guest })
+              .abortSignal(request.signal);
+            if (error) throw error;
+            return data as Order | null;
+          },
         },
-        ownOrders: async () => {
-          const { data, error } = await db.from("orders")
-            .select("order_number,status,payment_status,subtotal,delivery_fee,delivery_zone,payment_method,transfer_instructions,order_items(name_en,name_ar,quantity,unit_price)")
-            .eq("customer_id", session!.user.id).order("created_at", { ascending: false }).limit(100)
-            .abortSignal(request.signal);
-          if (error) throw error;
-          return data as Order[];
-        },
-        guestOrder: async () => {
-          const { data, error } = await db.rpc("guest_order", { p_token: guest }).abortSignal(request.signal);
-          if (error) throw error;
-          return data as Order | null;
-        },
-      }, current);
+        current,
+      );
       if (!result || !current()) return;
       setOrders(result.orders);
       setLoadedIdentity(identity);
+      setLoadedAdminPreview(result.adminPreview);
       if (!result.attached) {
-        setMessage(ar
-          ? "تعذر ربط الطلب بهذا الحساب. استخدم الحساب الأصلي إن كان مرتبطًا بالفعل."
-          : "Could not attach this order. Use the original account if it is already linked.");
+        setMessage(
+          ar
+            ? "تعذر ربط الطلب بهذا الحساب. استخدم الحساب الأصلي إن كان مرتبطًا بالفعل."
+            : "Could not attach this order. Use the original account if it is already linked.",
+        );
       }
       // No awaits below: the same identity owns all storage/navigation effects.
       if (result.claimed) {
-        try { localStorage.removeItem("dc.guest.order"); } catch {}
+        try {
+          localStorage.removeItem("dc.guest.order");
+        } catch {}
         setGuest("");
         setLoadedIdentity(`${session!.user.id}:true:`);
       }
-      if (session && result.attached) {
+      if (session && result.attached && !result.adminPreview) {
         try {
-          const destination = parseAuthReturn(JSON.parse(localStorage.getItem(AUTH_RETURN_KEY) ?? "null"));
+          const destination = parseAuthReturn(
+            JSON.parse(localStorage.getItem(AUTH_RETURN_KEY) ?? "null"),
+          );
           localStorage.removeItem(AUTH_RETURN_KEY);
-          if (destination && (destination.path !== "/account/" || destination.checkout)) {
-            location.replace(destination.path + (destination.checkout ? "?checkout=1" : ""));
+          if (
+            destination &&
+            (destination.path !== "/account/" || destination.checkout)
+          ) {
+            location.replace(
+              destination.path + (destination.checkout ? "?checkout=1" : ""),
+            );
           }
-        } catch { /* Account still works when browser storage is unavailable. */ }
+        } catch {
+          /* Account still works when browser storage is unavailable. */
+        }
       }
     } catch {
       if (current()) setError(c.error);
@@ -142,7 +191,10 @@ export function CustomerPortal() {
     const t = setInterval(() => {
       if (document.visibilityState === "visible") void refresh();
     }, 30000);
-    return () => { clearInterval(t); requests.current.cancel(); };
+    return () => {
+      clearInterval(t);
+      requests.current.cancel();
+    };
   }, [refresh]);
 
   return (
@@ -206,16 +258,22 @@ export function CustomerPortal() {
                 const logoutIdentity = currentIdentity.current;
                 const { error } = await storeClient().auth.signOut();
                 setSigningOut(false);
-                if (currentIdentity.current !== logoutIdentity && !currentIdentity.current.startsWith("guest:")) return;
+                if (
+                  currentIdentity.current !== logoutIdentity &&
+                  !currentIdentity.current.startsWith("guest:")
+                )
+                  return;
                 if (error) {
                   setError(c.error);
                   return;
                 }
                 setOrders([]);
-                setGuest("");
-                try {
-                  localStorage.removeItem("dc.guest.order");
-                } catch {}
+                if (!adminPreview) {
+                  setGuest("");
+                  try {
+                    localStorage.removeItem("dc.guest.order");
+                  } catch {}
+                }
               }}
             >
               <LogOut aria-hidden="true" className="h-4 w-4" />
@@ -233,6 +291,42 @@ export function CustomerPortal() {
               <p role="status" className="py-6 text-sm text-ink-muted">
                 {c.loading}
               </p>
+            )}
+            {adminPreview && (
+              <section
+                className="rounded-2xl border border-brand/25 bg-leaf-soft/60 p-4"
+                aria-label={ar ? "معاينة المدير" : "Admin preview"}
+              >
+                <h2 className="text-lg">
+                  {ar ? "معاينة المدير" : "Admin preview"}
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-ink-muted">
+                  {ar
+                    ? "عرض الرابط لا يربط الطلب بحساب المدير. شارك رابط المتابعة الخاص مع العميل ليتمكن من عرضه وحفظه في حسابه."
+                    : "Viewing this link does not attach the order to your admin account. Share the private tracking link with the customer so they can view it and save it to their account."}
+                </p>
+                <a
+                  href="/admin/"
+                  className="mt-2 inline-flex min-h-11 items-center rounded-lg font-semibold text-brand underline"
+                >
+                  {ar ? "إدارة الطلبات" : "Manage orders"}
+                </a>
+                <button
+                  type="button"
+                  className="ms-4 inline-flex min-h-11 items-center rounded-lg font-semibold text-brand underline"
+                  onClick={() => {
+                    requests.current.cancel();
+                    setLoadedIdentity("");
+                    setLoadedAdminPreview(false);
+                    setGuest("");
+                    try {
+                      localStorage.removeItem("dc.guest.order");
+                    } catch {}
+                  }}
+                >
+                  {ar ? "إنهاء المعاينة" : "Exit preview"}
+                </button>
+              </section>
             )}
             {guest && !session && visibleOrders.length > 0 && (
               <div className="rounded-clay bg-leaf-soft p-4">
@@ -270,11 +364,36 @@ export function CustomerPortal() {
               </div>
             )}
             {guestUnavailable && (
-              <section className="flex flex-col items-center rounded-3xl border border-line bg-surface px-6 py-12 text-center sm:py-16" aria-labelledby="unavailable-order-title">
-                <span className="mb-5 grid h-16 w-16 place-items-center rounded-2xl bg-leaf-soft text-brand"><UserRound aria-hidden="true" className="h-7 w-7" /></span>
-                <h2 id="unavailable-order-title" className="text-2xl">{ar ? "رابط الطلب غير متاح" : "Order link unavailable"}</h2>
-                <p className="mt-3 max-w-sm text-sm leading-6 text-ink-muted">{ar ? "قد يكون الطلب مرتبطًا بحساب بالفعل. سجّل الدخول بنفس الحساب لعرض تفاصيل طلبك ومتابعته." : "This order may already be saved to an account. Sign in with that account to see your order details and updates."}</p>
-                <ClayButton onClick={signIn} className="mt-6 !rounded-xl">{ar ? "تسجيل الدخول لعرض الطلب" : "Sign in to view your order"}</ClayButton>
+              <section
+                className="flex flex-col items-center rounded-3xl border border-line bg-surface px-6 py-12 text-center sm:py-16"
+                aria-labelledby="unavailable-order-title"
+              >
+                <span className="mb-5 grid h-16 w-16 place-items-center rounded-2xl bg-leaf-soft text-brand">
+                  <UserRound aria-hidden="true" className="h-7 w-7" />
+                </span>
+                <h2 id="unavailable-order-title" className="text-2xl">
+                  {ar ? "رابط الطلب غير متاح" : "Order link unavailable"}
+                </h2>
+                <p className="mt-3 max-w-sm text-sm leading-6 text-ink-muted">
+                  {adminPreview
+                    ? ar
+                      ? "قد يكون هذا الطلب مرتبطًا بحساب العميل بالفعل. يمكنك إدارته من لوحة الإدارة."
+                      : "This order may already belong to a customer account. You can manage it in admin."
+                    : ar
+                      ? "قد يكون الطلب مرتبطًا بحساب بالفعل. سجّل الدخول بنفس الحساب لعرض تفاصيل طلبك ومتابعته."
+                      : "This order may already be saved to an account. Sign in with that account to see your order details and updates."}
+                </p>
+                {adminPreview ? (
+                  <ClayButton href="/admin/" className="mt-6 !rounded-xl">
+                    {ar ? "إدارة الطلبات" : "Manage orders"}
+                  </ClayButton>
+                ) : (
+                  <ClayButton onClick={signIn} className="mt-6 !rounded-xl">
+                    {ar
+                      ? "تسجيل الدخول لعرض الطلب"
+                      : "Sign in to view your order"}
+                  </ClayButton>
+                )}
               </section>
             )}
             {visibleOrders.map((o) => (
@@ -283,7 +402,7 @@ export function CustomerPortal() {
                 className="rounded-clay-lg border border-line bg-surface p-5 space-y-3"
               >
                 <h2 className="text-xl">DC-{o.order_number}</h2>
-                {session && (
+                {session && !adminPreview && (
                   <button
                     className="min-h-12 text-brand underline"
                     onClick={async () => {
@@ -344,54 +463,61 @@ export function CustomerPortal() {
                   )}
               </article>
             ))}
-            {ready && !loading && !error && loadedIdentity === identity &&
-              (!guest || !!session) && visibleOrders.length === 0 && (
-              <section className="flex flex-col items-center rounded-3xl border border-line bg-surface px-6 py-12 text-center sm:py-16">
-                <span className="mb-5 grid h-16 w-16 place-items-center rounded-2xl bg-leaf-soft text-brand">
-                  <ShoppingBag aria-hidden="true" className="h-7 w-7" />
-                </span>
-                <h2 className="text-2xl">
-                  {ar ? "لا توجد طلبات بعد" : "Your first order starts here"}
-                </h2>
-                <p className="mt-3 max-w-sm text-sm leading-6 text-ink-muted">
-                  {ar
-                    ? "ستظهر طلباتك هنا بمجرد تأكيدها من المتجر. اختر شيئًا مميزًا من مجموعتنا."
-                    : "Once you place an order, you can follow its progress here. Find something special in our collection."}
-                </p>
-                <ClayButton href="/#characters" className="mt-6 !rounded-xl">
-                  {ar ? "تصفح المجموعة" : "Explore the collection"}
-                </ClayButton>
-              </section>
-            )}
-            {ready && !session && !guestUnavailable && (!guest || visibleOrders.length > 0) && (
-              <section className="flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-leaf-soft/60 p-5">
-                <div className="flex items-start gap-3">
-                  <PackageCheck
-                    aria-hidden="true"
-                    className="mt-1 h-5 w-5 shrink-0 text-brand"
-                  />
-                  <div>
-                    <h2 className="font-display text-lg font-semibold">
-                      {ar
-                        ? "احفظ طلباتك في حساب واحد"
-                        : "Keep your orders together"}
-                    </h2>
-                    <p className="mt-1 text-sm text-ink-muted">
-                      {ar
-                        ? "تسجيل الدخول اختياري، ويمكنك المتابعة كضيف."
-                        : "Sign in or create an account. Guest checkout is always available."}
-                    </p>
+            {ready &&
+              !loading &&
+              !error &&
+              loadedIdentity === identity &&
+              (!guest || (!!session && !adminPreview)) &&
+              visibleOrders.length === 0 && (
+                <section className="flex flex-col items-center rounded-3xl border border-line bg-surface px-6 py-12 text-center sm:py-16">
+                  <span className="mb-5 grid h-16 w-16 place-items-center rounded-2xl bg-leaf-soft text-brand">
+                    <ShoppingBag aria-hidden="true" className="h-7 w-7" />
+                  </span>
+                  <h2 className="text-2xl">
+                    {ar ? "لا توجد طلبات بعد" : "Your first order starts here"}
+                  </h2>
+                  <p className="mt-3 max-w-sm text-sm leading-6 text-ink-muted">
+                    {ar
+                      ? "ستظهر طلباتك هنا بمجرد تأكيدها من المتجر. اختر شيئًا مميزًا من مجموعتنا."
+                      : "Once you place an order, you can follow its progress here. Find something special in our collection."}
+                  </p>
+                  <ClayButton href="/#characters" className="mt-6 !rounded-xl">
+                    {ar ? "تصفح المجموعة" : "Explore the collection"}
+                  </ClayButton>
+                </section>
+              )}
+            {ready &&
+              !session &&
+              !guestUnavailable &&
+              (!guest || visibleOrders.length > 0) && (
+                <section className="flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-leaf-soft/60 p-5">
+                  <div className="flex items-start gap-3">
+                    <PackageCheck
+                      aria-hidden="true"
+                      className="mt-1 h-5 w-5 shrink-0 text-brand"
+                    />
+                    <div>
+                      <h2 className="font-display text-lg font-semibold">
+                        {ar
+                          ? "احفظ طلباتك في حساب واحد"
+                          : "Keep your orders together"}
+                      </h2>
+                      <p className="mt-1 text-sm text-ink-muted">
+                        {ar
+                          ? "تسجيل الدخول اختياري، ويمكنك المتابعة كضيف."
+                          : "Sign in or create an account. Guest checkout is always available."}
+                      </p>
+                    </div>
                   </div>
-                </div>
-                <ClayButton
-                  onClick={signIn}
-                  variant="outline"
-                  className="!rounded-xl"
-                >
-                  {ar ? "تسجيل الدخول" : "Sign in / create account"}
-                </ClayButton>
-              </section>
-            )}
+                  <ClayButton
+                    onClick={signIn}
+                    variant="outline"
+                    className="!rounded-xl"
+                  >
+                    {ar ? "تسجيل الدخول" : "Sign in / create account"}
+                  </ClayButton>
+                </section>
+              )}
 
             <p className="text-sm">
               <a href="/privacy/" className="underline">

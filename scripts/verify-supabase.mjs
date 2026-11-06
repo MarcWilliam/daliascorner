@@ -45,6 +45,12 @@ const finance = await fetch(`${base}/rest/v1/rpc/finance_overview`, {
 });
 if (![401, 403].includes(finance.status))
   throw new Error(`Unexpected public finance response: ${finance.status}`);
+const chat = await fetch(`${base}/rest/v1/rpc/create_chat_order`, {
+  method: "POST", headers,
+  body: JSON.stringify({ p_key: crypto.randomUUID(), p_token: crypto.randomUUID(), p_customer: {}, p_lines: [], p_locale: "en", p_zone: crypto.randomUUID(), p_payment: "cash", p_paid: false }),
+});
+if (![401, 403].includes(chat.status))
+  throw new Error(`Unexpected public chat-order response: ${chat.status}`);
 const rejected = await fetch(`${base}/functions/v1/place-order`, {
   method: "POST",
   headers: { ...headers, Origin: "https://untrusted.example" },
