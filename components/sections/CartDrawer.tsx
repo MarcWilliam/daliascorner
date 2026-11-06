@@ -11,21 +11,13 @@ import { getProduct, getProductName } from "@/lib/products";
 import { type Customer } from "@/lib/whatsapp";
 import { STORAGE_CUSTOMER } from "@/lib/config";
 import { StoreCheckout } from "@/components/ui/StoreCheckout";
+import { checkoutFieldClass } from "@/lib/store/checkout-copy";
 import { ClayButton } from "@/components/ui/ClayButton";
 
 export function CartDrawer() {
   const active = useSaleActive();
-  const {
-    lines,
-    count,
-    isOpen,
-    close,
-    increment,
-    decrement,
-    remove,
-    hasPrices,
-    subtotal,
-  } = useCart();
+  const { lines, count, isOpen, close, increment, decrement, remove } =
+    useCart();
   const { t, locale, dir, messages } = useLocale();
   const announce = useAnnouncer();
 
@@ -35,6 +27,9 @@ export function CartDrawer() {
     address: "",
   });
   const [loaded, setLoaded] = useState(false);
+  const [checkoutFooter, setCheckoutFooter] = useState<HTMLDivElement | null>(
+    null,
+  );
 
   // Load any saved delivery details once on mount.
   useEffect(() => {
@@ -69,7 +64,8 @@ export function CartDrawer() {
   }, [customer, loaded]);
 
   const updateField =
-    (key: keyof Customer) => (e: React.ChangeEvent<HTMLInputElement>) =>
+    (key: keyof Customer) =>
+    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
       setCustomer((c) => ({ ...c, [key]: e.target.value }));
 
   const detailsComplete =
@@ -120,9 +116,25 @@ export function CartDrawer() {
       if (e.key !== "Tab") return;
       const panel = panelRef.current;
       if (!panel) return;
-      const focusables = panel.querySelectorAll<HTMLElement>(
-        'a[href], button:not([disabled]), input, [tabindex]:not([tabindex="-1"])',
-      );
+      const focusables = Array.from(
+        panel.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), summary, iframe, [tabindex]:not([tabindex="-1"])',
+        ),
+      ).filter((el) => {
+        if (
+          el.tabIndex < 0 ||
+          !el.getClientRects().length ||
+          el.getBoundingClientRect().height === 0
+        )
+          return false;
+        if (el instanceof HTMLInputElement && el.type === "radio" && el.name) {
+          const group = Array.from(
+            panel.querySelectorAll<HTMLInputElement>('input[type="radio"]'),
+          ).filter((r) => r.name === el.name && !r.disabled);
+          return el === (group.find((r) => r.checked) ?? group[0]);
+        }
+        return true;
+      });
       if (!focusables.length) return;
       const first = focusables[0];
       const last = focusables[focusables.length - 1];
@@ -183,10 +195,10 @@ export function CartDrawer() {
         aria-modal="true"
         aria-label={t("cart.title")}
         onKeyDown={onKeyDown}
-        className={`absolute inset-y-0 end-0 flex h-full w-[min(26rem,100%)] flex-col border-s border-line bg-canvas shadow-clay-lg transition-transform duration-300 ease-out ${offClass}`}
+        className={`absolute inset-y-0 end-0 flex h-full w-[min(30rem,100%)] flex-col border-s border-line bg-canvas shadow-clay-lg transition-transform duration-300 ease-out ${offClass}`}
       >
         {/* header */}
-        <div className="flex items-center justify-between gap-3 border-b border-line px-5 py-4">
+        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-line px-5 py-3">
           <h2 className="flex items-center gap-2 text-xl">
             <ShoppingBag className="h-5 w-5 text-brand" aria-hidden="true" />
             {t("cart.title")}
@@ -207,199 +219,195 @@ export function CartDrawer() {
           </button>
         </div>
 
-        {/* body */}
-        {lines.length === 0 ? (
-          <div className="flex flex-1 flex-col items-center justify-center gap-5 px-6 text-center">
-            <span className="grid h-20 w-20 place-items-center rounded-blob bg-canvas-sunk">
-              <ShoppingBag
-                className="h-9 w-9 text-ink-muted"
-                aria-hidden="true"
-              />
-            </span>
-            <p className="text-lg text-ink-muted">{t("cart.empty")}</p>
-            <ClayButton
-              href="#characters"
-              variant="primary"
-              onClick={close as never}
-            >
-              {t("cart.emptyCta")}
-            </ClayButton>
-          </div>
-        ) : (
-          <ul className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
-            {lines.map((line) => {
-              const product = getProduct(line.id, active);
-              if (!product) return null;
-              const name = getProductName(product, locale);
-              return (
-                <li
-                  key={line.id}
-                  className="flex gap-3 rounded-clay border border-line bg-surface p-3 shadow-clay-sm"
-                >
-                  <img
-                    src={product.thumb}
-                    alt=""
-                    width={64}
-                    height={64}
-                    className="h-16 w-16 shrink-0 rounded-clay object-cover"
-                  />
-                  <div className="flex min-w-0 flex-1 flex-col gap-2">
-                    <div className="flex items-start justify-between gap-2">
-                      <span className="font-display font-semibold text-ink">
-                        {name}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          remove(line.id);
-                          announce(t("cart.removed", { name }));
-                        }}
-                        aria-label={`${t("cart.remove")} — ${name}`}
-                        className="grid h-9 w-9 shrink-0 place-items-center rounded-clay text-destructive transition-colors hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-destructive/40 [touch-action:manipulation] cursor-pointer"
-                      >
-                        <Trash2
-                          className="h-[1.15rem] w-[1.15rem]"
-                          aria-hidden="true"
-                        />
-                      </button>
-                    </div>
-
-                    <div className="flex items-center justify-between gap-2">
-                      {/* quantity stepper */}
-                      <div
-                        className="inline-flex items-center rounded-clay border border-line bg-canvas"
-                        role="group"
-                        aria-label={`${t("cart.quantity")} — ${name}`}
-                      >
-                        <button
-                          type="button"
-                          onClick={() => {
-                            announce(
-                              line.qty <= 1
-                                ? t("cart.removed", { name })
-                                : `${name} — ${t("cart.quantity")}: ${line.qty - 1}`,
-                            );
-                            decrement(line.id);
-                          }}
-                          aria-label={t("cart.decrease")}
-                          className="grid h-11 w-11 place-items-center rounded-clay text-ink transition-colors hover:bg-canvas-sunk focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/45 [touch-action:manipulation] cursor-pointer"
-                        >
-                          <Minus className="h-4 w-4" aria-hidden="true" />
-                        </button>
-                        <span className="tabular min-w-[2ch] text-center font-display font-bold text-ink">
-                          {line.qty}
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+          {/* One scroll region keeps the products and checkout reachable. */}
+          {lines.length === 0 ? (
+            <div className="flex min-h-full flex-col items-center justify-center gap-5 px-6 text-center">
+              <span className="grid h-20 w-20 place-items-center rounded-blob bg-canvas-sunk">
+                <ShoppingBag
+                  className="h-9 w-9 text-ink-muted"
+                  aria-hidden="true"
+                />
+              </span>
+              <p className="text-lg text-ink-muted">{t("cart.empty")}</p>
+              <ClayButton
+                href="#characters"
+                variant="primary"
+                onClick={close as never}
+              >
+                {t("cart.emptyCta")}
+              </ClayButton>
+            </div>
+          ) : (
+            <ul className="space-y-3 px-5 py-5">
+              {lines.map((line) => {
+                const product = getProduct(line.id, active);
+                if (!product) return null;
+                const name = getProductName(product, locale);
+                return (
+                  <li
+                    key={line.id}
+                    className="flex gap-3 border-b border-line/70 pb-4 last:border-0 last:pb-0"
+                  >
+                    <img
+                      src={product.thumb}
+                      alt=""
+                      width={64}
+                      height={64}
+                      className="h-16 w-16 shrink-0 rounded-clay object-cover"
+                    />
+                    <div className="flex min-w-0 flex-1 flex-col gap-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <span className="font-display font-semibold text-ink">
+                          {name}
                         </span>
                         <button
                           type="button"
                           onClick={() => {
-                            announce(
-                              `${name} — ${t("cart.quantity")}: ${line.qty + 1}`,
-                            );
-                            increment(line.id);
+                            remove(line.id);
+                            announce(t("cart.removed", { name }));
                           }}
-                          aria-label={t("cart.increase")}
-                          className="grid h-11 w-11 place-items-center rounded-clay text-ink transition-colors hover:bg-canvas-sunk focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/45 [touch-action:manipulation] cursor-pointer"
+                          aria-label={`${t("cart.remove")} — ${name}`}
+                          className="grid h-9 w-9 shrink-0 place-items-center rounded-clay text-destructive transition-colors hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-destructive/40 [touch-action:manipulation] cursor-pointer"
                         >
-                          <Plus className="h-4 w-4" aria-hidden="true" />
+                          <Trash2
+                            className="h-[1.15rem] w-[1.15rem]"
+                            aria-hidden="true"
+                          />
                         </button>
                       </div>
 
-                      {/* optional per-item price */}
-                      {product.price != null && (
-                        <span className="tabular font-display font-bold text-brand">
-                          {product.price * line.qty} {messages.cart.currency}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        )}
+                      <div className="flex items-center justify-between gap-2">
+                        {/* quantity stepper */}
+                        <div
+                          className="inline-flex items-center rounded-clay border border-line bg-canvas"
+                          role="group"
+                          aria-label={`${t("cart.quantity")} — ${name}`}
+                        >
+                          <button
+                            type="button"
+                            onClick={() => {
+                              announce(
+                                line.qty <= 1
+                                  ? t("cart.removed", { name })
+                                  : `${name} — ${t("cart.quantity")}: ${line.qty - 1}`,
+                              );
+                              decrement(line.id);
+                            }}
+                            aria-label={t("cart.decrease")}
+                            className="grid h-11 w-11 place-items-center rounded-clay text-ink transition-colors hover:bg-canvas-sunk focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/45 [touch-action:manipulation] cursor-pointer"
+                          >
+                            <Minus className="h-4 w-4" aria-hidden="true" />
+                          </button>
+                          <span className="tabular min-w-[2ch] text-center font-display font-bold text-ink">
+                            {line.qty}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              announce(
+                                `${name} — ${t("cart.quantity")}: ${line.qty + 1}`,
+                              );
+                              increment(line.id);
+                            }}
+                            aria-label={t("cart.increase")}
+                            className="grid h-11 w-11 place-items-center rounded-clay text-ink transition-colors hover:bg-canvas-sunk focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/45 [touch-action:manipulation] cursor-pointer"
+                          >
+                            <Plus className="h-4 w-4" aria-hidden="true" />
+                          </button>
+                        </div>
 
-        {/* footer / checkout */}
-        <div className="border-t border-line px-5 py-4">
-          {hasPrices ? (
-            <div className="mb-3 space-y-1">
-              <div className="flex items-center justify-between font-display text-lg font-bold text-ink">
-                <span>{t("cart.subtotal")}</span>
-                <span className="tabular">
-                  {subtotal} {messages.cart.currency}
-                </span>
-              </div>
-              {savings > 0 && (
-                <div className="flex items-center justify-between text-sm font-semibold text-brand">
-                  <span>{t("cart.savings")}</span>
-                  <span className="tabular">
-                    -{savings} {messages.cart.currency}
-                  </span>
-                </div>
-              )}
-            </div>
-          ) : (
-            <p className="mb-3 text-sm leading-relaxed text-ink-muted">
-              {t("cart.requestNote")}
-            </p>
+                        {/* optional per-item price */}
+                        {product.price != null && (
+                          <span className="tabular font-display font-bold text-brand">
+                            {product.price * line.qty} {messages.cart.currency}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
           )}
 
-          {/* delivery details — required before checkout */}
           {lines.length > 0 && (
-            <div className="mb-3 space-y-2">
-              <p className="font-display text-sm font-semibold text-ink">
-                {t("cart.detailsTitle")}
-              </p>
-              <label htmlFor="cart-name" className="sr-only">
-                {t("cart.name")}
-              </label>
-              <input
-                id="cart-name"
-                type="text"
-                autoComplete="name"
-                value={customer.name}
-                onChange={updateField("name")}
-                placeholder={t("cart.namePlaceholder")}
-                className="w-full rounded-clay border border-line bg-surface px-3.5 py-2.5 text-ink placeholder:text-ink-muted focus-visible:border-brand focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/45"
-              />
-              <label htmlFor="cart-phone" className="sr-only">
-                {t("cart.phone")}
-              </label>
-              <input
-                id="cart-phone"
-                type="tel"
-                inputMode="tel"
-                autoComplete="tel"
-                value={customer.phone}
-                onChange={updateField("phone")}
-                placeholder={t("cart.phonePlaceholder")}
-                className="w-full rounded-clay border border-line bg-surface px-3.5 py-2.5 text-ink placeholder:text-ink-muted focus-visible:border-brand focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/45"
-              />
-              <label htmlFor="cart-address" className="sr-only">
-                {t("cart.address")}
-              </label>
-              <input
-                id="cart-address"
-                type="text"
-                autoComplete="street-address"
-                value={customer.address}
-                onChange={updateField("address")}
-                placeholder={t("cart.addressPlaceholder")}
-                className="w-full rounded-clay border border-line bg-surface px-3.5 py-2.5 text-ink placeholder:text-ink-muted focus-visible:border-brand focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/45"
-              />
-              {!detailsComplete && (
-                <p className="text-xs leading-relaxed text-ink-muted">
-                  {t("cart.detailsRequired")}
+            <div className="px-5 pb-6">
+              {savings > 0 && (
+                <p className="mb-4 text-sm font-semibold text-brand">
+                  {t("cart.savings")}: {savings} {messages.cart.currency}
                 </p>
               )}
+              <StoreCheckout
+                customer={customer}
+                canCheckout={canCheckout}
+                visible={isOpen}
+                footerTarget={checkoutFooter}
+              >
+                <fieldset className="space-y-3 border-0 p-0">
+                  <legend className="font-display text-lg font-semibold text-ink">
+                    {t("cart.detailsTitle")}
+                  </legend>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <label
+                      htmlFor="cart-name"
+                      className="block text-sm font-semibold text-ink-muted"
+                    >
+                      {t("cart.name")}
+                      <input
+                        id="cart-name"
+                        type="text"
+                        autoComplete="name"
+                        value={customer.name}
+                        onChange={updateField("name")}
+                        placeholder={t("cart.namePlaceholder")}
+                        className={`${checkoutFieldClass} mt-1.5`}
+                      />
+                    </label>
+                    <label
+                      htmlFor="cart-phone"
+                      className="block text-sm font-semibold text-ink-muted"
+                    >
+                      {t("cart.phone")}
+                      <input
+                        id="cart-phone"
+                        type="tel"
+                        inputMode="tel"
+                        autoComplete="tel"
+                        dir="ltr"
+                        value={customer.phone}
+                        onChange={updateField("phone")}
+                        placeholder={t("cart.phonePlaceholder")}
+                        className={`${checkoutFieldClass} mt-1.5 rtl:text-right`}
+                      />
+                    </label>
+                  </div>
+                  <label
+                    htmlFor="cart-address"
+                    className="block text-sm font-semibold text-ink-muted"
+                  >
+                    {t("cart.address")}
+                    <input
+                      type="text"
+                      id="cart-address"
+                      autoComplete="street-address"
+                      value={customer.address}
+                      onChange={updateField("address")}
+                      placeholder={t("cart.addressPlaceholder")}
+                      className={`${checkoutFieldClass} mt-1.5`}
+                    />
+                  </label>
+                </fieldset>
+              </StoreCheckout>
             </div>
           )}
-
-          <StoreCheckout
-            customer={customer}
-            canCheckout={canCheckout}
-            visible={isOpen}
-          />
         </div>
+        {lines.length > 0 && (
+          <div
+            ref={setCheckoutFooter}
+            className="shrink-0 border-t border-line bg-surface px-5 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-[0_-4px_20px_rgb(var(--ink)/0.04)] empty:hidden"
+          />
+        )}
       </div>
     </div>
   );
