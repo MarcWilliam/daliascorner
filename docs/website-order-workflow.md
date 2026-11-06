@@ -74,3 +74,8 @@ Suggested review steps: open the review URL, select Continue with Facebook, appr
 The owner must complete business/identity verification using genuine details and documents, and review any data-handling declarations before submitting App Review. Google login and guest orders can operate while Facebook waits for approval. Do not switch on `NEXT_PUBLIC_FACEBOOK_LOGIN_ENABLED` until Meta approves public access and a sign-in has been verified.
 
 Workflow hardening: in-memory checkout retries now retain both idempotency and guest-access identifiers if browser storage is blocked. Private account/review pages suspend Pixel activity without deleting existing consented attribution cookies; explicit consent withdrawal still clears them. Regression suite: 20 tests passed, plus production build.
+
+
+Current handoff: Google is enabled for customers and a real Google identity was observed in Supabase after the owner tested it. Facebook provider configuration and OAuth redirect are verified; public publication is pending at the owner's request. Reviewer instructions have been auto-saved as a draft in Meta; nothing was submitted. The owner must complete verification and review operational declarations before public Facebook activation.
+
+The legacy `create-order` Edge Function returns HTTP 410. All website checkout uses `place-order`, which requires an active delivery zone and enabled payment method. This closes the old preview path that lacked delivery-fee selection. Public anonymous callers cannot invoke the privileged order-creation SQL functions directly.

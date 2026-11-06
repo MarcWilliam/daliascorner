@@ -1,6 +1,8 @@
 # Dalia's Corner
 
-A single-page, fully bilingual (Arabic + English, RTL) marketing site for **Dalia's Corner** — handmade, hand-painted pottery planters shaped like animal characters. Built with **Next.js (App Router) + TypeScript + Tailwind CSS**. Claymorphism design system, client-side cart, WhatsApp checkout. Supabase-backed orders, stock and admin login are being implemented on `codex/supabase-store-admin`; WhatsApp remains the checkout communication channel. No online payment. See [backend setup](docs/supabase-cloudflare-setup.md).
+A bilingual Arabic/English pottery storefront built with Next.js, TypeScript and Tailwind. Website checkout saves orders in Supabase with configurable delivery zones, cash on delivery/manual transfer, stock reservations, private guest order pages and Google customer login. The mobile admin manages orders, stock, push notifications and Meta integration health.
+
+Review deployment: https://dalias-corner.pages.dev — work remains on `codex/supabase-store-admin`; the custom domain has not been switched. Facebook Login is configured for app-role testing but remains hidden pending Meta business verification and App Review. See [current order/account workflow](docs/website-order-workflow.md) and [infrastructure setup](docs/supabase-cloudflare-setup.md).
 
 ## Run
 

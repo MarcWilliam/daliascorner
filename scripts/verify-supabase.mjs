@@ -35,7 +35,7 @@ for (const table of [
   });
   if (response.ok) throw new Error(`Unexpected public access: ${table}`);
 }
-const rejected = await fetch(`${base}/functions/v1/create-order`, {
+const rejected = await fetch(`${base}/functions/v1/place-order`, {
   method: "POST",
   headers: { ...headers, Origin: "https://untrusted.example" },
   body: "{}",

@@ -9,7 +9,6 @@ import { useCart } from "@/components/providers/CartProvider";
 import { useInventory } from "@/components/providers/InventoryProvider";
 import { useLocale } from "@/components/providers/LocaleProvider";
 import { ClayButton } from "./ClayButton";
-import { WhatsAppIcon } from "./BrandIcons";
 import { useConsent } from "@/components/providers/ConsentProvider";
 import {
   storeClient,
@@ -18,9 +17,7 @@ import {
 } from "@/lib/store/client";
 import { storeCopy } from "@/lib/store/copy";
 import { parseOrder } from "@/lib/store/validation";
-import { buildOrderLink, type Customer } from "@/lib/whatsapp";
-import { whatsappLink } from "@/lib/config";
-import { trackCheckoutLead } from "@/lib/meta";
+import type { Customer } from "@/lib/whatsapp";
 type Turnstile = {
   render: (el: HTMLElement, opts: Record<string, unknown>) => string;
   remove: (id: string) => void;

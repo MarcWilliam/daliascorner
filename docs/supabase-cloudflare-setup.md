@@ -1,5 +1,7 @@
 # Store backend and admin setup
 
+For the current website checkout, social accounts and Meta review state, use [website-order-workflow.md](website-order-workflow.md). This guide retains the original infrastructure setup; WhatsApp handoff details below have been superseded by website checkout.
+
 Implementation branch: `codex/supabase-store-admin`. Cloudflare review deployment: https://dalias-corner.pages.dev (admin: /admin/), built from the feature branch. The existing GitHub Pages deployment and live custom domain are unchanged. Do not merge or switch the live domain until the acceptance checks below pass.
 
 ## Connected project
