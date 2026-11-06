@@ -92,8 +92,32 @@ export function AdminDashboard() {
   const [source, setSource] = useState("all");
   const [showManualOrder, setShowManualOrder] = useState(false);
   const [orderSearch, setOrderSearch] = useState("");
+  const [orderSort, setOrderSort] = useState<
+    "newest" | "oldest" | "total_desc" | "total_asc" | "customer"
+  >("newest");
+  const sortLabels =
+    locale === "ar"
+      ? {
+          newest: "الأحدث تسجيلًا",
+          oldest: "الأقدم تسجيلًا",
+          total_desc: "الإجمالي: الأعلى أولًا",
+          total_asc: "الإجمالي: الأقل أولًا",
+          customer: "اسم العميل: أ–ي",
+        }
+      : {
+          newest: "Newest recorded",
+          oldest: "Oldest recorded",
+          total_desc: "Total: high to low",
+          total_asc: "Total: low to high",
+          customer: "Customer: A–Z",
+        };
   const [limit, setLimit] = useState(25);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [listedOrderIds, setListedOrderIds] = useState<string[]>([]);
+  // A selected order can be fetched separately from the current query page.
+  const listedOrders = orders.filter((order) =>
+    listedOrderIds.includes(order.id),
+  );
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const selectedOrderRef = useRef<string | null>(null);
   selectedOrderRef.current = selectedOrderId;
@@ -128,6 +152,7 @@ export function AdminDashboard() {
     noticeRequests.current.cancel();
     setStockFocus(undefined);
     setOrders([]);
+    setListedOrderIds([]);
     setSelectedOrderId(null);
     setStock([]);
     setNotices([]);
@@ -147,11 +172,17 @@ export function AdminDashboard() {
       const allowed = await refreshRole();
       if (!current() || !allowed) return;
       const db = storeClient();
-      let q = db
-        .from("orders")
-        .select("*,order_items(*)")
-        .order("created_at", { ascending: false })
-        .limit(limit);
+      let q = db.from("orders").select("*,order_items(*)");
+      if (orderSort === "customer")
+        q = q
+          .order("customer_name", { ascending: true })
+          .order("created_at", { ascending: false });
+      else if (orderSort === "total_asc" || orderSort === "total_desc")
+        q = q
+          .order("order_total", { ascending: orderSort === "total_asc" })
+          .order("created_at", { ascending: false });
+      else q = q.order("created_at", { ascending: orderSort === "oldest" });
+      q = q.order("id", { ascending: orderSort === "oldest" }).limit(limit);
       if (filter !== "all") q = q.eq("status", filter);
       if (source !== "all") q = q.eq("source", source);
       const results = await Promise.all([
@@ -190,6 +221,7 @@ export function AdminDashboard() {
       if (results.some((r) => r.error)) throw new Error();
       const nextOrders = results[0].data as unknown as Order[];
       const detailOrder = results[4].data as unknown as Order | null;
+      setListedOrderIds(nextOrders.map((order) => order.id));
       setOrders(
         detailOrder && !nextOrders.some((o) => o.id === detailOrder.id)
           ? [...nextOrders, detailOrder]
@@ -203,7 +235,16 @@ export function AdminDashboard() {
     } finally {
       if (current()) setLoading(false);
     }
-  }, [admin, session?.user.id, refreshRole, limit, filter, source, c.error]);
+  }, [
+    admin,
+    session?.user.id,
+    refreshRole,
+    limit,
+    filter,
+    source,
+    orderSort,
+    c.error,
+  ]);
   useEffect(() => {
     void refresh();
     const timer = setInterval(() => {
@@ -564,13 +605,14 @@ export function AdminDashboard() {
                     </ClayButton>
                   )}
                 </div>
-                <div className="grid gap-3 sm:grid-cols-3">
-                  <label className="block">
+                <div className="grid gap-x-3 gap-y-2 min-[480px]:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_1fr]">
+                  <label className="block min-w-0 text-xs font-medium text-ink-muted">
                     {locale === "ar"
                       ? "البحث في الطلبات المحملة"
                       : "Search loaded orders"}
                     <input
                       className={field}
+                      style={{ height: 44, minHeight: 44, paddingBlock: 8 }}
                       type="search"
                       value={orderSearch}
                       onChange={(e) => setOrderSearch(e.target.value)}
@@ -581,10 +623,11 @@ export function AdminDashboard() {
                       }
                     />
                   </label>
-                  <label className="block">
+                  <label className="block min-w-0 text-xs font-medium text-ink-muted">
                     {c.orders}
                     <select
                       className={field}
+                      style={{ height: 44, minHeight: 44, paddingBlock: 8 }}
                       value={filter}
                       onChange={(e) => {
                         setFilter(e.target.value);
@@ -608,10 +651,11 @@ export function AdminDashboard() {
                       ))}
                     </select>
                   </label>
-                  <label className="block">
+                  <label className="block min-w-0 text-xs font-medium text-ink-muted">
                     {locale === "ar" ? "مصدر الطلب" : "Order source"}
                     <select
                       className={field}
+                      style={{ height: 44, minHeight: 44, paddingBlock: 8 }}
                       value={source}
                       onChange={(e) => {
                         setSource(e.target.value);
@@ -629,18 +673,38 @@ export function AdminDashboard() {
                       </option>
                     </select>
                   </label>
+                  <label className="block min-w-0 text-xs font-medium text-ink-muted">
+                    {locale === "ar" ? "ترتيب حسب" : "Sort by"}
+                    <select
+                      className={field}
+                      style={{ height: 44, minHeight: 44, paddingBlock: 8 }}
+                      value={orderSort}
+                      onChange={(event) => {
+                        setOrderSort(event.target.value as typeof orderSort);
+                        setLimit(25);
+                      }}
+                    >
+                      {(
+                        Object.keys(sortLabels) as (keyof typeof sortLabels)[]
+                      ).map((value) => (
+                        <option key={value} value={value}>
+                          {sortLabels[value]}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
                 </div>
                 <p className="text-sm text-ink-muted" role="status">
                   {loading
                     ? c.loading
-                    : `${orders.length} ${locale === "ar" ? "طلبات محملة · آخر ما تم تسجيله أولاً" : "orders loaded · latest recorded first"}`}
+                    : `${listedOrders.length} ${locale === "ar" ? "طلبات محملة" : "orders loaded"} · ${sortLabels[orderSort]}`}
                 </p>
-                {!loading && !orders.length && (
+                {!loading && !listedOrders.length && (
                   <p className={panel}>{c.empty}</p>
                 )}
                 {!loading &&
-                  orders.length > 0 &&
-                  !orders.some((o) =>
+                  listedOrders.length > 0 &&
+                  !listedOrders.some((o) =>
                     `DC-${o.order_number} ${o.customer_name} ${o.customer_phone}`
                       .toLowerCase()
                       .includes(orderSearch.trim().toLowerCase()),
@@ -675,7 +739,7 @@ export function AdminDashboard() {
                     <span />
                   </div>
                   <ul className="divide-y divide-line">
-                    {orders
+                    {listedOrders
                       .filter((o) =>
                         `DC-${o.order_number} ${o.customer_name} ${o.customer_phone}`
                           .toLowerCase()
@@ -797,7 +861,7 @@ export function AdminDashboard() {
                       ))}
                   </ul>
                 </div>
-                {orders.length === limit && (
+                {listedOrders.length === limit && (
                   <ClayButton
                     variant="outline"
                     onClick={() => setLimit((n) => n + 25)}
@@ -1086,6 +1150,7 @@ export function AdminDashboard() {
                       </div>
                     </section>
                     <AdminOrderMessages
+                      orderId={o.id}
                       orderNumber={o.order_number}
                       phone={o.customer_phone}
                       locale={o.locale}

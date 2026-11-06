@@ -30,7 +30,7 @@ async function setup(beforeInstaPay = false) {
       (name) =>
         name.endsWith(".sql") &&
         !skipped.has(name) &&
-        (!beforeInstaPay || name !== migration),
+        (!beforeInstaPay || name < migration),
     )
     .sort())
     await db.exec(readFileSync(`supabase/migrations/${name}`, "utf8"));

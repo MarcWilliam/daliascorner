@@ -1,4 +1,5 @@
 "use client";
+import { ExpenseCategoryChart } from "./ExpenseCategoryChart";
 
 import {
   useCallback,
@@ -708,21 +709,7 @@ export function ExpensesPanel({
                 {c.categoryHint}
               </p>
               {page.category_totals?.length ? (
-                <dl className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                  {page.category_totals.map((item) => (
-                    <div
-                      key={item.category}
-                      className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-lg bg-canvas-sunk px-3 py-2"
-                    >
-                      <dt className="text-xs text-ink-muted">
-                        {common.categories[item.category]}
-                      </dt>
-                      <dd className="max-w-full break-words text-sm font-semibold tabular-nums">
-                        {money(item.amount)}
-                      </dd>
-                    </div>
-                  ))}
-                </dl>
+                <ExpenseCategoryChart items={page.category_totals} />
               ) : (
                 <p className="mt-2 text-sm text-ink-muted">
                   {page.active_total > 0

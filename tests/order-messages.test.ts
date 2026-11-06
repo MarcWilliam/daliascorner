@@ -45,3 +45,19 @@ test("all five bilingual templates carry the public order reference and never pr
   assert.equal(customerOrderMessageLink("01012345678", "x".repeat(4001)), null);
   assert.equal(customerOrderMessageLink("invalid", "DC-1"), null);
 });
+test("every customer template includes its supplied private order link in the selected language", () => {
+  const link =
+    "https://shop.example/order/#order=00000000-0000-4000-8000-000000000005";
+  for (const locale of ["en", "ar"] as const)
+    for (const template of orderMessageTemplates) {
+      const message = orderMessage(template, 5, locale, link);
+      assert.ok(message.includes("DC-5"));
+      assert.ok(message.endsWith(link));
+      assert.equal(
+        new URL(
+          customerOrderMessageLink("01012345678", message)!,
+        ).searchParams.get("text"),
+        message,
+      );
+    }
+});

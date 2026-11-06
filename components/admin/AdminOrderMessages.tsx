@@ -1,7 +1,9 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocale } from "@/components/providers/LocaleProvider";
 import { WhatsAppIcon } from "@/components/ui/BrandIcons";
+import { storeClient } from "@/lib/store/client";
+import { useCustomerAuth } from "@/components/providers/CustomerAuthProvider";
 import type { Locale } from "@/lib/i18n/types";
 import {
   customerOrderMessageLink,
@@ -12,6 +14,7 @@ import {
 } from "@/lib/store/order-messages";
 
 type Props = {
+  orderId: string;
   orderNumber: number;
   phone: string;
   customerName?: string;
@@ -20,11 +23,16 @@ type Props = {
   busy?: boolean;
 };
 export function AdminOrderMessages(props: Props) {
+  const { session } = useCustomerAuth();
   return (
-    <MessageEditor key={`${props.orderNumber}:${props.phone}`} {...props} />
+    <MessageEditor
+      key={`${session?.user.id}:${props.orderId}:${props.phone}`}
+      {...props}
+    />
   );
 }
 function MessageEditor({
+  orderId,
   orderNumber,
   phone,
   locale: orderLocale,
@@ -33,6 +41,40 @@ function MessageEditor({
 }: Props) {
   const { locale } = useLocale();
   const ar = locale === "ar";
+  const [orderLink, setOrderLink] = useState("");
+  const [linkError, setLinkError] = useState(false);
+  const [retry, setRetry] = useState(0);
+  useEffect(() => {
+    let active = true;
+    const controller = new AbortController();
+    setOrderLink("");
+    setLinkError(false);
+    void (async () => {
+      try {
+        const { data, error } = await storeClient()
+          .rpc("create_order_share_link", { p_id: orderId })
+          .abortSignal(controller.signal);
+        if (!active) return;
+        if (
+          error ||
+          typeof data !== "string" ||
+          !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+            data,
+          )
+        )
+          throw Error();
+        const url = new URL("/order/", window.location.origin);
+        url.hash = "order=" + data;
+        setOrderLink(url.toString());
+      } catch {
+        if (active) setLinkError(true);
+      }
+    })();
+    return () => {
+      active = false;
+      controller.abort();
+    };
+  }, [orderId, retry]);
   const [language, setLanguage] = useState<Locale>(orderLocale ?? locale);
   const [template, setTemplate] = useState<OrderMessageTemplate>(
     status === "shipped"
@@ -45,8 +87,9 @@ function MessageEditor({
   );
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const key = `${language}:${template}`,
-    message = drafts[key] ?? orderMessage(template, orderNumber, language);
-  const link = customerOrderMessageLink(phone, message);
+    message =
+      drafts[key] ?? orderMessage(template, orderNumber, language, orderLink);
+  const link = orderLink ? customerOrderMessageLink(phone, message) : null;
   const labels: Record<OrderMessageTemplate, string> = ar
     ? {
         confirmed: "تأكيد الطلب",
@@ -72,7 +115,7 @@ function MessageEditor({
         {ar ? "راسل العميل" : "Message customer"}
       </h3>
       <fieldset
-        disabled={busy}
+        disabled={busy || !orderLink}
         className="grid grid-cols-[minmax(0,1fr)_auto] gap-3"
       >
         <label className="min-w-0 text-xs text-ink-muted">
@@ -116,6 +159,33 @@ function MessageEditor({
           />
         </label>
       </fieldset>
+      {orderLink && (
+        <p className="text-xs text-ink-muted">
+          {ar
+            ? "يتضمن النص رابطًا خاصًا بالطلب صالحًا لمدة ٩٠ يومًا. شاركه مع هذا العميل فقط."
+            : "Includes a private order link valid for 90 days. Share it only with this customer."}
+        </p>
+      )}
+      {!orderLink && (
+        <p role="status" className="text-xs text-ink-muted">
+          {linkError
+            ? ar
+              ? "تعذر إنشاء رابط الطلب."
+              : "Could not prepare the order link."
+            : ar
+              ? "جارٍ تجهيز رابط الطلب…"
+              : "Preparing the order link…"}
+          {linkError && (
+            <button
+              type="button"
+              onClick={() => setRetry((value) => value + 1)}
+              className="ms-2 min-h-11 font-semibold text-brand underline"
+            >
+              {ar ? "إعادة المحاولة" : "Retry order link"}
+            </button>
+          )}
+        </p>
+      )}
       {!customerWhatsAppNumber(phone) && (
         <p role="status" className="text-sm text-destructive">
           {ar

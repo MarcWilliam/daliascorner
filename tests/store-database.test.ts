@@ -3,10 +3,11 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { PGlite } from "@electric-sql/pglite";
 const admin = "00000000-0000-4000-8000-000000000001";
+const customerId = "00000000-0000-4000-8000-000000000002";
 async function setup() {
   const db = new PGlite();
   await db.exec(
-    `create role anon; create role authenticated; create role service_role bypassrls; create schema auth; create table auth.users(id uuid primary key, email_confirmed_at timestamptz default now()); create function auth.uid() returns uuid language sql as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$; grant usage on schema public,auth to anon,authenticated,service_role; insert into auth.users(id) values('${admin}');`,
+    `create role anon; create role authenticated; create role service_role bypassrls; create schema auth; create table auth.users(id uuid primary key, email_confirmed_at timestamptz default now()); create function auth.uid() returns uuid language sql as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$; grant usage on schema public,auth to anon,authenticated,service_role; insert into auth.users(id) values('${admin}'),('${customerId}');`,
   );
   await db.exec(
     readFileSync("supabase/migrations/20261106080211_store.sql", "utf8"),
@@ -226,7 +227,7 @@ test("website checkout snapshots fees, protects guest orders and queues only con
       null,
     );
     await db.exec(
-      `select set_config('request.jwt.claim.sub','${admin}',false);`,
+      `select set_config('request.jwt.claim.sub','${customerId}',false);`,
     );
     await db.query("select claim_order($1)", [token]);
     assert.equal(
@@ -235,7 +236,7 @@ test("website checkout snapshots fees, protects guest orders and queues only con
       null,
     );
     await db.exec(
-      `select set_order_payment(id,'paid') from orders;select set_order_payment(id,'paid') from orders;`,
+      `select set_config('request.jwt.claim.sub','${admin}',false);select set_order_payment(id,'paid') from orders;select set_order_payment(id,'paid') from orders;`,
     );
     assert.equal(
       (await db.query("select * from meta_events where event_name='Purchase'"))
@@ -276,7 +277,7 @@ test("guest retry after sign-in reuses order; attaching it revokes anonymous ret
         [...args, user],
       );
     const guest = await request(null);
-    const signed = await request(admin);
+    const signed = await request(customerId);
     assert.equal(guest.rows[0].o.order_number, signed.rows[0].o.order_number);
     assert.equal(
       (await db.query<{ n: number }>("select count(*)::int as n from orders"))
@@ -284,13 +285,13 @@ test("guest retry after sign-in reuses order; attaching it revokes anonymous ret
       1,
     );
     await db.exec(
-      `select set_config('request.jwt.claim.sub','${admin}',false);`,
+      `select set_config('request.jwt.claim.sub','${customerId}',false);`,
     );
     await db.query("select claim_order($1)", [token]);
     await assert.rejects(request(null), /ORDER_NOT_AVAILABLE/);
     await assert.rejects(request(crypto.randomUUID()), /ORDER_NOT_AVAILABLE/);
     assert.equal(
-      (await request(admin)).rows[0].o.order_number,
+      (await request(customerId)).rows[0].o.order_number,
       guest.rows[0].o.order_number,
     );
   } finally {

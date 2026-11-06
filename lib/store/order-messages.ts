@@ -33,6 +33,7 @@ export function orderMessage(
   template: OrderMessageTemplate,
   orderNumber: number,
   locale: Locale,
+  orderLink?: string,
 ): string {
   if (!Number.isSafeInteger(orderNumber) || orderNumber < 1) return "";
   const reference = `DC-${orderNumber}`;
@@ -52,7 +53,12 @@ export function orderMessage(
           payment_reminder: `A reminder about payment for your Dalia’s Corner order ${reference}. If you’ve already paid, please send us the payment screenshot so we can check it.`,
           cancelled: `Your Dalia’s Corner order ${reference} has been cancelled. If you have questions or have already paid, please message us so we can help.`,
         };
-  return messages[template];
+  return (
+    messages[template] +
+    (orderLink
+      ? `\n\n${locale === "ar" ? "تابع طلبك:" : "Track your order:"}\n${orderLink}`
+      : "")
+  );
 }
 
 export function customerOrderMessageLink(
