@@ -10,7 +10,8 @@
     "dev": "next dev",
     "build": "next build",
     "test": "tsc -p tsconfig.test.json && node --test .test-build/tests/*.test.js",
-    "start": "next start"
+    "start": "next start",
+    "prebuild": "node scripts/check-build-env.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "2.119.0",

@@ -1,6 +1,6 @@
 # Store backend and admin setup
 
-Implementation branch: `codex/supabase-store-admin`. The existing GitHub Pages deployment is unchanged. Do not merge or switch the live domain until the acceptance checks below pass.
+Implementation branch: `codex/supabase-store-admin`. Cloudflare review deployment: https://dalias-corner.pages.dev (admin: /admin/), built from the feature branch. The existing GitHub Pages deployment and live custom domain are unchanged. Do not merge or switch the live domain until the acceptance checks below pass.
 
 ## Connected project
 
@@ -10,7 +10,7 @@ Implementation branch: `codex/supabase-store-admin`. The existing GitHub Pages d
 - All inventory starts at **zero**. Enter actual stock in the admin page before accepting orders.
 - `.env.local` contains the project's public URL and publishable key. It is ignored by Git.
 - Notification secrets and encrypted Vault scheduler configuration are installed. Both cron jobs are active; the worker configuration check returned HTTP 200.
-- `ALLOWED_ORIGINS` has been set to the apex domain, www domain and `http://localhost:3000`. Add the exact Cloudflare preview origin when available. This is a CORS allowlist, not an authentication mechanism.
+- `ALLOWED_ORIGINS` has been set to the apex domain, www domain and `http://localhost:3000`, plus `https://dalias-corner.pages.dev`. This is a CORS allowlist, not an authentication mechanism.
 
 ## Admin account
 
@@ -63,7 +63,7 @@ Use the existing Next.js static export, not Workers SSR:
 1. Connect the GitHub repository in **Workers & Pages → Create → Pages → Connect to Git**.
 2. Start with branch `codex/supabase-store-admin` for a preview, leaving the current live domain untouched.
 3. Framework preset: **Next.js (Static HTML Export)**. Build command: `npm ci && npm test && npm run build`. Output directory: `out`. Node version: `22.23.1` (matches `.nvmrc`).
-4. Add public build variables from `.env.local`:
+4. Public build variables are versioned in `wrangler.toml` under `[vars]`. Wrangler overrides the dashboard configuration; update the file for both production and previews, rather than entering competing dashboard values. The build rejects missing backend/checkout/push variables on Cloudflare. The public settings are:
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
    - `NEXT_PUBLIC_TURNSTILE_SITE_KEY`
@@ -117,3 +117,8 @@ Do not call the store live until these account-dependent checks pass.
 - The notification worker returned HTTP 200 with its configured secret. A server-side pg_net request using the encrypted Vault secret also returned HTTP 200, and both cron jobs were confirmed active. This verifies dispatch configuration, not delivery to a physical phone.
 - English and Arabic login layouts checked at phone width. Signed-in screens, password recovery and server-to-phone push still need account/device acceptance.
 - Security advisor warnings for the intentionally public availability RPC and admin-checked SECURITY DEFINER functions were reviewed. The platform's internal `rls_auto_enable` helper was revoked from API roles. `admin_users` deliberately has RLS and no client policies (deny-all). See [Supabase privileged function advisory](https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable). Unused-index notices are expected on a new empty store.
+
+- Cloudflare deployment `ed833831-db5d-4fd6-8b2a-87228e9803f9` succeeded at commit `ac28092`; admin HTML and the live catalog redirect passed external HTTP checks.
+- Turnstile now allows both `daliascorner.com` and `dalias-corner.pages.dev`; the Pages origin passed the backend CORS preflight check.
+
+- Initial Pages deployment exposed a configuration precedence issue: the Wrangler file overrode dashboard variables. Public build variables are now explicitly versioned in `[vars]`, with a fail-fast prebuild check to prevent disconnected deployments.
