@@ -67,7 +67,7 @@ export const storeCopy = {
       "Availability unavailable; stock will be checked at checkout.",
     outOfStock: "Out of stock",
     units: "available",
-    submit: "Save order & continue on WhatsApp",
+    submit: "Place order",
     orderSaved: "Order saved",
     openWhatsapp: "Continue on WhatsApp",
     orderNumber: "Order number",
@@ -81,9 +81,9 @@ export const storeCopy = {
       "This order is no longer active. Start a new order to check stock again.",
     newOrderAction: "Start a new order",
     notice:
-      "Your order and delivery details will be saved securely before WhatsApp opens. Stock is held for 24 hours while we confirm your order. Delivery charges are confirmed on WhatsApp.",
+      "Place your order here. We reserve your items for 24 hours while our team confirms availability and payment.",
     savedNotice:
-      "Your order is saved. Continue on WhatsApp to confirm delivery and payment. Please do not submit another order for the same items.",
+      "Your order has been placed. View its progress on your private order page or attach it to an account.",
     setupCheckout:
       "Online order saving is not connected yet. You can still contact us on WhatsApp.",
     contact: "Contact us on WhatsApp",
@@ -157,7 +157,7 @@ export const storeCopy = {
     stockUnavailable: "المخزون غير متاح حاليًا؛ سنتحقق منه عند الطلب.",
     outOfStock: "نفد المخزون",
     units: "متاح",
-    submit: "حفظ الطلب والمتابعة على واتساب",
+    submit: "تأكيد الطلب",
     orderSaved: "تم حفظ الطلب",
     openWhatsapp: "المتابعة على واتساب",
     orderNumber: "رقم الطلب",
@@ -171,9 +171,9 @@ export const storeCopy = {
       "هذا الطلب لم يعد نشطًا. ابدأ طلبًا جديدًا للتحقق من المخزون.",
     newOrderAction: "بدء طلب جديد",
     notice:
-      "سنحفظ الطلب وبيانات التوصيل بأمان قبل فتح واتساب. الكمية محجوزة لمدة ٢٤ ساعة لحين تأكيد الطلب. مصاريف التوصيل تُحدد على واتساب.",
+      "أكّد الطلب هنا. نحجز الكمية لمدة ٢٤ ساعة لحين مراجعة الطلب والدفع.",
     savedNotice:
-      "تم حفظ الطلب. تابع على واتساب لتأكيد التوصيل والدفع. لا تنشئ طلبًا آخر لنفس المنتجات.",
+      "تم تقديم طلبك. تابع حالته في صفحة الطلب الخاصة أو اربطه بحسابك.",
     setupCheckout: "حفظ الطلبات غير متصل بعد. يمكنك التواصل معنا على واتساب.",
     contact: "تواصل معنا على واتساب",
     subtotal: "إجمالي المنتجات",

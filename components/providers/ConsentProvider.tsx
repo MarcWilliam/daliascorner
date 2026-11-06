@@ -63,7 +63,9 @@ function persist(value: Consent) {
  */
 export function ConsentProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const isAdmin = pathname === "/admin" || pathname.startsWith("/admin/");
+  const isAdmin = ["/admin", "/account", "/order"].some(
+    (path) => pathname === path || pathname.startsWith(path + "/"),
+  );
   const [consent, setConsent] = useState<Consent | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const [reopened, setReopened] = useState(false);

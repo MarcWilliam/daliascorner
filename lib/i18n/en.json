@@ -13,12 +13,13 @@
     "why": "Why Us",
     "order": "How to Order",
     "faq": "FAQ",
-    "orderWhatsapp": "Order on WhatsApp",
+    "orderWhatsapp": "Contact us",
     "openMenu": "Open menu",
     "closeMenu": "Close menu",
     "skip": "Skip to main content",
     "label": "Main",
-    "backToTop": "Back to top"
+    "backToTop": "Back to top",
+    "account": "My orders"
   },
   "hero": {
     "badge": "Handmade & hand-painted in Egypt",
@@ -71,7 +72,7 @@
   "order": {
     "title": "How to *Order*",
     "primaryTitle": "Choose your character",
-    "primaryBody": "Add your favorite character to the cart and send your order. It comes straight to us on WhatsApp, where we'll confirm the details and delivery.",
+    "primaryBody": "Choose your products and place your order on the website with a delivery zone and payment method. Track its progress on your private order page; create an account before or afterward.",
     "primaryCta": "Shop the characters",
     "altHeading": "Need a hand choosing?",
     "altBody": "Message us on WhatsApp and tell us what you have in mind. We’ll help you choose a character or discuss a custom color or design.",
@@ -82,7 +83,7 @@
     "items": [
       {
         "q": "Where do you deliver?",
-        "a": "We currently deliver across Cairo & Giza. Delivery cost and timing depend on your area, and we'll confirm everything before your order is dispatched."
+        "a": "Available delivery areas and their fees are listed at checkout."
       },
       {
         "q": "Are the pieces identical?",
@@ -123,7 +124,7 @@
     "empty": "Your corner is still empty. Go meet the family first.",
     "emptyCta": "Meet the characters",
     "close": "Close cart",
-    "checkout": "Checkout on WhatsApp",
+    "checkout": "Checkout",
     "detailsTitle": "Your delivery details",
     "detailsRequired": "Add your name, phone, and address to place the order.",
     "name": "Name",
@@ -186,7 +187,7 @@
       },
       {
         "h": "Your cart and saved orders",
-        "p": "Your cart and delivery details are saved in your browser while you shop. When you save an order, your name, phone number, delivery address and chosen items are sent to our Supabase backend so we can reserve stock and fulfil your order. Only authorized admins can read these orders. WhatsApp opens only when you choose to continue.",
+        "p": "We store your order and delivery details to fulfil your purchase. You can view it using a private order link or attach it to your verified account. Social messaging is not required to complete an order.",
         "items": [
           "Clearing browser data removes local details, but does not delete an order already saved. Contact us to request deletion.",
           "Cloudflare Turnstile checks checkout requests to help prevent automated abuse."
@@ -203,7 +204,7 @@
       },
       {
         "h": "What we send when you check out",
-        "p": "If you accept tracking, after a successful order save we send Meta a SHA-256 hashed version of your name and phone number with city and country for ad matching. Hashing happens in your browser before this information is sent to Meta. Order fulfilment separately requires your original delivery details in our backend and in WhatsApp when you send the message. Declining tracking does not prevent ordering.",
+        "p": "With your advertising consent, our server reports submitted orders and paid sales to Meta with a hashed phone number, browser information and available Meta browser identifiers. Your order page lets you stop future ad reporting for that order. Declining tracking does not prevent checkout.",
         "items": []
       },
       {

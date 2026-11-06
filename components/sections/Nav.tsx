@@ -103,6 +103,12 @@ export function Nav() {
         {/* Trailing: language + cart + order CTA + burger */}
         <div className="flex items-center gap-2">
           <LanguageToggle className="hidden xs:inline-flex" />
+          <a
+            href="/account/"
+            className="inline-flex min-h-12 items-center rounded-clay px-2 text-brand text-sm font-semibold"
+          >
+            {t("nav.account")}
+          </a>
           <CartButton />
           <WhatsAppOrderButton className="hidden md:inline-flex" />
 

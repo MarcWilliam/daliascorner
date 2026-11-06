@@ -6,13 +6,19 @@ const admin = "00000000-0000-4000-8000-000000000001";
 async function setup() {
   const db = new PGlite();
   await db.exec(
-    `create role anon; create role authenticated; create role service_role bypassrls; create schema auth; create table auth.users(id uuid primary key); create function auth.uid() returns uuid language sql as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$; grant usage on schema public,auth to anon,authenticated,service_role; insert into auth.users values('${admin}');`,
+    `create role anon; create role authenticated; create role service_role bypassrls; create schema auth; create table auth.users(id uuid primary key, email_confirmed_at timestamptz default now()); create function auth.uid() returns uuid language sql as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$; grant usage on schema public,auth to anon,authenticated,service_role; insert into auth.users(id) values('${admin}');`,
   );
   await db.exec(
     readFileSync("supabase/migrations/20261106080211_store.sql", "utf8"),
   );
   await db.exec(
     `insert into public.admin_users values('${admin}'); insert into public.inventory(product_id,name_en,name_ar,price,on_hand) values('test-pot','Test','اختبار',100,5);`,
+  );
+  await db.exec(
+    readFileSync(
+      "supabase/migrations/20261106092940_website_orders_accounts.sql",
+      "utf8",
+    ),
   );
   return db;
 }
@@ -174,6 +180,65 @@ test("notification leases avoid concurrent claims and RLS cannot self-promote", 
     );
     await assert.rejects(
       db.exec(`select * from claim_notifications();`),
+      /permission denied/,
+    );
+  } finally {
+    await db.close();
+  }
+});
+
+test("website checkout snapshots fees, protects guest orders and queues only consented paid sales", async () => {
+  const db = await setup();
+  try {
+    const zone = crypto.randomUUID(),
+      token = crypto.randomUUID(),
+      key = crypto.randomUUID();
+    await db.query(
+      `insert into delivery_zones(id,name_en,name_ar,fee) values($1,'Cairo','القاهرة',60)`,
+      [zone],
+    );
+    const args = [
+      key,
+      "website-hash",
+      JSON.stringify(customer),
+      JSON.stringify([{ id: "test-pot", qty: 1 }]),
+      token,
+      zone,
+    ];
+    const result = await db.query<{ result: { total: number } }>(
+      `select create_website_order($1,$2,$3::jsonb,$4::jsonb,'en',$5,$6,'cash',null,true) as result`,
+      args,
+    );
+    assert.equal(result.rows[0].result.total, 160);
+    assert.equal((await db.query("select * from meta_events")).rows.length, 1);
+    assert.equal(
+      (
+        await db.query<{ o: unknown }>("select guest_order($1) as o", [
+          crypto.randomUUID(),
+        ])
+      ).rows[0].o,
+      null,
+    );
+    await db.exec(
+      `select set_config('request.jwt.claim.sub','${admin}',false);`,
+    );
+    await db.query("select claim_order($1)", [token]);
+    assert.equal(
+      (await db.query<{ o: unknown }>("select guest_order($1) as o", [token]))
+        .rows[0].o,
+      null,
+    );
+    await db.exec(
+      `select set_order_payment(id,'paid') from orders;select set_order_payment(id,'paid') from orders;`,
+    );
+    assert.equal(
+      (await db.query("select * from meta_events where event_name='Purchase'"))
+        .rows.length,
+      1,
+    );
+    await db.exec(`set role anon;`);
+    await assert.rejects(
+      db.query("select * from meta_events"),
       /permission denied/,
     );
   } finally {

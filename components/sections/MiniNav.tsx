@@ -34,6 +34,12 @@ export function MiniNav() {
               to carry a fallback toggle, so hiding it below xs (≈360–399px, a
               large share of phones) would strand these pages in one language. */}
           <LanguageToggle />
+          <a
+            href="/account/"
+            className="inline-flex min-h-12 items-center rounded-clay px-2 text-brand text-sm font-semibold"
+          >
+            {t("nav.account")}
+          </a>
           <CartButton />
           <WhatsAppOrderButton className="hidden md:inline-flex" />
         </div>

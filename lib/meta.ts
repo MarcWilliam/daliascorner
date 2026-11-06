@@ -8,14 +8,9 @@
  *    that. fbevents.js is never even requested without consent, because the
  *    request itself sets cookies.
  *
- * 2. THERE IS NO `Purchase` EVENT, and there never can be. Payment is settled in
- *    a WhatsApp conversation, off-site. The truthful on-site
- *    conversion is `Lead` — the moment the visitor hands off to chat. Firing a
- *    fabricated Purchase would poison ad optimisation with unverifiable revenue.
- *
- * The taxonomy is therefore: PageView → ViewContent → AddToCart →
- * InitiateCheckout → Lead. Deliberately absent: Purchase, Subscribe,
- * CompleteRegistration, AddPaymentInfo, Search, AddToWishlist (no such surfaces).
+ * 2. Website Lead and paid Purchase events are queued by the backend.
+ * Browser events describe browsing/cart activity; private account/order pages
+ * do not load the Pixel. Server conversion delivery respects order consent.
  */
 
 import {

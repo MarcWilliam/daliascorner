@@ -1,3 +1,4 @@
+import { dispatchMeta } from "../_shared/meta.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.119.0";
 import webpush from "npm:web-push@3.6.7";
 
@@ -38,6 +39,7 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     { auth: { persistSession: false } },
   );
+  await dispatchMeta(db);
   const { data: admins, error: adminError } = await db
     .from("admin_users")
     .select("user_id");

@@ -6,7 +6,12 @@ import { useInventory } from "@/components/providers/InventoryProvider";
 import { useLocale } from "@/components/providers/LocaleProvider";
 import { ClayButton } from "./ClayButton";
 import { WhatsAppIcon } from "./BrandIcons";
-import { STORE_CONFIGURED, type SavedOrder } from "@/lib/store/client";
+import { useConsent } from "@/components/providers/ConsentProvider";
+import {
+  storeClient,
+  STORE_CONFIGURED,
+  type SavedOrder,
+} from "@/lib/store/client";
 import { storeCopy } from "@/lib/store/copy";
 import { parseOrder } from "@/lib/store/validation";
 import { buildOrderLink, type Customer } from "@/lib/whatsapp";
@@ -32,7 +37,31 @@ export function StoreCheckout({
   canCheckout: boolean;
   visible: boolean;
 }) {
-  const { lines, clear } = useCart();
+  const { lines, clear, subtotal } = useCart();
+  const { consent } = useConsent();
+  const [zones, setZones] = useState<
+    { id: string; name_en: string; name_ar: string; fee: number }[]
+  >([]);
+  const [zone, setZone] = useState("");
+  const [payment, setPayment] = useState("cash");
+  const [settings, setSettings] = useState({
+    cash_enabled: false,
+    transfer_enabled: false,
+    transfer_instructions: "",
+  });
+  useEffect(() => {
+    if (!STORE_CONFIGURED) return;
+    void Promise.all([
+      storeClient().from("delivery_zones").select("*").eq("active", true),
+      storeClient().from("checkout_settings").select("*").single(),
+    ]).then(([z, s]) => {
+      if (z.data) setZones(z.data);
+      if (s.data) {
+        setSettings(s.data);
+        setPayment(s.data.cash_enabled ? "cash" : "transfer");
+      }
+    });
+  }, []);
   const { locale, messages } = useLocale();
   const { refresh } = useInventory();
   const c = storeCopy[locale];
@@ -88,6 +117,7 @@ export function StoreCheckout({
     setError("");
     try {
       if (!token) throw new Error("VERIFICATION_REQUIRED");
+      const session = (await storeClient().auth.getSession()).data.session;
       const canonical = parseOrder({
         key: crypto.randomUUID(),
         customer,
@@ -101,6 +131,9 @@ export function StoreCheckout({
             customer: canonical.customer,
             lines: canonical.lines,
             locale,
+            zone,
+            payment,
+            user: session?.user.id,
           }),
         ),
       );
@@ -112,21 +145,58 @@ export function StoreCheckout({
         previous =
           JSON.parse(localStorage.getItem(storageKey) ?? "null") ?? previous;
       } catch {}
+      let orderToken: string;
+      try {
+        orderToken =
+          JSON.parse(localStorage.getItem(storageKey) ?? "null")?.orderToken ??
+          crypto.randomUUID();
+      } catch {
+        orderToken = crypto.randomUUID();
+      }
       const key =
         previous?.fingerprint === fingerprint ? previous.key : canonical.key;
+      if (previous?.fingerprint !== fingerprint)
+        orderToken = crypto.randomUUID();
       attempt.current = { fingerprint, key };
       try {
-        localStorage.setItem(storageKey, JSON.stringify(attempt.current));
+        localStorage.setItem(
+          storageKey,
+          JSON.stringify({ ...attempt.current, orderToken }),
+        );
       } catch {}
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/create-order`,
+        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/place-order`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             apikey: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+            ...(session
+              ? { Authorization: `Bearer ${session.access_token}` }
+              : {}),
           },
-          body: JSON.stringify({ ...canonical, key, turnstileToken: token }),
+          body: JSON.stringify({
+            ...canonical,
+            key,
+            orderToken,
+            zone,
+            payment,
+            marketingConsent: consent === "granted",
+            ...(consent === "granted"
+              ? Object.fromEntries(
+                  document.cookie
+                    .split("; ")
+                    .filter(
+                      (v) => v.startsWith("_fbp=") || v.startsWith("_fbc="),
+                    )
+                    .map((v) => [
+                      v.slice(1, v.indexOf("=")),
+                      v.slice(v.indexOf("=") + 1),
+                    ]),
+                )
+              : {}),
+            turnstileToken: token,
+          }),
           signal: AbortSignal.timeout(25000),
         },
       );
@@ -139,21 +209,9 @@ export function StoreCheckout({
           Date.parse(order.expires_at) <= Date.now())
       )
         throw new Error("ORDER_EXPIRED");
-      const message = [
-        messages.whatsapp.greeting,
-        `${c.orderNumber}: DC-${order.order_number}`,
-        ...order.items.map(
-          (i) =>
-            `${locale === "ar" ? i.name_ar : i.name_en} × ${i.qty} — ${i.price * i.qty} EGP`,
-        ),
-        `${c.subtotal}: ${order.subtotal} EGP`,
-        `${messages.whatsapp.name}: ${canonical.customer.name}`,
-        `${messages.whatsapp.phone}: ${canonical.customer.phone}`,
-        `${messages.whatsapp.address}: ${canonical.customer.address}`,
-        messages.whatsapp.closing,
-      ].join("\n");
-      setSaved({ order, href: whatsappLink(message) });
-      void trackCheckoutLead(lines, customer);
+      localStorage.setItem("dc.guest.order", orderToken);
+      setSaved({ order, href: "/order/#order=" + orderToken });
+      // Submitted-order Lead is sent once by the server; Purchase waits for paid status.
       void refresh();
     } catch (e) {
       const code = e instanceof Error ? e.message : "";
@@ -176,30 +234,20 @@ export function StoreCheckout({
       setToken("");
       if (widgetId.current) window.turnstile?.reset(widgetId.current);
     }
-  }, [canCheckout, token, customer, lines, locale, messages, c, refresh]);
-  if (!STORE_CONFIGURED)
-    return (
-      <div className="space-y-2">
-        <p className="text-xs text-ink-muted">{c.setupCheckout}</p>
-        <ClayButton
-          href={
-            canCheckout
-              ? buildOrderLink(lines, locale, messages, customer)
-              : whatsappLink()
-          }
-          target="_blank"
-          rel="noopener noreferrer"
-          variant="whatsapp"
-          className="w-full"
-          onClick={() => {
-            if (canCheckout) void trackCheckoutLead(lines, customer);
-          }}
-        >
-          <WhatsAppIcon className="h-5 w-5" />
-          {c.contact}
-        </ClayButton>
-      </div>
-    );
+  }, [
+    canCheckout,
+    token,
+    customer,
+    lines,
+    locale,
+    messages,
+    c,
+    refresh,
+    zone,
+    payment,
+    consent,
+  ]);
+  if (!STORE_CONFIGURED) return <p role="alert">{c.setupCheckout}</p>;
   if (saved)
     return (
       <div className="space-y-3 rounded-clay bg-leaf-soft p-4" role="status">
@@ -218,13 +266,10 @@ export function StoreCheckout({
         <p className="font-bold">
           {c.subtotal}: {saved.order.subtotal} EGP
         </p>
-        <ClayButton
-          href={saved.href}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="w-full"
-        >
-          {c.openWhatsapp}
+        <ClayButton href={saved.href} onClick={() => {clear();localStorage.removeItem(storageKey);}} className="w-full">
+          {locale === "ar"
+            ? "عرض طلبي وإنشاء حساب"
+            : "View my order & create an account"}
         </ClayButton>
         <ClayButton
           variant="outline"
@@ -244,6 +289,64 @@ export function StoreCheckout({
   return (
     <div className="space-y-3">
       <p className="text-xs leading-relaxed text-ink-muted">{c.notice}</p>
+      <a href="/account/" className="text-brand underline">
+        {locale === "ar"
+          ? "تسجيل الدخول أو إنشاء حساب (اختياري)"
+          : "Sign in or create an account (optional)"}
+      </a>
+      <label className="block">
+        {locale === "ar" ? "منطقة التوصيل" : "Delivery zone"}
+        <select
+          className="w-full min-h-12 rounded-clay border border-line bg-surface"
+          value={zone}
+          onChange={(e) => setZone(e.target.value)}
+        >
+          <option value="">
+            {locale === "ar" ? "اختر المنطقة" : "Choose a zone"}
+          </option>
+          {zones.map((z) => (
+            <option key={z.id} value={z.id}>
+              {locale === "ar" ? z.name_ar : z.name_en} — {z.fee} EGP
+            </option>
+          ))}
+        </select>
+      </label>
+      {!zones.length && (
+        <p>
+          {locale === "ar"
+            ? "الطلبات غير متاحة حتى يتم تحديد مناطق التوصيل."
+            : "Ordering is unavailable until delivery zones are configured."}
+        </p>
+      )}
+      <label className="block">
+        {locale === "ar" ? "طريقة الدفع" : "Payment method"}
+        <select
+          className="w-full min-h-12 rounded-clay border border-line bg-surface"
+          value={payment}
+          onChange={(e) => setPayment(e.target.value)}
+        >
+          {settings.cash_enabled && (
+            <option value="cash">
+              {locale === "ar" ? "الدفع عند الاستلام" : "Cash on delivery"}
+            </option>
+          )}
+          {settings.transfer_enabled &&
+            settings.transfer_instructions.trim() && (
+              <option value="transfer">
+                {locale === "ar" ? "تحويل يدوي" : "Manual transfer"}
+              </option>
+            )}
+        </select>
+      </label>
+      {payment === "transfer" && (
+        <p className="whitespace-pre-wrap text-sm">
+          {settings.transfer_instructions}
+        </p>
+      )}
+      <p className="font-bold">
+        {locale === "ar" ? "الإجمالي مع التوصيل" : "Total including delivery"}:{" "}
+        {subtotal + Number(zones.find((z) => z.id === zone)?.fee ?? 0)} EGP
+      </p>
       {visible && siteKey && (
         <>
           <Script
@@ -280,12 +383,21 @@ export function StoreCheckout({
         </ClayButton>
       )}
       <ClayButton
-        disabled={!canCheckout || busy || !token || !siteKey}
+        disabled={
+          !canCheckout ||
+          busy ||
+          !token ||
+          !siteKey ||
+          !zone ||
+          !(payment === "cash"
+            ? settings.cash_enabled
+            : settings.transfer_enabled &&
+              settings.transfer_instructions.trim())
+        }
         onClick={() => void submit()}
         className="w-full"
         variant="whatsapp"
       >
-        <WhatsAppIcon className="h-5 w-5" />
         {busy ? c.saving : c.submit}
       </ClayButton>
     </div>

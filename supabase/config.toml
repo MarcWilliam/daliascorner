@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.product-catalog]
 verify_jwt = false
+
+[functions.place-order]
+verify_jwt = false

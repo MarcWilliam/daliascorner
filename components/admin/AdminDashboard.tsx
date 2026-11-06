@@ -1,4 +1,5 @@
 "use client";
+import { CheckoutSettings } from "./CheckoutSettings";
 import { useCallback, useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { Package, ShoppingBag, Bell, ArrowLeft } from "lucide-react";
@@ -26,6 +27,7 @@ type Order = {
   customer_phone: string;
   customer_address: string;
   subtotal: number;
+  delivery_fee:number; delivery_zone:string; payment_method:string;
   created_at: string;
   expires_at: string;
   order_items: {
@@ -471,7 +473,7 @@ export function AdminDashboard() {
                         >
                           {o.customer_phone}
                         </a>
-                        <p>{o.customer_address}</p>
+                        <p>{o.customer_address}</p><p>{o.delivery_zone}</p><p>{o.payment_method==="transfer"?(locale==="ar"?"تحويل يدوي":"Manual transfer"):(locale==="ar"?"الدفع عند الاستلام":"Cash on delivery")}</p>
                       </div>
                       <div>
                         <ul className="space-y-2">
@@ -491,7 +493,7 @@ export function AdminDashboard() {
                           ))}
                         </ul>
                         <p className="mt-3 border-t border-line pt-3 font-bold">
-                          {c.subtotal}: {o.subtotal} EGP
+                          {c.subtotal}: {o.subtotal} EGP<br/>{locale==="ar"?"التوصيل":"Delivery"}: {o.delivery_fee??0} EGP<br/>{locale==="ar"?"الإجمالي":"Total"}: {Number(o.subtotal)+Number(o.delivery_fee??0)} EGP
                         </p>
                       </div>
                     </div>
@@ -566,6 +568,7 @@ export function AdminDashboard() {
                 )}
               </section>
             )}
+            {tab === "stock" && <CheckoutSettings />}
             {tab === "stock" && (
               <section aria-label={c.stock} className="space-y-5">
                 <div className="grid gap-4 md:grid-cols-2">

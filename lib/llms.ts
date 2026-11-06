@@ -81,7 +81,7 @@ export function buildLlmsTxt(): string {
   const orderLines = [
     "- There is no online payment. Website orders are completed through WhatsApp.",
     '- Add characters to the website cart and select "Checkout on WhatsApp" to open a pre-filled message with the order and delivery details.',
-    "- WhatsApp is also the order channel for custom color/design requests and delivery questions. Instagram remains a social and discovery channel, not a website checkout option.",
+    "- Customers submit orders on the website and track them on private order pages. WhatsApp is available for custom design and support questions.",
     ...(WHATSAPP_NUMBER_IS_PLACEHOLDER ? [] : [`- WhatsApp: ${prettyWhatsApp()}.`]),
   ];
 

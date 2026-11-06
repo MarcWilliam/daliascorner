@@ -62,33 +62,42 @@ Deno.serve(async (req) => {
         Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
       { auth: { persistSession: false } },
     );
+    let userId: string | null = null;
+    const authorization=req.headers.get('authorization');
+    if(authorization){const {data,error}=await client.auth.getUser(authorization.replace(/^Bearer /i,''));if(error||!data.user)return respond({error:'SIGN_IN_AGAIN'},401);userId=data.user.id;}
+    if(typeof body.orderToken!=='string'||! /^[0-9a-f-]{36}$/i.test(body.orderToken)) return respond({error:'INVALID_ORDER'},400);
     const hashBytes = await crypto.subtle.digest(
       "SHA-256",
       new TextEncoder().encode(
         JSON.stringify({
           customer: input.customer,
           lines: input.lines,
-          locale: input.locale,
+          locale: input.locale, zone:body.zone, payment:body.payment, userId,
         }),
       ),
     );
     const hash = Array.from(new Uint8Array(hashBytes), (b) =>
       b.toString(16).padStart(2, "0"),
     ).join("");
-    const { data, error } = await client.rpc("create_store_order", {
+    const { data, error } = await client.rpc("create_website_order", {
       p_key: input.key,
       p_hash: hash,
       p_customer: input.customer,
       p_lines: input.lines,
-      p_locale: input.locale,
+      p_locale: input.locale, p_token:body.orderToken,p_zone:body.zone,p_payment:body.payment,p_user:userId,p_consent:body.marketingConsent===true,
     });
     if (error) {
       const code = [
         "OUT_OF_STOCK",
         "IDEMPOTENCY_CONFLICT",
-        "INVALID_ORDER",
+        "INVALID_ORDER", "INVALID_DELIVERY", "INVALID_PAYMENT",
       ].find((c) => error.message.includes(c));
       return respond({ error: code ?? "UNAVAILABLE" }, code ? 409 : 503);
+    }
+    if(body.marketingConsent===true){
+      const context:Record<string,string>={client_user_agent:(req.headers.get('user-agent')??'').slice(0,512)};
+      for(const key of ['fbp','fbc'])if(typeof body[key]==='string'&&/^fb\.[0-9.]+[A-Za-z0-9_-]*$/.test(body[key])&&body[key].length<256)context[key]=body[key];
+      await client.from('orders').update({meta_context:context}).eq('idempotency_key',input.key);
     }
     return respond(data);
   } catch {
