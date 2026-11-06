@@ -7,6 +7,7 @@ import { ClayButton } from "@/components/ui/ClayButton";
 import { storeClient } from "@/lib/store/client";
 import { PRODUCTS, PRODUCT_CATEGORIES } from "@/lib/products";
 import { manualOrderCopy } from "@/lib/store/manual-order-copy";
+import { storeCopy } from "@/lib/store/copy";
 import { parseOrder } from "@/lib/store/validation";
 import {
   manualOrderAttempt,
@@ -21,8 +22,14 @@ type Receipt = {
   total: number;
   subtotal: number;
   delivery_fee: number;
-  status: string;
-  payment_status: string;
+  status:
+    | "pending"
+    | "confirmed"
+    | "shipped"
+    | "delivered"
+    | "cancelled"
+    | "expired";
+  payment_status: "unpaid" | "paid" | "refunded";
 };
 const field = "store-field mt-1";
 const panel =
@@ -203,7 +210,9 @@ export function ManualOrderForm({
       };
       const hash = await crypto.subtle.digest(
         "SHA-256",
-        new TextEncoder().encode(JSON.stringify({ actor: actorId, ...payload })),
+        new TextEncoder().encode(
+          JSON.stringify({ actor: actorId, ...payload }),
+        ),
       );
       const fingerprint = Array.from(new Uint8Array(hash), (byte) =>
         byte.toString(16).padStart(2, "0"),
@@ -288,9 +297,18 @@ export function ManualOrderForm({
           {c.saved} · DC-{receipt.order_number}
         </h2>
         <p className="mt-3 text-sm leading-6 text-ink-muted">{c.savedNotice}</p>
-        <p className="mt-3 inline-flex rounded-full bg-leaf-soft px-3 py-1 text-sm font-semibold text-brand">
-          {receipt.payment_status === "paid" ? c.paidStatus : c.unpaidStatus}
-        </p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <span className="rounded-full bg-leaf-soft px-3 py-1 text-sm font-semibold text-brand">
+            {storeCopy[locale][receipt.status]}
+          </span>
+          <span className="rounded-full bg-leaf-soft px-3 py-1 text-sm font-semibold text-brand">
+            {receipt.payment_status === "paid"
+              ? c.paidStatus
+              : receipt.payment_status === "refunded"
+                ? storeCopy[locale].refunded
+                : c.unpaidStatus}
+          </span>
+        </div>
         <dl className="mt-5 max-w-sm space-y-2 text-sm">
           <div className="flex justify-between gap-4">
             <dt>{c.subtotal}</dt>
