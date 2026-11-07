@@ -58,7 +58,7 @@ Final chronology regression confirms that returns cannot precede their eligible 
 
 ## Compact order drawer
 
-The drawer opens the next relevant task for the current order state. The suggestion is navigation only; it does not change payment or fulfilment rules. **More** exposes every order tool. The **Order actions** picker shows only applicable actions and reveals the selected form.
+The drawer opens the next relevant task for the current order state. The suggestion is navigation only; it does not change payment or fulfilment rules. **More** reveals the full tab list. Only the selected tool is shown, and collapsing the list keeps that tab visible. The **Order actions** picker shows only applicable actions and reveals the selected form.
 
 Add catalog products using the plus disclosure. Closing it keeps the draft but excludes its fields from the save. Shipment and payment controls pair at wider phone/tablet widths and stack at narrow widths. The recovery button appears only after a failed load, stale edit or uncertain refresh/save; loading the latest order replaces unsaved form entries and preserves retry protection.
 

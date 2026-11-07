@@ -10,7 +10,10 @@ import {
 } from "react";
 import { ChevronDown, Plus, X } from "lucide-react";
 import { CorrectionActions } from "./CorrectionActions";
-import { nextOrderAction } from "@/lib/store/order-adjustment-navigation";
+import {
+  nextOrderAction,
+  type AdjustmentSection,
+} from "@/lib/store/order-adjustment-navigation";
 import { useCustomerAuth } from "@/components/providers/CustomerAuthProvider";
 import { useLocale } from "@/components/providers/LocaleProvider";
 import { storeClient } from "@/lib/store/client";
@@ -40,14 +43,6 @@ type Product = {
   price: number;
   active: boolean;
 };
-type Section =
-  | "details"
-  | "items"
-  | "shipping"
-  | "payments"
-  | "returns"
-  | "history"
-  | "recovery";
 const field = "store-field mt-1";
 const compactField = field + " h-11";
 const pairedFields = "grid gap-x-3 gap-y-2 min-[480px]:grid-cols-2";
@@ -177,7 +172,7 @@ export function OrderAdjustments({
     [products, setProducts] = useState<Product[]>([]);
   const [moreOpen, setMoreOpen] = useState(false),
     [nextSequence, setNextSequence] = useState(0),
-    [reviewingPayments, setReviewingPayments] = useState(false),
+    [selectedSection, setSelectedSection] = useState<AdjustmentSection | null>(null),
     [loading, setLoading] = useState(true),
     [busy, setBusy] = useState(false),
     [locked, setLocked] = useState(false),
@@ -285,7 +280,7 @@ export function OrderAdjustments({
   useEffect(() => {
     alive.current = true;
     setDetail(null);
-    setReviewingPayments(false);
+    setSelectedSection(null);
     setPaymentDraft(null);
     setMoreOpen(false);
     setNextSequence(0);
@@ -557,7 +552,30 @@ export function OrderAdjustments({
   const o = detail.order,
     finance = detail.finance;
   const recommendation = nextOrderAction(detail);
-  const section = reviewingPayments ? "payments" : recommendation.section;
+  const section = selectedSection ?? recommendation.section;
+  const tabs: { id: AdjustmentSection; label: string }[] = [
+    { id: "details", label: t("Customer & delivery", "العميل والتوصيل") },
+    { id: "items", label: t("Items & replacements", "المنتجات والبدائل") },
+    { id: "shipping", label: t("Shipments", "الشحنات") },
+    { id: "payments", label: t("Payments", "الدفع") },
+    { id: "returns", label: t("Returns", "المرتجعات") },
+    { id: "history", label: t("History & notes", "السجل والملاحظات") },
+    { id: "recovery", label: t("Order actions", "إجراءات الطلب") },
+  ];
+  const otherTab = section !== recommendation.section
+    ? recommendation.section
+    : section === "payments" ? "shipping" : "payments";
+  const visibleTabs = tabs.filter(({ id }) => moreOpen || id === section || id === otherTab);
+  const tabId = (id: AdjustmentSection) => `${toolsId}-tab-${id}`;
+  const panelId = (id: AdjustmentSection) => `${toolsId}-panel-${id}`;
+  const panelProps = (id: AdjustmentSection) => ({
+    id: panelId(id),
+    role: "tabpanel",
+    "aria-labelledby": tabId(id),
+    hidden: section !== id,
+    tabIndex: 0,
+    className: panel,
+  });
   const nextLabel = {
     confirm: t("Confirm order", "تأكيد الطلب"),
     extend: t("Review expired hold", "مراجعة الحجز المنتهي"),
@@ -568,7 +586,6 @@ export function OrderAdjustments({
     refund: t("Review refund due", "مراجعة المبلغ المطلوب رده"),
     history: t("Review order history", "مراجعة سجل الطلب"),
   }[recommendation.kind];
-  const showTool = (tool: Section) => moreOpen || section === tool;
   const paymentStatus = ({
     unpaid: Number(finance?.balance_due) > 0
       ? t("Pending payment", "بانتظار الدفع")
@@ -884,9 +901,8 @@ export function OrderAdjustments({
             className="min-h-11 text-start text-sm font-semibold text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/35 disabled:opacity-40"
             disabled={busy}
             onClick={() => {
-              setReviewingPayments(false);
+              setSelectedSection(null);
               setNextSequence((value) => value + 1);
-              setMoreOpen(false);
             }}
           >
             {nextLabel}
@@ -897,7 +913,7 @@ export function OrderAdjustments({
           className={button + " gap-1"}
           disabled={busy}
           aria-expanded={moreOpen}
-          aria-controls={toolsId}
+          aria-controls={`${toolsId}-tabs`}
           onClick={() => {
             setMoreOpen((value) => !value);
           }}
@@ -905,6 +921,53 @@ export function OrderAdjustments({
           {moreOpen ? t("Show less", "عرض أقل") : t("More", "المزيد")}
           <ChevronDown className={moreOpen ? "rotate-180" : ""} size={16} aria-hidden />
         </button>
+      </div>
+      <div
+        id={`${toolsId}-tabs`}
+        role="tablist"
+        aria-label={t("Order tools", "أدوات الطلب")}
+        className="flex flex-wrap gap-1.5"
+      >
+        {visibleTabs.map(({ id, label }, index) => (
+          <button
+            key={id}
+            id={tabId(id)}
+            role="tab"
+            type="button"
+            aria-selected={section === id}
+            aria-controls={panelId(id)}
+            tabIndex={section === id ? 0 : -1}
+            disabled={busy}
+            className={section === id ? primary : button}
+            onClick={() => setSelectedSection(id)}
+            onKeyDown={(event) => {
+              const last = visibleTabs.length - 1;
+              const step = ar ? -1 : 1;
+              const offset = event.key === "ArrowRight" ? step : -step;
+              let next: number;
+              switch (event.key) {
+                case "ArrowRight":
+                case "ArrowLeft":
+                  next = (index + offset + visibleTabs.length) % visibleTabs.length;
+                  break;
+                case "Home":
+                  next = 0;
+                  break;
+                case "End":
+                  next = last;
+                  break;
+                default:
+                  return;
+              }
+              event.preventDefault();
+              const target = visibleTabs[next].id;
+              setSelectedSection(target);
+              document.getElementById(tabId(target))?.focus();
+            }}
+          >
+            {label}
+          </button>
+        ))}
       </div>
       {error && (
         <p
@@ -936,8 +999,8 @@ export function OrderAdjustments({
           </span>
         </div>
       )}
-      <div id={toolsId} key={generation} className="space-y-2">
-        <div hidden={!showTool("details")} className={panel}>
+      <div key={generation}>
+        <div {...panelProps("details")}>
           <h3 className="font-semibold">
             {t("Customer & delivery", "العميل والتوصيل")}
           </h3>
@@ -1046,7 +1109,7 @@ export function OrderAdjustments({
             </fieldset>
           </form>
         </div>
-        <div hidden={!showTool("items")} className={panel}>
+        <div {...panelProps("items")}>
           <h3 className="font-semibold">
             {t("Items & agreed replacements", "المنتجات والبدائل المتفق عليها")}
           </h3>
@@ -1102,7 +1165,7 @@ export function OrderAdjustments({
             </fieldset>
           </form>
         </div>
-        <div hidden={!showTool("shipping")} className={panel}>
+        <div {...panelProps("shipping")}>
           <h3 className="font-semibold">{t("Shipments", "الشحنات")}</h3>
           <p className="text-xs text-ink-muted">
             {t(
@@ -1345,7 +1408,7 @@ export function OrderAdjustments({
             ))}
           </ul>
         </div>
-        <div hidden={!showTool("payments")} className={panel}>
+        <div {...panelProps("payments")}>
           <h3 ref={paymentsHeading} tabIndex={-1} className="font-semibold">
             {t("Payments", "الدفع")}
           </h3>
@@ -1354,7 +1417,7 @@ export function OrderAdjustments({
             onSubmit={async (event) => {
               event.preventDefault();
               const form = event.currentTarget;
-              setReviewingPayments(true);
+              setSelectedSection("payments");
               if (await mutate(text(form, "kind"), paymentValues(form), text(form, "reason"))) form.reset();
             }}
           >
@@ -1417,7 +1480,7 @@ export function OrderAdjustments({
                         onSubmit={async (event) => {
                           event.preventDefault();
                           const form = event.currentTarget;
-                          setReviewingPayments(true);
+                          setSelectedSection("payments");
                           const payload = mode === "edit" ? paymentValues(form) : {};
                           if (await mutate(mode === "edit" ? "payment_edit" : "payment_delete", { event_id: entry.id, ...payload }, text(form, "reason"))) {
                             closePaymentDraft(mode === "delete");
@@ -1448,7 +1511,7 @@ export function OrderAdjustments({
             </ul>
           )}
         </div>
-        <div hidden={!showTool("returns")} className={panel}>
+        <div {...panelProps("returns")}>
           <h3 className="font-semibold">
             {t("Returned products & exchanges", "المنتجات المرتجعة والاستبدال")}
           </h3>
@@ -1570,7 +1633,7 @@ export function OrderAdjustments({
             ))}
           </ul>
         </div>
-        <div hidden={!showTool("history")} className={panel}>
+        <div {...panelProps("history")}>
           <h3 className="font-semibold">
             {t("Private order notes", "ملاحظات الطلب الداخلية")}
           </h3>
@@ -1645,7 +1708,7 @@ export function OrderAdjustments({
             ))}
           </ol>
         </div>
-        <div hidden={!showTool("recovery")} className={panel}>
+        <div {...panelProps("recovery")}>
           <CorrectionActions
             detail={detail}
             disabled={disabled}
