@@ -32,6 +32,17 @@ const button =
   "inline-flex min-h-11 items-center justify-center rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-canvas focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/35 disabled:opacity-40";
 const text = (form: HTMLFormElement, name: string) =>
   String(new FormData(form).get(name) ?? "").trim();
+function suggestedReservationDeadline(expiresAt?: string) {
+  const hour = 60 * 60 * 1000;
+  const now = Date.now();
+  const current = Math.max(now, Date.parse(expiresAt ?? "") || 0);
+  const deadline = Math.min(current + 24 * hour, now + 30 * 24 * hour - 60_000);
+  if (deadline <= current) return "";
+  const date = new Date(deadline);
+  return new Date(deadline - date.getTimezoneOffset() * 60_000)
+    .toISOString()
+    .slice(0, 16);
+}
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <label className="block min-w-0 text-sm">
@@ -107,6 +118,7 @@ export function CorrectionActions({
             className={field}
             name="expires"
             type="datetime-local"
+            defaultValue={suggestedReservationDeadline(o.expires_at)}
             required
           />
         </Field>
@@ -154,7 +166,7 @@ export function CorrectionActions({
               className={field}
               name="shipment_id"
               required
-              defaultValue=""
+              defaultValue={undoable.length === 1 ? undoable[0].id : ""}
             >
               <option value="">{t("Choose a shipment", "اختر الشحنة")}</option>
               {undoable.map((s) => (

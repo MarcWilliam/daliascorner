@@ -1,7 +1,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { nextOrderAction } from "../lib/store/order-adjustment-navigation";
-import type { OrderAdjustmentDetail } from "../lib/store/order-adjustments";
+import {
+  suggestedShipmentQuantities,
+  type OrderAdjustmentDetail,
+} from "../lib/store/order-adjustments";
 
 function detail(
   overrides: {
@@ -97,4 +100,18 @@ test("refunds and expired holds route to safe, applicable controls", () => {
     ).kind,
     "history",
   );
+});
+
+test("shipment suggestions share free stock across lines and preserve each line's hold", () => {
+  const [item] = detail().items;
+  const quantities = suggestedShipmentQuantities(
+    [
+      { ...item, id: 1, quantity: 5, reserved_quantity: 2 },
+      { ...item, id: 2, quantity: 5, reserved_quantity: 1 },
+      { ...item, id: 3, quantity: 100, stock_tracked: false },
+      { ...item, id: 4, quantity: 2, shipped_quantity: 2 },
+    ],
+    [{ product_id: item.product_id, on_hand: 13, reserved: 9 }],
+  );
+  assert.deepEqual([...quantities], [[1, 5], [2, 2], [3, 99]]);
 });

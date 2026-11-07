@@ -6,6 +6,7 @@ export type AdjustmentItem = {
   quantity: number;
   unit_price: number;
   reserved_quantity: number;
+  stock_tracked?: boolean;
   shipped_quantity: number;
   delivered_quantity: number;
   removed_quantity: number;
@@ -101,6 +102,29 @@ export function activeUnits(item: AdjustmentItem) {
     0,
     Number(item.quantity) - Number(item.removed_quantity || 0),
   );
+}
+/** Use this order's holds first, then share free stock across lines for the same product. */
+export function suggestedShipmentQuantities(
+  items: AdjustmentItem[],
+  inventory: { product_id: string; on_hand: number; reserved: number }[],
+) {
+  const freeStock = new Map(inventory.map((product) => [
+    product.product_id,
+    Math.max(0, Number(product.on_hand) - Number(product.reserved)),
+  ]));
+  const quantities = new Map<number, number>();
+  for (const item of items) {
+    const remaining = Math.min(99, remainingUnits(item));
+    const held = Math.min(remaining, Number(item.reserved_quantity || 0));
+    const free = freeStock.get(item.product_id) ?? 0;
+    const tracked = item.stock_tracked !== false;
+    const quantity = tracked ? Math.min(remaining, held + free) : remaining;
+    if (quantity <= 0) continue;
+    quantities.set(item.id, quantity);
+    if (tracked) freeStock.set(item.product_id, free - (quantity - held));
+    if (quantities.size === 100) break;
+  }
+  return quantities;
 }
 export type AdjustmentAttempt = { body: string; key: string; revision: number };
 /** An ambiguous mutation retains both its key and original revision after reads refresh. */

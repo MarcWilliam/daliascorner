@@ -1102,15 +1102,16 @@ export function AdminDashboard() {
                       paymentMethod={o.payment_method}
                       onSaved={refresh}
                       onBusyChange={setBusy}
-                    />
-                    <AdminOrderMessages
-                      orderId={o.id}
-                      orderNumber={o.order_number}
-                      phone={o.customer_phone}
-                      locale={o.locale}
-                      status={o.status}
-                      busy={busy}
-                    />
+                    >
+                      <AdminOrderMessages
+                        orderId={o.id}
+                        orderNumber={o.order_number}
+                        phone={o.customer_phone}
+                        locale={o.locale}
+                        status={o.status}
+                        busy={busy}
+                      />
+                    </OrderAdjustments>
                   </article>
                 ))}
               </AdminDialog>

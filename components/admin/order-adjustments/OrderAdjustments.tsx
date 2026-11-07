@@ -5,6 +5,7 @@ import {
   useId,
   useRef,
   useState,
+  type ChangeEvent,
   type FormEvent,
   type ReactNode,
 } from "react";
@@ -24,6 +25,7 @@ import {
   adjustmentAttempt,
   remainingUnits,
   returnableUnits,
+  suggestedShipmentQuantities,
   type OrderAdjustmentDetail,
   type AdjustmentItem,
   type AdjustmentPayment,
@@ -42,13 +44,17 @@ type Product = {
   name_ar: string;
   price: number;
   active: boolean;
+  on_hand: number;
+  reserved: number;
 };
+type PaymentKind = "payment" | "refund";
 const field = "store-field mt-1";
 const compactField = field + " h-11";
 const pairedFields = "grid gap-x-3 gap-y-2 min-[480px]:grid-cols-2";
-const button =
-  "inline-flex min-h-11 items-center justify-center rounded-xl border border-brand px-3 py-2 text-sm font-semibold text-brand hover:bg-canvas-sunk focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/35 disabled:cursor-not-allowed disabled:opacity-40";
-const primary = button + " bg-brand text-canvas hover:bg-brand/90";
+const actionButton =
+  "inline-flex min-h-11 items-center justify-center rounded-xl border border-brand px-3 py-2 text-sm font-semibold focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/35 disabled:cursor-not-allowed disabled:opacity-40";
+const button = actionButton + " text-brand hover:bg-canvas-sunk";
+const primary = actionButton + " bg-brand text-canvas hover:bg-brand/90";
 const formClass = "space-y-3";
 const panel = "space-y-2 rounded-xl border border-line bg-surface p-3";
 const text = (form: HTMLFormElement, name: string) =>
@@ -155,11 +161,13 @@ export function OrderAdjustments({
   paymentMethod,
   onSaved,
   onBusyChange,
+  children,
 }: {
   orderId: string;
   paymentMethod: string;
   onSaved: () => Promise<void>;
   onBusyChange?: (busy: boolean) => void;
+  children?: ReactNode;
 }) {
   const { locale } = useLocale(),
     ar = locale === "ar";
@@ -181,6 +189,24 @@ export function OrderAdjustments({
     [generation, setGeneration] = useState(0);
   const [additionVersion, setAdditionVersion] = useState(0);
   const toolsId = useId();
+  const nextActionRow = useRef<HTMLDivElement>(null);
+  const toolsRow = useRef<HTMLDivElement>(null);
+  const [paymentKind, setPaymentKind] = useState<PaymentKind | null>(null);
+  const [paymentAmount, setPaymentAmount] = useState<string | null>(null);
+  const [quantityFormVersion, setQuantityFormVersion] = useState({ ship: 0, return: 0 });
+  function selectOrderTab(id: AdjustmentSection) {
+    const nextActionBounds = nextActionRow.current?.getBoundingClientRect();
+    const toolsBounds = toolsRow.current?.getBoundingClientRect();
+    // When the tabs are pinned, bring the newly selected panel back into view.
+    if (nextActionBounds && toolsBounds && toolsBounds.top - nextActionBounds.bottom > 16) {
+      nextActionRow.current?.scrollIntoView({ block: "start" });
+    }
+    setSelectedSection(id);
+  }
+  function resetPaymentEntry() {
+    setPaymentKind(null);
+    setPaymentAmount(null);
+  }
   const [paymentDraft, setPaymentDraft] = useState<{
     id: number;
     mode: "edit" | "delete";
@@ -249,7 +275,7 @@ export function OrderAdjustments({
           .abortSignal(controller.signal),
         db
           .from("inventory")
-          .select("product_id,name_en,name_ar,price,active")
+          .select("product_id,name_en,name_ar,price,active,on_hand,reserved")
           .order("name_en")
           .abortSignal(controller.signal),
       ]);
@@ -282,6 +308,7 @@ export function OrderAdjustments({
     setDetail(null);
     setSelectedSection(null);
     setPaymentDraft(null);
+    resetPaymentEntry();
     setMoreOpen(false);
     setNextSequence(0);
     setLocked(false);
@@ -301,6 +328,7 @@ export function OrderAdjustments({
     if (await load()) {
       setLocked(false);
       setPaymentDraft(null);
+      resetPaymentEntry();
       setGeneration((v) => v + 1);
     }
   }
@@ -518,7 +546,13 @@ export function OrderAdjustments({
       e.preventDefault();
       const form = e.currentTarget;
       const ok = await mutate(action, build(form), text(form, "reason"));
-      if (ok && reset && form.isConnected) form.reset();
+      if (ok && reset && form.isConnected) {
+        if (action === "ship" || action === "return") {
+          setQuantityFormVersion((version) => ({ ...version, [action]: version[action] + 1 }));
+        } else {
+          form.reset();
+        }
+      }
     };
   }
   const reason = (className = field) => (
@@ -532,22 +566,25 @@ export function OrderAdjustments({
   );
   if (!detail)
     return (
-      <section className={panel} aria-busy={loading}>
-        <p role={error ? "alert" : "status"}>
-          {error ||
-            t("Loading order adjustments…", "جارٍ تحميل تعديلات الطلب…")}
-        </p>
-        {error && (
-          <button
-            className={button}
-            type="button"
-            disabled={loading}
-            onClick={() => void reload()}
-          >
-            {t("Try again", "إعادة المحاولة")}
-          </button>
-        )}
-      </section>
+      <>
+        <section className={panel} aria-busy={loading}>
+          <p role={error ? "alert" : "status"}>
+            {error ||
+              t("Loading order adjustments…", "جارٍ تحميل تعديلات الطلب…")}
+          </p>
+          {error && (
+            <button
+              className={button}
+              type="button"
+              disabled={loading}
+              onClick={() => void reload()}
+            >
+              {t("Try again", "إعادة المحاولة")}
+            </button>
+          )}
+        </section>
+        {children}
+      </>
     );
   const o = detail.order,
     finance = detail.finance;
@@ -632,11 +669,24 @@ export function OrderAdjustments({
       cancel: t("Outstanding items cancelled", "إلغاء المنتجات المتبقية"),
       undo_shipment: t("Mistaken shipment reversed", "التراجع عن شحنة خاطئة"),
     })[kind ?? ""] ?? t("Order update", "تحديث الطلب");
+  const entryKind = paymentKind ?? (Number(finance?.refund_due) > 0 ? "refund" : "payment");
+  const suggestedAmount = Number(entryKind === "refund" ? finance?.refund_due : finance?.balance_due);
+  const shipmentQuantities = suggestedShipmentQuantities(detail.items, products);
+  const returnable = detail.items.filter((item) => returnableUnits(item) > 0);
+  const recentCourier = detail.shipments.find((shipment) => !shipment.voided_at && shipment.courier)?.courier;
   const paymentFields = (entry?: AdjustmentPayment) => (
     <div className={pairedFields}>
       {!entry && (
         <Label title={t("Entry type", "نوع القيد")}>
-          <select className={compactField} name="kind" defaultValue={recommendation.kind === "refund" ? "refund" : "payment"}>
+          <select
+            className={compactField}
+            name="kind"
+            value={entryKind}
+            onChange={(event) => {
+              setPaymentKind(event.target.value === "refund" ? "refund" : "payment");
+              setPaymentAmount(null);
+            }}
+          >
             <option value="payment">{t("Payment received", "مبلغ مستلم")}</option>
             <option value="refund">{t("Refund sent", "مبلغ تم رده")}</option>
           </select>
@@ -650,7 +700,12 @@ export function OrderAdjustments({
           min="0.01"
           step="0.01"
           max="9999999999.99"
-          defaultValue={entry ? Math.abs(Number(entry.amount)) : undefined}
+          {...(entry
+            ? { defaultValue: Math.abs(Number(entry.amount)) }
+            : {
+                value: paymentAmount ?? (suggestedAmount > 0 ? String(suggestedAmount) : ""),
+                onChange: (event: ChangeEvent<HTMLInputElement>) => setPaymentAmount(event.target.value),
+              })}
           autoFocus={Boolean(entry)}
           required
           inputMode="decimal"
@@ -738,7 +793,11 @@ export function OrderAdjustments({
                 min={mode === "edit" ? Number(i.shipped_quantity || 0) : 0}
                 max={available}
                 step={1}
-                defaultValue={mode === "edit" ? activeUnits(i) : 0}
+                defaultValue={
+                  mode === "edit" ? activeUnits(i)
+                    : mode === "ship" ? shipmentQuantities.get(i.id) ?? 0
+                    : Number(returnable.length === 1 && returnable[0].id === i.id)
+                }
                 disabled={mode !== "edit" && available === 0}
                 aria-label={`${mode === "edit" ? t("Order quantity", "كمية الطلب") : mode === "ship" ? t("Shipment quantity", "كمية الشحنة") : t("Return quantity", "كمية المرتجع")} — ${name(i)}`}
               />
@@ -891,7 +950,7 @@ export function OrderAdjustments({
           )}
         </dl>
       </div>
-      <div className="flex flex-wrap items-center gap-x-3 rounded-xl border border-line bg-surface px-3">
+      <div ref={nextActionRow} className="flex flex-wrap items-center gap-x-3 rounded-xl border border-line bg-surface px-3">
         <p className="text-xs font-semibold text-ink-muted">
           {t("Next action", "الخطوة التالية")}
         </p>
@@ -907,12 +966,15 @@ export function OrderAdjustments({
           {nextLabel}
         </button>
       </div>
-      <div className="flex items-start gap-1.5">
+      <div
+        ref={toolsRow}
+        className="flex items-start gap-1.5 max-md:sticky max-md:-top-5 max-md:z-10 max-md:-mx-5 max-md:bg-surface max-md:px-5 max-md:py-2"
+      >
         <div
           id={`${toolsId}-tabs`}
           role="tablist"
           aria-label={t("Order tools", "أدوات الطلب")}
-          className={`flex min-w-0 gap-1.5 ${moreOpen ? "flex-wrap" : ""}`}
+          className={`flex min-w-0 gap-1.5 ${moreOpen ? "flex-wrap max-md:max-h-[35dvh] max-md:overflow-y-auto max-md:overscroll-contain" : ""}`}
         >
           {visibleTabs.map(({ id, label }, index) => (
             <button
@@ -925,7 +987,7 @@ export function OrderAdjustments({
               tabIndex={section === id ? 0 : -1}
               disabled={busy}
               className={(section === id ? primary : button) + " min-w-0 break-words text-center"}
-              onClick={() => setSelectedSection(id)}
+              onClick={() => selectOrderTab(id)}
               onKeyDown={(event) => {
                 const last = visibleTabs.length - 1;
                 const step = ar ? -1 : 1;
@@ -947,7 +1009,7 @@ export function OrderAdjustments({
                 }
                 event.preventDefault();
                 const target = visibleTabs[next].id;
-                setSelectedSection(target);
+                selectOrderTab(target);
                 document.getElementById(tabId(target))?.focus();
               }}
             >
@@ -1175,6 +1237,7 @@ export function OrderAdjustments({
           </p>
           {canShip ? (
             <form
+              key={quantityFormVersion.ship}
               className={formClass}
               onSubmit={submit("ship", (form) => ({
                 lines: lines(form, "ship"),
@@ -1191,6 +1254,7 @@ export function OrderAdjustments({
                     <input
                       className={compactField}
                       name="courier"
+                      defaultValue={recentCourier}
                       maxLength={120}
                     />
                   </Label>
@@ -1418,7 +1482,10 @@ export function OrderAdjustments({
               event.preventDefault();
               const form = event.currentTarget;
               setSelectedSection("payments");
-              if (await mutate(text(form, "kind"), paymentValues(form), text(form, "reason"))) form.reset();
+              if (await mutate(text(form, "kind"), paymentValues(form), text(form, "reason"))) {
+                form.reset();
+                resetPaymentEntry();
+              }
             }}
           >
             <fieldset disabled={disabled || paymentDraft !== null} className="space-y-2">
@@ -1523,6 +1590,7 @@ export function OrderAdjustments({
           </p>
           {canReturn ? (
             <form
+              key={quantityFormVersion.return}
               className={formClass}
               onSubmit={submit("return", (form) => ({
                 lines: lines(form, "return"),
@@ -1721,6 +1789,7 @@ export function OrderAdjustments({
           />
         </div>
       </div>
+      {children}
     </section>
   );
 }
