@@ -2,11 +2,15 @@
 import {
   useCallback,
   useEffect,
+  useId,
   useRef,
   useState,
   type FormEvent,
   type ReactNode,
 } from "react";
+import { Plus, X } from "lucide-react";
+import { CorrectionActions } from "./CorrectionActions";
+import { nextOrderAction } from "@/lib/store/order-adjustment-navigation";
 import { useCustomerAuth } from "@/components/providers/CustomerAuthProvider";
 import { useLocale } from "@/components/providers/LocaleProvider";
 import { storeClient } from "@/lib/store/client";
@@ -44,6 +48,8 @@ type Section =
   | "history"
   | "recovery";
 const field = "store-field mt-1";
+const compactField = field + " h-11";
+const pairedFields = "grid gap-x-3 gap-y-2 min-[480px]:grid-cols-2";
 const button =
   "inline-flex min-h-11 items-center justify-center rounded-xl border border-brand px-3 py-2 text-sm font-semibold text-brand hover:bg-canvas-sunk focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/35 disabled:cursor-not-allowed disabled:opacity-40";
 const primary = button + " bg-brand text-canvas hover:bg-brand/90";
@@ -61,6 +67,93 @@ function Label({ children, title }: { children: ReactNode; title: string }) {
     </label>
   );
 }
+
+function CatalogAddition({
+  ar,
+  children,
+}: {
+  ar: boolean;
+  children: ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  const panelId = useId();
+  const toggle = useRef<HTMLButtonElement>(null);
+  const product = useRef<HTMLSelectElement>(null);
+  const add = ar ? "إضافة منتج" : "Add product";
+  const close = ar ? "إخفاء إضافة المنتج" : "Close product addition";
+
+  useEffect(() => {
+    if (open) product.current?.focus();
+  }, [open]);
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-end gap-2">
+        <span aria-hidden="true" className="text-sm text-ink-muted">
+          {add}
+        </span>
+        <button
+          ref={toggle}
+          type="button"
+          className={button + " h-11 w-11 !p-0"}
+          aria-label={open ? close : add}
+          aria-expanded={open}
+          aria-controls={panelId}
+          title={open ? close : add}
+          onClick={() => setOpen(!open)}
+        >
+          {open ? (
+            <X className="h-4 w-4" aria-hidden="true" />
+          ) : (
+            <Plus className="h-4 w-4" aria-hidden="true" />
+          )}
+        </button>
+      </div>
+      <fieldset
+        id={panelId}
+        hidden={!open}
+        disabled={!open}
+        className="rounded-xl border border-line bg-canvas-sunk p-3"
+        onKeyDown={(event) => {
+          if (event.key === "Escape" && !event.defaultPrevented) {
+            event.preventDefault();
+            event.stopPropagation();
+            setOpen(false);
+            toggle.current?.focus();
+          }
+        }}
+      >
+        <div className="grid gap-2 min-[480px]:grid-cols-[minmax(0,1fr)_5rem]">
+          <Label title={ar ? "منتج الكتالوج" : "Catalog product"}>
+            <select
+              ref={product}
+              className={compactField}
+              name="product"
+              defaultValue=""
+            >
+              <option value="">
+                {ar ? "اختر منتجًا" : "Choose a product"}
+              </option>
+              {children}
+            </select>
+          </Label>
+          <Label title={ar ? "الكمية" : "Quantity"}>
+            <input
+              className={compactField}
+              name="add_qty"
+              type="number"
+              min={1}
+              max={99}
+              step={1}
+              defaultValue={1}
+            />
+          </Label>
+        </div>
+      </fieldset>
+    </div>
+  );
+}
+
 export function OrderAdjustments({
   orderId,
   onSaved,
@@ -79,13 +172,17 @@ export function OrderAdjustments({
   const [detail, setDetail] = useState<OrderAdjustmentDetail | null>(null),
     [zones, setZones] = useState<Zone[]>([]),
     [products, setProducts] = useState<Product[]>([]);
-  const [section, setSection] = useState<Section>("details"),
+  const [chosenSection, setChosenSection] = useState<Section | null>(null),
+    [moreOpen, setMoreOpen] = useState(false),
+    [nextSequence, setNextSequence] = useState(0),
     [loading, setLoading] = useState(true),
     [busy, setBusy] = useState(false),
     [locked, setLocked] = useState(false),
     [error, setError] = useState(""),
     [message, setMessage] = useState(""),
     [generation, setGeneration] = useState(0);
+  const [additionVersion, setAdditionVersion] = useState(0);
+  const moreButton = useRef<HTMLButtonElement>(null);
   const read = useRef<AbortController | null>(null),
     write = useRef<AbortController | null>(null),
     alive = useRef(true),
@@ -173,6 +270,9 @@ export function OrderAdjustments({
   useEffect(() => {
     alive.current = true;
     setDetail(null);
+    setChosenSection(null);
+    setMoreOpen(false);
+    setNextSequence(0);
     setLocked(false);
     setError("");
     attempts.current.clear();
@@ -413,10 +513,10 @@ export function OrderAdjustments({
       if (ok && reset && form.isConnected) form.reset();
     };
   }
-  const reason = (label = t("Reason", "السبب")) => (
+  const reason = (label = t("Reason", "السبب"), className = field) => (
     <Label title={label}>
       <input
-        className={field}
+        className={className}
         name="reason"
         required
         minLength={3}
@@ -431,7 +531,7 @@ export function OrderAdjustments({
     { id: "payments", en: "Payments", ar: "الدفع" },
     { id: "returns", en: "Returns", ar: "المرتجعات" },
     { id: "history", en: "History & notes", ar: "السجل والملاحظات" },
-    { id: "recovery", en: "Corrections", ar: "التصحيحات" },
+    { id: "recovery", en: "Order actions", ar: "إجراءات الطلب" },
   ];
   if (!detail)
     return (
@@ -440,18 +540,38 @@ export function OrderAdjustments({
           {error ||
             t("Loading order adjustments…", "جارٍ تحميل تعديلات الطلب…")}
         </p>
-        <button
-          className={button}
-          disabled={loading}
-          onClick={() => void reload()}
-        >
-          {t("Reload adjustments", "إعادة تحميل التعديلات")}
-        </button>
+        {error && (
+          <button
+            className={button}
+            type="button"
+            disabled={loading}
+            onClick={() => void reload()}
+          >
+            {t("Try again", "إعادة المحاولة")}
+          </button>
+        )}
       </section>
     );
   const o = detail.order,
     finance = detail.finance;
+  const recommendation = nextOrderAction(detail);
+  const section = chosenSection ?? recommendation.section;
+  const nextLabel = {
+    confirm: t("Confirm order", "تأكيد الطلب"),
+    extend: t("Review expired hold", "مراجعة الحجز المنتهي"),
+    reopen: t("Reopen order", "إعادة فتح الطلب"),
+    ship: t("Ship remaining items", "شحن المنتجات المتبقية"),
+    deliver: t("Review delivery", "مراجعة التسليم"),
+    payment: t("Record a payment", "تسجيل دفعة"),
+    refund: t("Review refund due", "مراجعة المبلغ المطلوب رده"),
+    history: t("Review order history", "مراجعة سجل الطلب"),
+  }[recommendation.kind];
+  const currentTool = sections.find((s) => s.id === section)!;
   const disabled = busy || loading || locked;
+  const canShip =
+    ["confirmed", "shipped"].includes(o.status) &&
+    detail.items.some((item) => remainingUnits(item) > 0);
+  const canReturn = detail.items.some((item) => returnableUnits(item) > 0);
   const catalogName = (id: string, fallback: string) => {
     const product = PRODUCTS.find((product) => product.id === id);
     return product?.variantLabel
@@ -493,35 +613,49 @@ export function OrderAdjustments({
         return (
           <div
             key={i.id}
-            className="flex min-w-0 flex-wrap items-center gap-3 rounded-xl border border-line p-3"
+            className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-xl border border-line p-2"
           >
-            {picture && (
-              <img
-                src={picture.thumb}
-                alt=""
-                className="h-10 w-10 rounded-lg object-cover"
-              />
-            )}
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold">{name(i)}</p>
-              <p className="text-xs text-ink-muted">
-                {t("Ordered", "المطلوب")}: {activeUnits(i)} ·{" "}
-                {t("Shipped", "المشحون")}: {i.shipped_quantity || 0} ·{" "}
-                {t("Held", "المحجوز")}: {i.reserved_quantity || 0} ·{" "}
-                {t("Returned", "المرتجع")}: {i.returned_quantity || 0}
-              </p>
+            <div className="flex min-w-0 items-center gap-2">
+              {picture && (
+                <img
+                  src={picture.thumb}
+                  alt=""
+                  className="h-9 w-9 shrink-0 rounded-lg object-cover"
+                />
+              )}
+              <div className="min-w-0">
+                <p className="break-words text-sm font-semibold">{name(i)}</p>
+                <p className="text-xs text-ink-muted">
+                  {t("Ordered", "المطلوب")}: {activeUnits(i)}
+                  {i.shipped_quantity > 0 && (
+                    <>
+                      {" "}
+                      · {t("Shipped", "المشحون")}: {i.shipped_quantity}
+                    </>
+                  )}
+                  {(mode === "ship" || i.reserved_quantity > 0) && (
+                    <>
+                      {" "}
+                      · {t("Held", "المحجوز")}: {i.reserved_quantity || 0}
+                    </>
+                  )}
+                  {i.returned_quantity > 0 && (
+                    <>
+                      {" "}
+                      · {t("Returned", "المرتجع")}: {i.returned_quantity}
+                    </>
+                  )}
+                </p>
+              </div>
             </div>
-            <Label
-              title={
-                mode === "edit"
-                  ? t("Keep on order", "الكمية في الطلب")
-                  : mode === "ship"
-                    ? t("Ship now", "اشحن الآن")
-                    : t("Return now", "أرجع الآن")
-              }
-            >
+            <label className="w-20 text-xs text-ink-muted">
+              {mode === "edit"
+                ? t("Keep on order", "الكمية في الطلب")
+                : mode === "ship"
+                  ? t("Ship now", "اشحن الآن")
+                  : t("Return now", "أرجع الآن")}
               <input
-                className={field + " !w-24"}
+                className={compactField}
                 type="number"
                 name={`qty:${i.id}`}
                 min={mode === "edit" ? Number(i.shipped_quantity || 0) : 0}
@@ -531,9 +665,9 @@ export function OrderAdjustments({
                 disabled={mode !== "edit" && available === 0}
                 aria-label={`${mode === "edit" ? t("Order quantity", "كمية الطلب") : mode === "ship" ? t("Shipment quantity", "كمية الشحنة") : t("Return quantity", "كمية المرتجع")} — ${name(i)}`}
               />
-            </Label>
+            </label>
             {mode === "return" && available > 0 && (
-              <label className="flex min-h-11 items-center gap-2 text-sm">
+              <label className="col-span-2 flex min-h-11 items-center gap-2 text-sm">
                 <input
                   type="checkbox"
                   name={`restock:${i.id}`}
@@ -696,22 +830,64 @@ export function OrderAdjustments({
           </strong>
         </div>
       </div>
-      <nav
-        className="flex gap-1 overflow-x-auto pb-1"
-        aria-label={t("Adjustment sections", "أقسام التعديل")}
-      >
-        {sections.map((s) => (
+      <nav aria-label={t("Order tools", "أدوات الطلب")} className="space-y-2">
+        <div className="flex flex-wrap items-end justify-between gap-2 rounded-xl border border-line bg-surface p-3">
+          <div className="min-w-0">
+            <p className="text-xs font-semibold text-ink-muted">
+              {t("Next action", "الخطوة التالية")}
+            </p>
+            <button
+              type="button"
+              className="min-h-11 text-start text-sm font-semibold text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/35 disabled:opacity-40"
+              disabled={busy}
+              onClick={() => {
+                setChosenSection(null);
+                setNextSequence((value) => value + 1);
+                setMoreOpen(false);
+              }}
+            >
+              {nextLabel}
+            </button>
+          </div>
           <button
-            key={s.id}
+            ref={moreButton}
             type="button"
+            className={button}
             disabled={busy}
-            aria-pressed={section === s.id}
-            onClick={() => setSection(s.id)}
-            className={`min-h-11 shrink-0 rounded-xl px-3 text-sm font-semibold focus-visible:ring-4 focus-visible:ring-brand/35 ${section === s.id ? "bg-brand text-canvas" : "border border-line text-brand"}`}
+            aria-expanded={moreOpen}
+            aria-controls="more-order-tools"
+            onClick={() => setMoreOpen((value) => !value)}
           >
-            {ar ? s.ar : s.en}
+            {t("More", "المزيد")}
           </button>
-        ))}
+        </div>
+        <div
+          id="more-order-tools"
+          hidden={!moreOpen}
+          className={`${moreOpen ? "grid" : "hidden"} grid-cols-2 gap-2 rounded-xl border border-line bg-surface p-2`}
+        >
+          {sections.map((s) => (
+            <button
+              key={s.id}
+              type="button"
+              disabled={busy}
+              aria-pressed={section === s.id}
+              onClick={() => {
+                setChosenSection(s.id);
+                setMoreOpen(false);
+                moreButton.current?.focus();
+              }}
+              className={`min-h-11 rounded-lg px-2 py-1 text-start text-sm font-semibold focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/35 ${section === s.id ? "bg-brand text-canvas" : "border border-line text-brand"}`}
+            >
+              {ar ? s.ar : s.en}
+            </button>
+          ))}
+        </div>
+        {chosenSection !== null && (
+          <p className="text-xs text-ink-muted">
+            {t("Showing:", "المعروض:")} {ar ? currentTool.ar : currentTool.en}
+          </p>
+        )}
       </nav>
       {error && (
         <p
@@ -728,17 +904,21 @@ export function OrderAdjustments({
           {message}
         </p>
       )}
-      <button
-        type="button"
-        className={button}
-        disabled={busy || loading}
-        onClick={() => void reload()}
-      >
-        {t(
-          "Reload latest order (clears unsaved entries)",
-          "تحميل آخر نسخة (يستبدل المدخلات غير المحفوظة)",
-        )}
-      </button>
+      {locked && (
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            className={button}
+            disabled={busy || loading}
+            onClick={() => void reload()}
+          >
+            {t("Load latest order", "تحميل آخر نسخة")}
+          </button>
+          <span className="text-xs text-ink-muted">
+            {t("Replaces unsaved entries.", "يستبدل المدخلات غير المحفوظة.")}
+          </span>
+        </div>
+      )}
       <div key={generation}>
         <div hidden={section !== "details"} className={panel}>
           <h3 className="font-semibold">
@@ -855,8 +1035,8 @@ export function OrderAdjustments({
           </h3>
           <p className="text-xs text-ink-muted">
             {t(
-              "Reduce an unshipped quantity to remove unavailable items. Record an agreed replacement by reducing the original line and adding the replacement at its catalog price. Money differences remain due or refundable.",
-              "قلّل كمية غير مشحونة لإزالة منتج غير متاح. لتسجيل بديل متفق عليه، قلّل المنتج الأصلي وأضف البديل بسعر الكتالوج. يظهر الفرق كمبلغ مستحق أو مطلوب رده.",
+              "Reduce an unshipped quantity to remove items. Add agreed replacements at catalog price. Any difference updates the balance.",
+              "قلّل الكمية غير المشحونة لإزالة منتجات. أضف البدائل المتفق عليها بسعر الكتالوج. يظهر أي فرق في الرصيد.",
             )}
           </p>
           <form
@@ -880,51 +1060,28 @@ export function OrderAdjustments({
                   },
                   text(form, "reason"),
                 )
-              ) {
-                const product = form.elements.namedItem(
-                  "product",
-                ) as HTMLSelectElement | null;
-                if (product) product.value = "";
-              }
+              )
+                setAdditionVersion((version) => version + 1);
             }}
           >
-            <fieldset disabled={disabled} className="space-y-3">
+            <fieldset disabled={disabled} className="space-y-2">
               {itemPicker("edit")}
-              <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_6rem]">
-                <Label
-                  title={t("Add catalog product", "إضافة منتج من الكتالوج")}
-                >
-                  <select className={field} name="product" defaultValue="">
-                    <option value="">{t("No addition", "دون إضافة")}</option>
-                    {products
-                      .filter((p) => p.active)
-                      .map((p) => (
-                        <option key={p.product_id} value={p.product_id}>
-                          {catalogName(
-                            p.product_id,
-                            ar ? p.name_ar : p.name_en,
-                          )}{" "}
-                          · {money(p.price)}
-                        </option>
-                      ))}
-                  </select>
-                </Label>
-                <Label title={t("Quantity", "الكمية")}>
-                  <input
-                    className={field}
-                    name="add_qty"
-                    type="number"
-                    min={1}
-                    max={99}
-                    step={1}
-                    defaultValue={1}
-                  />
-                </Label>
+              <CatalogAddition ar={ar} key={additionVersion}>
+                {products
+                  .filter((p) => p.active)
+                  .map((p) => (
+                    <option key={p.product_id} value={p.product_id}>
+                      {catalogName(p.product_id, ar ? p.name_ar : p.name_en)} ·{" "}
+                      {money(p.price)}
+                    </option>
+                  ))}
+              </CatalogAddition>
+              <div className="grid items-end gap-2 min-[480px]:grid-cols-[minmax(0,1fr)_auto]">
+                {reason(t("Reason", "السبب"), compactField)}
+                <button type="submit" className={primary}>
+                  {t("Save item adjustment", "حفظ تعديل المنتجات")}
+                </button>
               </div>
-              {reason()}
-              <button type="submit" className={primary}>
-                {t("Save item adjustment", "حفظ تعديل المنتجات")}
-              </button>
             </fieldset>
           </form>
         </div>
@@ -932,58 +1089,84 @@ export function OrderAdjustments({
           <h3 className="font-semibold">{t("Shipments", "الشحنات")}</h3>
           <p className="text-xs text-ink-muted">
             {t(
-              "After each shipment, all remaining reservations are released. Unshipped items stay on the order; a later shipment checks stock again.",
-              "بعد كل شحنة يُحرر باقي الحجز. تبقى المنتجات غير المشحونة في الطلب، وتُراجع الكمية المتاحة عند شحنها لاحقًا.",
+              "Each shipment releases remaining holds. Unshipped items stay on the order and get a fresh stock check next time.",
+              "تُحرر كل شحنة باقي الحجز. تبقى المنتجات غير المشحونة في الطلب، ويُراجع المخزون عند شحنها لاحقًا.",
             )}
           </p>
-          <form
-            className={formClass}
-            onSubmit={submit("ship", (form) => ({
-              lines: lines(form, "ship"),
-              courier: text(form, "courier"),
-              tracking_number: text(form, "tracking"),
-              dispatched_on: text(form, "dispatched"),
-              expected_on: text(form, "expected") || null,
-            }))}
-          >
-            <fieldset disabled={disabled} className="space-y-3">
-              {itemPicker("ship")}
-              <div className="grid gap-3 sm:grid-cols-2">
-                <Label title={t("Courier", "شركة الشحن")}>
-                  <input className={field} name="courier" maxLength={120} />
-                </Label>
-                <Label
-                  title={t("Tracking/reference number", "رقم التتبع أو المرجع")}
-                >
-                  <input
-                    className={field}
-                    name="tracking"
-                    maxLength={200}
-                    dir="ltr"
-                  />
-                </Label>
-                <Label title={t("Dispatch date", "تاريخ الشحن")}>
-                  <input
-                    className={field}
-                    type="date"
-                    name="dispatched"
-                    defaultValue={cairoDay()}
-                    max={cairoDay()}
-                    required
-                  />
-                </Label>
-                <Label
-                  title={t("Expected delivery date", "موعد التسليم المتوقع")}
-                >
-                  <input className={field} type="date" name="expected" />
-                </Label>
-              </div>
-              {reason()}
-              <button className={primary} type="submit">
-                {t("Record selected shipment", "تسجيل شحنة المنتجات المحددة")}
-              </button>
-            </fieldset>
-          </form>
+          {canShip ? (
+            <form
+              className={formClass}
+              onSubmit={submit("ship", (form) => ({
+                lines: lines(form, "ship"),
+                courier: text(form, "courier"),
+                tracking_number: text(form, "tracking"),
+                dispatched_on: text(form, "dispatched"),
+                expected_on: text(form, "expected") || null,
+              }))}
+            >
+              <fieldset disabled={disabled} className="space-y-2">
+                {itemPicker("ship")}
+                <div className={pairedFields}>
+                  <Label title={t("Courier", "شركة الشحن")}>
+                    <input
+                      className={compactField}
+                      name="courier"
+                      maxLength={120}
+                    />
+                  </Label>
+                  <Label
+                    title={t(
+                      "Tracking/reference number",
+                      "رقم التتبع أو المرجع",
+                    )}
+                  >
+                    <input
+                      className={compactField}
+                      name="tracking"
+                      maxLength={200}
+                      dir="ltr"
+                    />
+                  </Label>
+                  <Label title={t("Dispatch date", "تاريخ الشحن")}>
+                    <input
+                      className={compactField}
+                      type="date"
+                      name="dispatched"
+                      defaultValue={cairoDay()}
+                      max={cairoDay()}
+                      required
+                    />
+                  </Label>
+                  <Label
+                    title={t("Expected delivery date", "موعد التسليم المتوقع")}
+                  >
+                    <input
+                      className={compactField}
+                      type="date"
+                      name="expected"
+                    />
+                  </Label>
+                </div>
+                <div className="grid items-end gap-2 min-[480px]:grid-cols-[minmax(0,1fr)_auto]">
+                  {reason(t("Reason", "السبب"), compactField)}
+                  <button className={primary} type="submit">
+                    {t(
+                      "Record selected shipment",
+                      "تسجيل شحنة المنتجات المحددة",
+                    )}
+                  </button>
+                </div>
+              </fieldset>
+            </form>
+          ) : o.status === "pending" ? (
+            <p className="text-sm text-ink-muted">
+              {t(
+                "Confirm the order before recording a shipment.",
+                "أكّد الطلب قبل تسجيل الشحنة.",
+              )}
+            </p>
+          ) : null}
+
           <ul className="divide-y divide-line">
             {detail.shipments.map((s) => (
               <li key={s.id} className="space-y-2 py-3 text-sm">
@@ -1147,15 +1330,12 @@ export function OrderAdjustments({
         </div>
         <div hidden={section !== "payments"} className={panel}>
           <h3 className="font-semibold">
-            {t(
-              "Record money actually received or returned",
-              "تسجيل المبالغ المقبوضة أو المرتجعة فعليًا",
-            )}
+            {t("Record payment or refund", "تسجيل دفع أو رد مبلغ")}
           </h3>
           <p className="text-xs text-ink-muted">
             {t(
-              "These entries track money; they do not charge a card or transfer funds. Item changes never create an automatic payment or refund.",
-              "هذه قيود متابعة مالية، وليست خصمًا أو تحويلًا فعليًا. تعديل المنتجات لا ينشئ دفعًا أو ردًا تلقائيًا.",
+              "Only record money you have received or returned.",
+              "سجّل فقط المبلغ الذي استلمته أو رددته فعليًا.",
             )}
           </p>
           <form
@@ -1178,10 +1358,16 @@ export function OrderAdjustments({
                 form.reset();
             }}
           >
-            <fieldset disabled={disabled} className="space-y-3">
-              <div className="grid gap-3 sm:grid-cols-2">
+            <fieldset disabled={disabled} className="space-y-2">
+              <div className={pairedFields}>
                 <Label title={t("Entry type", "نوع القيد")}>
-                  <select className={field} name="kind" defaultValue="payment">
+                  <select
+                    className={compactField}
+                    name="kind"
+                    defaultValue={
+                      recommendation.kind === "refund" ? "refund" : "payment"
+                    }
+                  >
                     <option value="payment">
                       {t("Payment received", "مبلغ مستلم")}
                     </option>
@@ -1192,7 +1378,7 @@ export function OrderAdjustments({
                 </Label>
                 <Label title={t("Amount (EGP)", "المبلغ (جنيه)")}>
                   <input
-                    className={field}
+                    className={compactField}
                     name="amount"
                     type="number"
                     min="0.01"
@@ -1209,7 +1395,7 @@ export function OrderAdjustments({
                   )}
                 >
                   <input
-                    className={field}
+                    className={compactField}
                     type="date"
                     name="date"
                     defaultValue={cairoDay()}
@@ -1218,24 +1404,30 @@ export function OrderAdjustments({
                   />
                 </Label>
                 <Label title={t("Payment reference", "مرجع الدفع")}>
-                  <input className={field} name="reference" maxLength={200} />
+                  <input
+                    className={compactField}
+                    name="reference"
+                    maxLength={200}
+                  />
                 </Label>
               </div>
-              {reason()}
-              <label className="flex min-h-11 items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  required
-                  className="h-5 w-5 accent-brand"
-                />
-                {t(
-                  "I have verified the actual receipt or refund.",
-                  "تحققت من استلام المبلغ أو رده فعليًا.",
-                )}
-              </label>
-              <button className={primary}>
-                {t("Record payment entry", "تسجيل القيد المالي")}
-              </button>
+              {reason(t("Reason", "السبب"), compactField)}
+              <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+                <label className="flex min-h-11 items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    required
+                    className="h-5 w-5 shrink-0 accent-brand"
+                  />
+                  {t(
+                    "I verified the receipt or refund.",
+                    "تحققت من الاستلام أو الرد.",
+                  )}
+                </label>
+                <button className={primary}>
+                  {t("Record payment entry", "تسجيل القيد المالي")}
+                </button>
+              </div>
             </fieldset>
           </form>
           <ul className="divide-y divide-line">
@@ -1263,43 +1455,56 @@ export function OrderAdjustments({
               "سجّل المنتجات التي عادت فعليًا. اختر إعادة للمخزون فقط للقطع الصالحة للبيع التي استلمتها. سجّل رد المال منفصلًا. للاستبدال المتفق عليه أضف البديل من المنتجات بعد تسجيل المرتجع.",
             )}
           </p>
-          <form
-            className={formClass}
-            onSubmit={submit("return", (form) => ({
-              lines: lines(form, "return"),
-              returned_on: text(form, "returned_on"),
-              waive_delivery: new FormData(form).get("waive_delivery") === "on",
-            }))}
-          >
-            <fieldset disabled={disabled} className="space-y-3">
-              {itemPicker("return")}
-              <Label title={t("Return received date", "تاريخ استلام المرتجع")}>
-                <input
-                  className={field}
-                  name="returned_on"
-                  type="date"
-                  defaultValue={cairoDay()}
-                  max={cairoDay()}
-                  required
-                />
-              </Label>
-              <label className="flex min-h-11 items-start gap-2 text-sm">
-                <input
-                  className="mt-1 h-5 w-5 accent-brand"
-                  type="checkbox"
-                  name="waive_delivery"
-                />
-                {t(
-                  "Waive delivery fee on a full return (no products may remain chargeable)",
-                  "إلغاء رسوم التوصيل عند إرجاع الطلب كاملًا فقط",
-                )}
-              </label>
-              {reason()}
-              <button className={primary}>
-                {t("Record selected returns", "تسجيل المرتجعات المحددة")}
-              </button>
-            </fieldset>
-          </form>
+          {canReturn ? (
+            <form
+              className={formClass}
+              onSubmit={submit("return", (form) => ({
+                lines: lines(form, "return"),
+                returned_on: text(form, "returned_on"),
+                waive_delivery:
+                  new FormData(form).get("waive_delivery") === "on",
+              }))}
+            >
+              <fieldset disabled={disabled} className="space-y-3">
+                {itemPicker("return")}
+                <Label
+                  title={t("Return received date", "تاريخ استلام المرتجع")}
+                >
+                  <input
+                    className={field}
+                    name="returned_on"
+                    type="date"
+                    defaultValue={cairoDay()}
+                    max={cairoDay()}
+                    required
+                  />
+                </Label>
+                <label className="flex min-h-11 items-start gap-2 text-sm">
+                  <input
+                    className="mt-1 h-5 w-5 accent-brand"
+                    type="checkbox"
+                    name="waive_delivery"
+                  />
+                  {t(
+                    "Waive delivery fee on a full return (no products may remain chargeable)",
+                    "إلغاء رسوم التوصيل عند إرجاع الطلب كاملًا فقط",
+                  )}
+                </label>
+                {reason()}
+                <button className={primary}>
+                  {t("Record selected returns", "تسجيل المرتجعات المحددة")}
+                </button>
+              </fieldset>
+            </form>
+          ) : (
+            <p className="text-sm text-ink-muted">
+              {t(
+                "No shipped items remain to return.",
+                "لا توجد منتجات مشحونة متبقية للإرجاع.",
+              )}
+            </p>
+          )}
+
           {Number(o.delivery_fee) > 0 &&
             detail.items.some((item) => item.shipped_quantity > 0) &&
             detail.items.every(
@@ -1438,208 +1643,19 @@ export function OrderAdjustments({
           </ol>
         </div>
         <div hidden={section !== "recovery"} className={panel}>
-          <h3 className="font-semibold">
-            {t("Controlled corrections", "تصحيحات بضوابط")}
-          </h3>
-          <form
-            className={formClass}
-            onSubmit={async (e) => {
-              e.preventDefault();
-              const form = e.currentTarget;
-              if (await mutate(text(form, "action"), {}, text(form, "reason")))
-                form.reset();
+          <CorrectionActions
+            detail={detail}
+            disabled={disabled}
+            submit={submit}
+            reason={reason}
+            money={money}
+            date={date}
+            actionLabel={actionLabel}
+            preset={{
+              action: recommendation.correction,
+              sequence: nextSequence,
             }}
-          >
-            <fieldset disabled={disabled} className="space-y-3">
-              <Label title={t("Order action", "إجراء الطلب")}>
-                <select className={field} name="action" defaultValue="confirm">
-                  <option value="confirm">
-                    {t("Confirm order", "تأكيد الطلب")}
-                  </option>
-                  <option value="cancel">
-                    {t("Cancel outstanding items", "إلغاء المنتجات المتبقية")}
-                  </option>
-                  <option value="reopen">
-                    {t(
-                      "Reopen cancelled/expired order",
-                      "إعادة فتح طلب ملغي أو منتهي",
-                    )}
-                  </option>
-                </select>
-              </Label>
-              {reason()}
-              <button className={button}>
-                {t("Apply order action", "تطبيق إجراء الطلب")}
-              </button>
-            </fieldset>
-          </form>
-          <form
-            className="space-y-3 border-t border-line pt-3"
-            onSubmit={submit("extend", (form) => ({
-              expires_at: new Date(text(form, "expires")).toISOString(),
-            }))}
-          >
-            <fieldset disabled={disabled} className="space-y-3">
-              <Label
-                title={t(
-                  "New reservation deadline (your device time)",
-                  "نهاية الحجز الجديدة (بتوقيت جهازك)",
-                )}
-              >
-                <input
-                  className={field}
-                  name="expires"
-                  type="datetime-local"
-                  required
-                />
-              </Label>
-              {reason()}
-              <button className={button}>
-                {t("Extend unpaid reservation", "تمديد الحجز غير المدفوع")}
-              </button>
-            </fieldset>
-          </form>
-          <form
-            className="space-y-3 border-t border-line pt-3"
-            onSubmit={submit("order_date", (form) => ({
-              ordered_on: text(form, "ordered_on"),
-            }))}
-          >
-            <fieldset disabled={disabled} className="space-y-3">
-              <Label
-                title={t(
-                  "Correct original order date (Cairo)",
-                  "تصحيح تاريخ الطلب الأصلي (القاهرة)",
-                )}
-              >
-                <input
-                  className={field}
-                  name="ordered_on"
-                  type="date"
-                  defaultValue={
-                    o.ordered_at
-                      ? new Intl.DateTimeFormat("en-CA", {
-                          timeZone: "Africa/Cairo",
-                          year: "numeric",
-                          month: "2-digit",
-                          day: "2-digit",
-                        }).format(new Date(o.ordered_at))
-                      : ""
-                  }
-                  max={cairoDay()}
-                  required
-                />
-              </Label>
-              {reason()}
-              <button className={button}>
-                {t("Correct order date", "تصحيح تاريخ الطلب")}
-              </button>
-            </fieldset>
-          </form>
-          <form
-            className="space-y-3 border-t border-line pt-3"
-            onSubmit={submit("payment_date", (form) => ({
-              event_id: number(form, "event_id"),
-              date: text(form, "date"),
-            }))}
-          >
-            <fieldset
-              disabled={disabled || !finance?.payments?.length}
-              className="space-y-3"
-            >
-              <Label title={t("Payment/refund entry", "قيد الدفع أو الرد")}>
-                <select
-                  className={field}
-                  name="event_id"
-                  required
-                  defaultValue=""
-                >
-                  <option value="">{t("Choose an entry", "اختر القيد")}</option>
-                  {finance?.payments?.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {actionLabel(p.event_type)} · {money(p.amount)} ·{" "}
-                      {date(p.occurred_at)}
-                    </option>
-                  ))}
-                </select>
-              </Label>
-              <Label
-                title={t(
-                  "Correct original date (Cairo)",
-                  "تصحيح التاريخ الأصلي (القاهرة)",
-                )}
-              >
-                <input
-                  className={field}
-                  name="date"
-                  type="date"
-                  max={cairoDay()}
-                  required
-                />
-              </Label>
-              {reason()}
-              <button className={button}>
-                {t("Correct payment date", "تصحيح تاريخ القيد المالي")}
-              </button>
-            </fieldset>
-          </form>
-          <form
-            className="space-y-3 border-t border-line pt-3"
-            onSubmit={submit("undo_shipment", (form) => ({
-              shipment_id: text(form, "shipment_id"),
-              confirmed_not_dispatched: true,
-            }))}
-          >
-            <fieldset disabled={disabled} className="space-y-3">
-              <Label
-                title={t("Shipment recorded by mistake", "شحنة سُجلت بالخطأ")}
-              >
-                <select
-                  className={field}
-                  name="shipment_id"
-                  defaultValue=""
-                  required
-                >
-                  <option value="">
-                    {t("Choose a shipment", "اختر الشحنة")}
-                  </option>
-                  {detail.shipments
-                    .filter(
-                      (s) =>
-                        !s.voided_at &&
-                        !s.delivered_on &&
-                        !s.legacy_delivered &&
-                        !(
-                          s.lines?.some(
-                            (line) => Number(line.returned_quantity) > 0,
-                          ) ?? false
-                        ),
-                    )
-                    .map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.courier || t("Shipment", "شحنة")} ·{" "}
-                        {s.tracking_number || s.id.slice(0, 8)}
-                      </option>
-                    ))}
-                </select>
-              </Label>
-              <label className="flex min-h-11 items-start gap-2 text-sm">
-                <input
-                  className="mt-1 h-5 w-5 accent-brand"
-                  type="checkbox"
-                  required
-                />
-                {t(
-                  "The products never left the shop. Actual returned deliveries must use Returns instead.",
-                  "المنتجات لم تغادر المتجر. الشحنات التي عادت فعلًا تُسجّل من المرتجعات.",
-                )}
-              </label>
-              {reason()}
-              <button className={button}>
-                {t("Undo mistaken shipment", "التراجع عن شحنة مسجلة بالخطأ")}
-              </button>
-            </fieldset>
-          </form>
+          />
         </div>
       </div>
     </section>

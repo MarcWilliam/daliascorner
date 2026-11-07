@@ -55,3 +55,11 @@ Release checks: 153 automated tests passed with the atomic migration bundle, plu
 Hosted verification: atomic migration applied. A rolled-back production-database scenario passed partial receipts, split shipment/remainder release, unavailable-unit removal, replacement, physical return/restock, partial refund, delivery closure, shipment costs, duplicate retry and customer-denial checks. Test inventory, orders, cash and audit rows were rolled back; no test notifications became visible to the dispatcher.
 
 Final chronology regression confirms that returns cannot precede their eligible shipment/delivery and a corrected delivery date cannot follow an already recorded delivered return. No additional migration was necessary because the workflow guard already enforces those rules. Final production build and all 153 tests passed.
+
+## Compact order drawer
+
+The drawer opens the next relevant task for the current order state. The suggestion is navigation only; it does not change payment or fulfilment rules. **More** exposes every order tool. The **Order actions** picker shows only applicable actions and reveals the selected form.
+
+Add catalog products using the plus disclosure. Closing it keeps the draft but excludes its fields from the save. Shipment and payment controls pair at wider phone/tablet widths and stack at narrow widths. The recovery button appears only after a failed load, stale edit or uncertain refresh/save; loading the latest order replaces unsaved form entries and preserves retry protection.
+
+Verified with 155 tests, a production build and synthetic PostgreSQL-backed browser checks: next-action selection, More navigation, addition draft/collapse/save, compact shipment/payment fields, correction filtering, stale-order recovery, Arabic 320px reflow and Escape dismissal. No database or Edge Function changes were required.
