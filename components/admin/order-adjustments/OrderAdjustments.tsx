@@ -891,26 +891,73 @@ export function OrderAdjustments({
           )}
         </dl>
       </div>
-      <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-line bg-surface px-3 py-2">
-        <div className="min-w-0">
-          <p className="text-xs font-semibold text-ink-muted">
-            {t("Next action", "الخطوة التالية")}
-          </p>
-          <button
-            type="button"
-            className="min-h-11 text-start text-sm font-semibold text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/35 disabled:opacity-40"
-            disabled={busy}
-            onClick={() => {
-              setSelectedSection(null);
-              setNextSequence((value) => value + 1);
-            }}
-          >
-            {nextLabel}
-          </button>
+      <div className="flex flex-wrap items-center gap-x-3 rounded-xl border border-line bg-surface px-3">
+        <p className="text-xs font-semibold text-ink-muted">
+          {t("Next action", "الخطوة التالية")}
+        </p>
+        <button
+          type="button"
+          className="min-h-11 text-start text-sm font-semibold text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/35 disabled:opacity-40"
+          disabled={busy}
+          onClick={() => {
+            setSelectedSection(null);
+            setNextSequence((value) => value + 1);
+          }}
+        >
+          {nextLabel}
+        </button>
+      </div>
+      <div className="flex items-start gap-1.5">
+        <div
+          id={`${toolsId}-tabs`}
+          role="tablist"
+          aria-label={t("Order tools", "أدوات الطلب")}
+          className={`flex min-w-0 gap-1.5 ${moreOpen ? "flex-wrap" : ""}`}
+        >
+          {visibleTabs.map(({ id, label }, index) => (
+            <button
+              key={id}
+              id={tabId(id)}
+              role="tab"
+              type="button"
+              aria-selected={section === id}
+              aria-controls={panelId(id)}
+              tabIndex={section === id ? 0 : -1}
+              disabled={busy}
+              className={(section === id ? primary : button) + " min-w-0 break-words text-center"}
+              onClick={() => setSelectedSection(id)}
+              onKeyDown={(event) => {
+                const last = visibleTabs.length - 1;
+                const step = ar ? -1 : 1;
+                const offset = event.key === "ArrowRight" ? step : -step;
+                let next: number;
+                switch (event.key) {
+                  case "ArrowRight":
+                  case "ArrowLeft":
+                    next = (index + offset + visibleTabs.length) % visibleTabs.length;
+                    break;
+                  case "Home":
+                    next = 0;
+                    break;
+                  case "End":
+                    next = last;
+                    break;
+                  default:
+                    return;
+                }
+                event.preventDefault();
+                const target = visibleTabs[next].id;
+                setSelectedSection(target);
+                document.getElementById(tabId(target))?.focus();
+              }}
+            >
+              {label}
+            </button>
+          ))}
         </div>
         <button
           type="button"
-          className={button + " gap-1"}
+          className={button + " shrink-0 gap-1"}
           disabled={busy}
           aria-expanded={moreOpen}
           aria-controls={`${toolsId}-tabs`}
@@ -921,53 +968,6 @@ export function OrderAdjustments({
           {moreOpen ? t("Show less", "عرض أقل") : t("More", "المزيد")}
           <ChevronDown className={moreOpen ? "rotate-180" : ""} size={16} aria-hidden />
         </button>
-      </div>
-      <div
-        id={`${toolsId}-tabs`}
-        role="tablist"
-        aria-label={t("Order tools", "أدوات الطلب")}
-        className="flex flex-wrap gap-1.5"
-      >
-        {visibleTabs.map(({ id, label }, index) => (
-          <button
-            key={id}
-            id={tabId(id)}
-            role="tab"
-            type="button"
-            aria-selected={section === id}
-            aria-controls={panelId(id)}
-            tabIndex={section === id ? 0 : -1}
-            disabled={busy}
-            className={section === id ? primary : button}
-            onClick={() => setSelectedSection(id)}
-            onKeyDown={(event) => {
-              const last = visibleTabs.length - 1;
-              const step = ar ? -1 : 1;
-              const offset = event.key === "ArrowRight" ? step : -step;
-              let next: number;
-              switch (event.key) {
-                case "ArrowRight":
-                case "ArrowLeft":
-                  next = (index + offset + visibleTabs.length) % visibleTabs.length;
-                  break;
-                case "Home":
-                  next = 0;
-                  break;
-                case "End":
-                  next = last;
-                  break;
-                default:
-                  return;
-              }
-              event.preventDefault();
-              const target = visibleTabs[next].id;
-              setSelectedSection(target);
-              document.getElementById(tabId(target))?.focus();
-            }}
-          >
-            {label}
-          </button>
-        ))}
       </div>
       {error && (
         <p
