@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   customerWhatsAppNumber,
   customerOrderMessageLink,
+  orderActionMessage,
   orderMessage,
   orderMessageTemplates,
 } from "../lib/store/order-messages";
@@ -29,7 +30,7 @@ test("customer WhatsApp targets normalize Egyptian and explicit international nu
   ])
     assert.equal(customerWhatsAppNumber(phone), null);
 });
-test("all five bilingual templates carry the public order reference and never promise an automatic refund", () => {
+test("all bilingual templates carry the public order reference and never promise an automatic refund", () => {
   for (const locale of ["en", "ar"] as const)
     for (const template of orderMessageTemplates) {
       const text = orderMessage(template, 725, locale);
@@ -60,4 +61,15 @@ test("every customer template includes its supplied private order link in the se
         message,
       );
     }
+});
+
+test("action drafts distinguish partial fulfilment and actual money from corrections", () => {
+  assert.equal(orderActionMessage("ship", true), "shipment_dispatched");
+  assert.equal(orderActionMessage("deliver", true), "shipment_delivered");
+  assert.equal(orderActionMessage("cancel", false), "cancelled");
+  assert.equal(orderActionMessage("cancel", true), "remaining_cancelled");
+  assert.equal(orderActionMessage("payment", false), "payment_received");
+  assert.equal(orderActionMessage("refund", true), "refund_recorded");
+  assert.equal(orderActionMessage("payment_edit", true), undefined);
+  assert.equal(orderActionMessage("undo_shipment", true), undefined);
 });

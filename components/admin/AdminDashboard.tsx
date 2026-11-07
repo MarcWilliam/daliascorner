@@ -1,7 +1,8 @@
 "use client";
 import { NotificationsPanel, type AdminNotice } from "./NotificationsPanel";
 import { AdminDialog } from "./AdminDialog";
-import { AdminOrderMessages } from "./AdminOrderMessages";
+import { WhatsAppIcon } from "@/components/ui/BrandIcons";
+import { customerWhatsAppNumber } from "@/lib/store/order-messages";
 import { MetaHealth } from "./MetaHealth";
 import { FinancePanel } from "./FinancePanel";
 import { ExpensesPanel } from "./ExpensesPanel";
@@ -15,7 +16,7 @@ import { PRODUCTS } from "@/lib/products";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useCustomerAuth } from "@/components/providers/CustomerAuthProvider";
 import { accountRequestScope } from "@/lib/store/customer-account";
-import { ArrowLeft, Plus, ChevronRight } from "lucide-react";
+import { ArrowLeft, Plus, ChevronRight, Phone } from "lucide-react";
 import { ClayButton } from "@/components/ui/ClayButton";
 import { LanguageToggle } from "@/components/ui/LanguageToggle";
 import { useLocale } from "@/components/providers/LocaleProvider";
@@ -983,13 +984,27 @@ export function AdminDashboard() {
                         <p className="break-words font-semibold">
                           {o.customer_name}
                         </p>
-                        <a
-                          className="mt-1 inline-flex min-h-11 items-center text-sm font-semibold text-brand underline underline-offset-4"
-                          dir="ltr"
-                          href={`tel:${o.customer_phone.replace(/[^+\d]/g, "")}`}
-                        >
-                          {o.customer_phone}
-                        </a>
+                        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+                          <bdi dir="ltr" className="break-all">{o.customer_phone}</bdi>
+                          <a
+                            href={`tel:${o.customer_phone.replace(/[^+\d]/g, "")}`}
+                            className="inline-flex min-h-11 items-center gap-1 font-semibold text-brand underline-offset-4 hover:underline"
+                          >
+                            <Phone aria-hidden="true" className="h-4 w-4" />
+                            {locale === "ar" ? "اتصال" : "Call"}
+                          </a>
+                          {customerWhatsAppNumber(o.customer_phone) && (
+                            <a
+                              href={`https://wa.me/${customerWhatsAppNumber(o.customer_phone)}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex min-h-11 items-center gap-1 font-semibold text-brand underline-offset-4 hover:underline"
+                            >
+                              <WhatsAppIcon aria-hidden="true" className="h-4 w-4" />
+                              {locale === "ar" ? "واتساب" : "WhatsApp"}
+                            </a>
+                          )}
+                        </div>
                       </section>
                       <section
                         aria-label={locale === "ar" ? "التوصيل" : "Delivery"}
@@ -1102,16 +1117,7 @@ export function AdminDashboard() {
                       paymentMethod={o.payment_method}
                       onSaved={refresh}
                       onBusyChange={setBusy}
-                    >
-                      <AdminOrderMessages
-                        orderId={o.id}
-                        orderNumber={o.order_number}
-                        phone={o.customer_phone}
-                        locale={o.locale}
-                        status={o.status}
-                        busy={busy}
-                      />
-                    </OrderAdjustments>
+                    />
                   </article>
                 ))}
               </AdminDialog>

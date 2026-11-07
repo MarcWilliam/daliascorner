@@ -19,6 +19,7 @@ type Props = {
   disabled: boolean;
   submit: Submit;
   reason: () => ReactNode;
+  previewMessage: (action: string) => ReactNode;
 };
 type Option = {
   id: string;
@@ -57,6 +58,7 @@ export function CorrectionActions({
   disabled,
   submit,
   reason,
+  previewMessage,
 }: Props) {
   const { locale } = useLocale(),
     ar = locale === "ar";
@@ -237,6 +239,7 @@ export function CorrectionActions({
             <button className={button} type="submit">
               {option.label}
             </button>
+            {previewMessage(option.id)}
           </fieldset>
         </form>
       ))}

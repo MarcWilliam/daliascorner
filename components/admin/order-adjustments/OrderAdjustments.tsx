@@ -11,6 +11,8 @@ import {
 } from "react";
 import { ChevronDown, Plus, X } from "lucide-react";
 import { CorrectionActions } from "./CorrectionActions";
+import { AdminOrderMessages, useAdminOrderLink, type MessageDraft } from "../AdminOrderMessages";
+import { customerOrderMessageLink, customerWhatsAppNumber, orderActionMessage, type OrderMessageTemplate } from "@/lib/store/order-messages";
 import {
   nextOrderAction,
   type AdjustmentSection,
@@ -161,13 +163,11 @@ export function OrderAdjustments({
   paymentMethod,
   onSaved,
   onBusyChange,
-  children,
 }: {
   orderId: string;
   paymentMethod: string;
   onSaved: () => Promise<void>;
   onBusyChange?: (busy: boolean) => void;
-  children?: ReactNode;
 }) {
   const { locale } = useLocale(),
     ar = locale === "ar";
@@ -189,6 +189,22 @@ export function OrderAdjustments({
     [generation, setGeneration] = useState(0);
   const [additionVersion, setAdditionVersion] = useState(0);
   const toolsId = useId();
+  const [previewScope, setPreviewScope] = useState<string | null>(null);
+  const [linkRequested, setLinkRequested] = useState(false);
+  const [reminderOpen, setReminderOpen] = useState(false);
+  const [savedDraft, setSavedDraft] = useState<{
+    section: AdjustmentSection;
+    template: OrderMessageTemplate;
+    phone: string;
+    draft?: MessageDraft;
+    sequence: number;
+  } | null>(null);
+  const messagePhone = detail?.order.customer_phone ?? "";
+  const messageLink = useAdminOrderLink(
+    orderId,
+    `${owner}:${messagePhone}`,
+    linkRequested && Boolean(customerWhatsAppNumber(messagePhone)),
+  );
   const nextActionRow = useRef<HTMLDivElement>(null);
   const toolsRow = useRef<HTMLDivElement>(null);
   const [paymentKind, setPaymentKind] = useState<PaymentKind | null>(null);
@@ -307,6 +323,10 @@ export function OrderAdjustments({
     alive.current = true;
     setDetail(null);
     setSelectedSection(null);
+    setPreviewScope(null);
+    setSavedDraft(null);
+    setLinkRequested(false);
+    setReminderOpen(false);
     setPaymentDraft(null);
     resetPaymentEntry();
     setMoreOpen(false);
@@ -328,6 +348,7 @@ export function OrderAdjustments({
     if (await load()) {
       setLocked(false);
       setPaymentDraft(null);
+      setPreviewScope(null);
       resetPaymentEntry();
       setGeneration((v) => v + 1);
     }
@@ -537,15 +558,78 @@ export function OrderAdjustments({
       }
     }
   }
+  async function saveForm(
+    event: FormEvent<HTMLFormElement>,
+    action: string,
+    payload: Record<string, unknown>,
+    messageSection?: AdjustmentSection,
+  ) {
+    const form = event.currentTarget;
+    const order = snapshot.current;
+    const template = messageSection && order
+      ? orderActionMessage(action, order.items.some((item) => item.shipped_quantity > 0))
+      : undefined;
+    const fields = new FormData(form);
+    const message = fields.get("whatsapp_message");
+    const language = fields.get("whatsapp_language");
+    const draft = typeof message === "string" && (language === "ar" || language === "en")
+      ? { text: message, language } satisfies MessageDraft
+      : undefined;
+    const submitter = (event.nativeEvent as SubmitEvent).submitter;
+    const url = template && draft && messageLink.url && submitter?.getAttribute("name") === "open_whatsapp"
+      ? customerOrderMessageLink(messagePhone, draft.text)
+      : null;
+    // Reserve the tab on the click, then navigate only after the server confirms the save.
+    let popup: Window | null = null;
+    if (url && !inFlight.current && !locked) {
+      try {
+        popup = window.open("about:blank", "_blank");
+        if (popup) popup.opener = null;
+      } catch {
+        popup?.close();
+        popup = null;
+      }
+    }
+    let opened = false;
+    try {
+      const ok = await mutate(action, payload, text(form, "reason"));
+      if (!ok || ownerRef.current !== owner || !alive.current) return false;
+      if (template && messageSection) {
+        setPreviewScope(null);
+        setLinkRequested(true);
+        setSavedDraft((previous) => ({
+          section: messageSection,
+          template,
+          phone: messagePhone,
+          draft,
+          sequence: (previous?.sequence ?? 0) + 1,
+        }));
+        selectOrderTab(messageSection);
+        if (popup && url && !popup.closed) {
+          try {
+            popup.location.replace(url);
+            opened = true;
+          } catch {
+            // The saved draft remains available if the tab cannot be reached.
+          }
+        }
+      }
+      return true;
+    } finally {
+      if (!opened) popup?.close();
+    }
+  }
+
   function submit(
     action: string,
     build: (form: HTMLFormElement) => Record<string, unknown>,
     reset = true,
+    messageSection?: AdjustmentSection,
   ) {
     return async (e: FormEvent<HTMLFormElement>) => {
       e.preventDefault();
       const form = e.currentTarget;
-      const ok = await mutate(action, build(form), text(form, "reason"));
+      const ok = await saveForm(e, action, build(form), messageSection);
       if (ok && reset && form.isConnected) {
         if (action === "ship" || action === "return") {
           setQuantityFormVersion((version) => ({ ...version, [action]: version[action] + 1 }));
@@ -566,25 +650,22 @@ export function OrderAdjustments({
   );
   if (!detail)
     return (
-      <>
-        <section className={panel} aria-busy={loading}>
-          <p role={error ? "alert" : "status"}>
-            {error ||
-              t("Loading order adjustments…", "جارٍ تحميل تعديلات الطلب…")}
-          </p>
-          {error && (
-            <button
-              className={button}
-              type="button"
-              disabled={loading}
-              onClick={() => void reload()}
-            >
-              {t("Try again", "إعادة المحاولة")}
-            </button>
-          )}
-        </section>
-        {children}
-      </>
+      <section className={panel} aria-busy={loading}>
+        <p role={error ? "alert" : "status"}>
+          {error ||
+            t("Loading order adjustments…", "جارٍ تحميل تعديلات الطلب…")}
+        </p>
+        {error && (
+          <button
+            className={button}
+            type="button"
+            disabled={loading}
+            onClick={() => void reload()}
+          >
+            {t("Try again", "إعادة المحاولة")}
+          </button>
+        )}
+      </section>
     );
   const o = detail.order,
     finance = detail.finance;
@@ -623,6 +704,48 @@ export function OrderAdjustments({
     refund: t("Review refund due", "مراجعة المبلغ المطلوب رده"),
     history: t("Review order history", "مراجعة سجل الطلب"),
   }[recommendation.kind];
+  const compose = (template: OrderMessageTemplate, key: string, beforeSave = false, initialDraft?: MessageDraft) => (
+    <AdminOrderMessages
+      key={`${key}:${template}:${messagePhone}`}
+      orderNumber={o.order_number}
+      phone={messagePhone}
+      orderLocale={o.locale}
+      template={template}
+      orderLink={messageLink}
+      beforeSave={beforeSave}
+      busy={busy}
+      initialDraft={initialDraft}
+    />
+  );
+  const hasShipped = detail.items.some((item) => item.shipped_quantity > 0);
+  function previewMessage(action: string, scope = action) {
+    const template = orderActionMessage(action, hasShipped);
+    if (!template) return null;
+    const open = previewScope === scope;
+    return (
+      <div className="space-y-2">
+        <button
+          type="button"
+          aria-expanded={open}
+          aria-controls={`${toolsId}-message-${scope}`}
+          className={button}
+          onClick={() => {
+            setPreviewScope(open ? null : scope);
+            if (!open) setLinkRequested(true);
+          }}
+        >
+          {open ? t("Hide WhatsApp draft", "إخفاء مسودة واتساب") : t("Preview WhatsApp draft", "معاينة مسودة واتساب")}
+        </button>
+        <div id={`${toolsId}-message-${scope}`} hidden={!open}>
+          {open && compose(template, scope, true)}
+        </div>
+      </div>
+    );
+  }
+  const savedMessage = (tool: AdjustmentSection) =>
+    savedDraft?.section === tool && savedDraft.phone === messagePhone
+      ? compose(savedDraft.template, String(savedDraft.sequence), false, savedDraft.draft)
+      : null;
   const paymentStatus = ({
     unpaid: Number(finance?.balance_due) > 0
       ? t("Pending payment", "بانتظار الدفع")
@@ -1172,6 +1295,7 @@ export function OrderAdjustments({
           </form>
         </div>
         <div {...panelProps("items")}>
+          {savedMessage("items")}
           <h3 className="font-semibold">
             {t("Items & agreed replacements", "المنتجات والبدائل المتفق عليها")}
           </h3>
@@ -1187,7 +1311,8 @@ export function OrderAdjustments({
               e.preventDefault();
               const form = e.currentTarget;
               if (
-                await mutate(
+                await saveForm(
+                  e,
                   "items",
                   {
                     lines: lines(form, "edit"),
@@ -1200,7 +1325,7 @@ export function OrderAdjustments({
                         ]
                       : [],
                   },
-                  text(form, "reason"),
+                  "items",
                 )
               )
                 setAdditionVersion((version) => version + 1);
@@ -1224,11 +1349,13 @@ export function OrderAdjustments({
                   {t("Save item adjustment", "حفظ تعديل المنتجات")}
                 </button>
               </div>
+              {previewMessage("items")}
             </fieldset>
           </form>
         </div>
         <div {...panelProps("shipping")}>
           <h3 className="font-semibold">{t("Shipments", "الشحنات")}</h3>
+          {savedMessage("shipping")}
           <p className="text-xs text-ink-muted">
             {t(
               "Each shipment releases remaining holds. Unshipped items stay on the order and get a fresh stock check next time.",
@@ -1245,7 +1372,7 @@ export function OrderAdjustments({
                 tracking_number: text(form, "tracking"),
                 dispatched_on: text(form, "dispatched"),
                 expected_on: text(form, "expected") || null,
-              }))}
+              }), true, "shipping")}
             >
               <fieldset disabled={disabled} className="space-y-2">
                 {itemPicker("ship")}
@@ -1300,6 +1427,7 @@ export function OrderAdjustments({
                     )}
                   </button>
                 </div>
+                {previewMessage("ship")}
               </fieldset>
             </form>
           ) : o.status === "pending" ? (
@@ -1440,7 +1568,7 @@ export function OrderAdjustments({
                       onSubmit={submit("deliver", (form) => ({
                         shipment_id: s.id,
                         delivered_on: text(form, "delivered_on"),
-                      }))}
+                      }), true, "shipping")}
                     >
                       <fieldset disabled={disabled} className="space-y-2">
                         <Label
@@ -1465,6 +1593,7 @@ export function OrderAdjustments({
                             "تسجيل تسليم هذه الشحنة",
                           )}
                         </button>
+                        {previewMessage("deliver", `deliver:${s.id}`)}
                       </fieldset>
                     </form>
                   )}
@@ -1476,13 +1605,14 @@ export function OrderAdjustments({
           <h3 ref={paymentsHeading} tabIndex={-1} className="font-semibold">
             {t("Payments", "الدفع")}
           </h3>
+          {savedMessage("payments")}
           <form
             hidden={paymentDraft !== null}
             onSubmit={async (event) => {
               event.preventDefault();
               const form = event.currentTarget;
               setSelectedSection("payments");
-              if (await mutate(text(form, "kind"), paymentValues(form), text(form, "reason"))) {
+              if (await saveForm(event, text(form, "kind"), paymentValues(form), "payments")) {
                 form.reset();
                 resetPaymentEntry();
               }
@@ -1498,8 +1628,20 @@ export function OrderAdjustments({
                   {t("Record entry", "تسجيل القيد")}
                 </button>
               </div>
+              {previewMessage(entryKind, "payment-entry")}
             </fieldset>
           </form>
+          {Number(finance?.balance_due) > 0 && (
+            <div className="space-y-2">
+              <button type="button" className={button} disabled={busy} aria-expanded={reminderOpen} onClick={() => {
+                setReminderOpen((open) => !open);
+                setLinkRequested(true);
+              }}>
+                {reminderOpen ? t("Hide payment reminder", "إخفاء تذكير الدفع") : t("Draft payment reminder", "إعداد تذكير بالدفع")}
+              </button>
+              {reminderOpen && compose("payment_reminder", "payment-reminder")}
+            </div>
+          )}
           {!!finance?.payments?.length && (
             <ul className="divide-y divide-line border-t border-line">
               {finance.payments.map((entry) => {
@@ -1579,6 +1721,7 @@ export function OrderAdjustments({
           )}
         </div>
         <div {...panelProps("returns")}>
+          {savedMessage("returns")}
           <h3 className="font-semibold">
             {t("Returned products & exchanges", "المنتجات المرتجعة والاستبدال")}
           </h3>
@@ -1597,7 +1740,7 @@ export function OrderAdjustments({
                 returned_on: text(form, "returned_on"),
                 waive_delivery:
                   new FormData(form).get("waive_delivery") === "on",
-              }))}
+              }), true, "returns")}
             >
               <fieldset disabled={disabled} className="space-y-3">
                 {itemPicker("return")}
@@ -1628,6 +1771,7 @@ export function OrderAdjustments({
                 <button className={primary}>
                   {t("Record selected returns", "تسجيل المرتجعات المحددة")}
                 </button>
+                {previewMessage("return")}
               </fieldset>
             </form>
           ) : (
@@ -1777,10 +1921,12 @@ export function OrderAdjustments({
           </ol>
         </div>
         <div {...panelProps("recovery")}>
+          {savedMessage("recovery")}
           <CorrectionActions
             detail={detail}
             disabled={disabled}
-            submit={submit}
+            submit={(action, build) => submit(action, build, true, "recovery")}
+            previewMessage={previewMessage}
             reason={reason}
             preset={{
               action: recommendation.correction,
@@ -1789,7 +1935,6 @@ export function OrderAdjustments({
           />
         </div>
       </div>
-      {children}
     </section>
   );
 }
