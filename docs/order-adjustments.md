@@ -15,7 +15,7 @@ Customer/contact/address/zone corrections; item and quantity changes, out-of-sto
 
 ## Shared API
 
-Operations backend owns `admin_order_detail(p_id)` and `admin_order_action(p_id,p_revision,p_key,p_action,p_payload,p_reason)`. The detail contains order revision, item progress, shipments, returns, timeline, notes and finance. Mutations require admin membership, an expected revision, a retry key and an explanation. Retries are bound to actor and exact operation content.
+Operations backend owns `admin_order_detail(p_id)` and `admin_order_action(p_id,p_revision,p_key,p_action,p_payload,p_reason)`. The detail contains order revision, item progress, shipments, returns, timeline, notes and finance. Mutations require admin membership, an expected revision and a retry key. The admin can add a reason. Retries are bound to actor and exact operation content.
 
 New website/chat orders enter managed operations at creation. Existing orders enter managed operations explicitly on their first new mutation. Promotion backfills their counters from existing status and tracked reservations without repeating stock or money movements. Legacy mutation endpoints must not bypass managed-order checks. Customer views expose only order progress and customer financial balances; notes, costs and audit internals remain admin-only.
 
@@ -63,3 +63,11 @@ The drawer opens the next relevant task for the current order state. The suggest
 Add catalog products using the plus disclosure. Closing it keeps the draft but excludes its fields from the save. Shipment and payment controls pair at wider phone/tablet widths and stack at narrow widths. The recovery button appears only after a failed load, stale edit or uncertain refresh/save; loading the latest order replaces unsaved form entries and preserves retry protection.
 
 Verified with 155 tests, a production build and synthetic PostgreSQL-backed browser checks: next-action selection, More navigation, addition draft/collapse/save, compact shipment/payment fields, correction filtering, stale-order recovery, Arabic 320px reflow and Escape dismissal. No database or Edge Function changes were required.
+
+## Payment entry corrections
+
+Edit the amount, date or reference on a recorded receipt or refund. Deleting an
+entry removes it from active balances and finance reports while preserving the
+original and all revisions in the private audit. A change that would leave an
+earlier refund uncovered is rejected. Payment corrections do not move money
+or reverse shipped product costs.

@@ -19,9 +19,6 @@ type Props = {
   disabled: boolean;
   submit: Submit;
   reason: () => ReactNode;
-  money: (value: number) => string;
-  date: (value?: string | null) => string;
-  actionLabel: (kind?: string) => string;
 };
 type Option = {
   id: string;
@@ -49,9 +46,6 @@ export function CorrectionActions({
   disabled,
   submit,
   reason,
-  money,
-  date,
-  actionLabel,
 }: Props) {
   const { locale } = useLocale(),
     ar = locale === "ar";
@@ -149,39 +143,6 @@ export function CorrectionActions({
     ),
     payload: (form) => ({ ordered_on: text(form, "ordered_on") }),
   });
-  if (finance?.payments?.length)
-    options.push({
-      id: "payment_date",
-      label: t("Correct payment date", "تصحيح تاريخ الدفع"),
-      fields: (
-        <div className="grid gap-2 min-[440px]:grid-cols-2">
-          <Field label={t("Payment or refund", "قيد الدفع أو الرد")}>
-            <select className={field} name="event_id" required defaultValue="">
-              <option value="">{t("Choose an entry", "اختر القيد")}</option>
-              {finance.payments.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {actionLabel(p.event_type)} · {money(p.amount)} ·{" "}
-                  {date(p.occurred_at)}
-                </option>
-              ))}
-            </select>
-          </Field>
-          <Field label={t("Original date (Cairo)", "التاريخ الأصلي (القاهرة)")}>
-            <input
-              className={field}
-              name="date"
-              type="date"
-              max={cairoDay()}
-              required
-            />
-          </Field>
-        </div>
-      ),
-      payload: (form) => ({
-        event_id: Number(text(form, "event_id")),
-        date: text(form, "date"),
-      }),
-    });
   if (undoable.length)
     options.push({
       id: "undo_shipment",

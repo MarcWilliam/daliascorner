@@ -1097,33 +1097,9 @@ export function AdminDashboard() {
                         </div>
                       </dl>
                     </section>
-                    <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-line px-4 py-3 text-sm">
-                      <span className="text-ink-muted">
-                        {locale === "ar" ? "طريقة الدفع" : "Payment method"}
-                      </span>
-                      <span className="font-semibold">
-                        {o.payment_method === "transfer"
-                          ? locale === "ar"
-                            ? "إنستا باي"
-                            : "InstaPay"
-                          : locale === "ar"
-                            ? "الدفع عند الاستلام"
-                            : "Cash on delivery"}
-                      </span>
-                    </div>
-                    {o.status === "cancelled" &&
-                      o.payment_status === "paid" && (
-                        <p
-                          role="status"
-                          className="mt-4 rounded-xl bg-orange/20 p-3 text-sm"
-                        >
-                          {locale === "ar"
-                            ? "الطلب ملغي والدفع ما زال مسجلاً كمستلم. سجّل الاسترداد بعد إعادة المبلغ فعليًا؛ الإلغاء لا يعيد المال تلقائيًا."
-                            : "This order is cancelled and payment is still marked received. Record a refund after returning the money; cancellation does not refund it automatically."}
-                        </p>
-                      )}
                     <OrderAdjustments
                       orderId={o.id}
+                      paymentMethod={o.payment_method}
                       onSaved={refresh}
                       onBusyChange={setBusy}
                     />

@@ -8,7 +8,7 @@ import {
   type FormEvent,
   type ReactNode,
 } from "react";
-import { Plus, X } from "lucide-react";
+import { ChevronDown, Plus, X } from "lucide-react";
 import { CorrectionActions } from "./CorrectionActions";
 import { nextOrderAction } from "@/lib/store/order-adjustment-navigation";
 import { useCustomerAuth } from "@/components/providers/CustomerAuthProvider";
@@ -23,6 +23,7 @@ import {
   returnableUnits,
   type OrderAdjustmentDetail,
   type AdjustmentItem,
+  type AdjustmentPayment,
 } from "@/lib/store/order-adjustments";
 
 type Zone = {
@@ -54,7 +55,7 @@ const button =
   "inline-flex min-h-11 items-center justify-center rounded-xl border border-brand px-3 py-2 text-sm font-semibold text-brand hover:bg-canvas-sunk focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/35 disabled:cursor-not-allowed disabled:opacity-40";
 const primary = button + " bg-brand text-canvas hover:bg-brand/90";
 const formClass = "space-y-3";
-const panel = "space-y-3 rounded-xl border border-line bg-surface p-4";
+const panel = "space-y-2 rounded-xl border border-line bg-surface p-3";
 const text = (form: HTMLFormElement, name: string) =>
   String(new FormData(form).get(name) ?? "").trim();
 const number = (form: HTMLFormElement, name: string) =>
@@ -156,10 +157,12 @@ function CatalogAddition({
 
 export function OrderAdjustments({
   orderId,
+  paymentMethod,
   onSaved,
   onBusyChange,
 }: {
   orderId: string;
+  paymentMethod: string;
   onSaved: () => Promise<void>;
   onBusyChange?: (busy: boolean) => void;
 }) {
@@ -172,9 +175,9 @@ export function OrderAdjustments({
   const [detail, setDetail] = useState<OrderAdjustmentDetail | null>(null),
     [zones, setZones] = useState<Zone[]>([]),
     [products, setProducts] = useState<Product[]>([]);
-  const [chosenSection, setChosenSection] = useState<Section | null>(null),
-    [moreOpen, setMoreOpen] = useState(false),
+  const [moreOpen, setMoreOpen] = useState(false),
     [nextSequence, setNextSequence] = useState(0),
+    [reviewingPayments, setReviewingPayments] = useState(false),
     [loading, setLoading] = useState(true),
     [busy, setBusy] = useState(false),
     [locked, setLocked] = useState(false),
@@ -182,7 +185,19 @@ export function OrderAdjustments({
     [message, setMessage] = useState(""),
     [generation, setGeneration] = useState(0);
   const [additionVersion, setAdditionVersion] = useState(0);
-  const moreButton = useRef<HTMLButtonElement>(null);
+  const toolsId = useId();
+  const [paymentDraft, setPaymentDraft] = useState<{
+    id: number;
+    mode: "edit" | "delete";
+  } | null>(null);
+  const paymentTrigger = useRef<HTMLButtonElement | null>(null);
+  const paymentsHeading = useRef<HTMLHeadingElement>(null);
+  function closePaymentDraft(deleted = false) {
+    setPaymentDraft(null);
+    requestAnimationFrame(() => {
+      (deleted ? paymentsHeading.current : paymentTrigger.current)?.focus();
+    });
+  }
   const read = useRef<AbortController | null>(null),
     write = useRef<AbortController | null>(null),
     alive = useRef(true),
@@ -270,7 +285,8 @@ export function OrderAdjustments({
   useEffect(() => {
     alive.current = true;
     setDetail(null);
-    setChosenSection(null);
+    setReviewingPayments(false);
+    setPaymentDraft(null);
     setMoreOpen(false);
     setNextSequence(0);
     setLocked(false);
@@ -289,6 +305,7 @@ export function OrderAdjustments({
     setError("");
     if (await load()) {
       setLocked(false);
+      setPaymentDraft(null);
       setGeneration((v) => v + 1);
     }
   }
@@ -299,15 +316,6 @@ export function OrderAdjustments({
   ): Promise<boolean> {
     const currentOrder = snapshot.current;
     if (inFlight.current || locked || !currentOrder || !isAdmin) return false;
-    if (action !== "note" && reason.trim().length < 3) {
-      setError(
-        t(
-          "Enter a short reason for this adjustment.",
-          "اكتب سببًا مختصرًا لهذا التعديل.",
-        ),
-      );
-      return false;
-    }
     if (
       (action === "ship" || action === "return") &&
       !(payload.lines as unknown[])?.length
@@ -452,6 +460,11 @@ export function OrderAdjustments({
               "أعد فتح الطلب الملغي أو المنتهي قبل هذا التعديل.",
             ),
           );
+        else if (code.includes("INVALID_PAYMENT_SEQUENCE"))
+          setError(t(
+            "This change would leave a refund without enough earlier payments. Review the amounts and dates.",
+            "سيترك هذا التغيير مبلغًا مردودًا دون دفعات سابقة كافية. راجع المبالغ والتواريخ.",
+          ));
         else if (code.includes("REFUND_EXCEEDS_RECEIPTS"))
           setError(
             t(
@@ -513,26 +526,15 @@ export function OrderAdjustments({
       if (ok && reset && form.isConnected) form.reset();
     };
   }
-  const reason = (label = t("Reason", "السبب"), className = field) => (
-    <Label title={label}>
+  const reason = (className = field) => (
+    <Label title={t("Reason (optional)", "السبب (اختياري)")}>
       <input
         className={className}
         name="reason"
-        required
-        minLength={3}
         maxLength={1000}
       />
     </Label>
   );
-  const sections: { id: Section; en: string; ar: string }[] = [
-    { id: "details", en: "Customer & delivery", ar: "العميل والتوصيل" },
-    { id: "items", en: "Items & replacements", ar: "المنتجات والبدائل" },
-    { id: "shipping", en: "Shipments", ar: "الشحنات" },
-    { id: "payments", en: "Payments", ar: "الدفع" },
-    { id: "returns", en: "Returns", ar: "المرتجعات" },
-    { id: "history", en: "History & notes", ar: "السجل والملاحظات" },
-    { id: "recovery", en: "Order actions", ar: "إجراءات الطلب" },
-  ];
   if (!detail)
     return (
       <section className={panel} aria-busy={loading}>
@@ -555,7 +557,7 @@ export function OrderAdjustments({
   const o = detail.order,
     finance = detail.finance;
   const recommendation = nextOrderAction(detail);
-  const section = chosenSection ?? recommendation.section;
+  const section = reviewingPayments ? "payments" : recommendation.section;
   const nextLabel = {
     confirm: t("Confirm order", "تأكيد الطلب"),
     extend: t("Review expired hold", "مراجعة الحجز المنتهي"),
@@ -566,7 +568,16 @@ export function OrderAdjustments({
     refund: t("Review refund due", "مراجعة المبلغ المطلوب رده"),
     history: t("Review order history", "مراجعة سجل الطلب"),
   }[recommendation.kind];
-  const currentTool = sections.find((s) => s.id === section)!;
+  const showTool = (tool: Section) => moreOpen || section === tool;
+  const paymentStatus = ({
+    unpaid: Number(finance?.balance_due) > 0
+      ? t("Pending payment", "بانتظار الدفع")
+      : t("No payment due", "لا يوجد مبلغ مستحق"),
+    partial: t("Partially paid", "مدفوع جزئيًا"),
+    paid: t("Payment received", "تم استلام الدفع"),
+    overpaid: t("Refund due", "مبلغ مستحق للرد"),
+    refunded: t("Refunded", "تم رد المبلغ"),
+  } as Record<string, string>)[finance?.payment_state] ?? t("Payment status unavailable", "حالة الدفع غير متاحة");
   const disabled = busy || loading || locked;
   const canShip =
     ["confirmed", "shipped"].includes(o.status) &&
@@ -590,6 +601,10 @@ export function OrderAdjustments({
       waive_delivery: t("Delivery fee waived", "إلغاء رسوم التوصيل"),
       payment: t("Payment received", "استلام مبلغ"),
       refund: t("Refund recorded", "تسجيل رد مبلغ"),
+      opening_paid: t("Opening payment", "دفعة سابقة"),
+      correction: t("Balance correction", "تصحيح الرصيد"),
+      payment_edit: t("Payment entry edited", "تعديل قيد الدفع"),
+      payment_delete: t("Payment entry deleted", "حذف قيد الدفع"),
       payment_date: t("Payment date corrected", "تصحيح تاريخ الدفع"),
       order_date: t("Order date corrected", "تصحيح تاريخ الطلب"),
       shipment_details: t("Shipment details corrected", "تصحيح بيانات الشحنة"),
@@ -600,6 +615,51 @@ export function OrderAdjustments({
       cancel: t("Outstanding items cancelled", "إلغاء المنتجات المتبقية"),
       undo_shipment: t("Mistaken shipment reversed", "التراجع عن شحنة خاطئة"),
     })[kind ?? ""] ?? t("Order update", "تحديث الطلب");
+  const paymentFields = (entry?: AdjustmentPayment) => (
+    <div className={pairedFields}>
+      {!entry && (
+        <Label title={t("Entry type", "نوع القيد")}>
+          <select className={compactField} name="kind" defaultValue={recommendation.kind === "refund" ? "refund" : "payment"}>
+            <option value="payment">{t("Payment received", "مبلغ مستلم")}</option>
+            <option value="refund">{t("Refund sent", "مبلغ تم رده")}</option>
+          </select>
+        </Label>
+      )}
+      <Label title={t("Amount (EGP)", "المبلغ (جنيه)")}>
+        <input
+          className={compactField}
+          name="amount"
+          type="number"
+          min="0.01"
+          step="0.01"
+          max="9999999999.99"
+          defaultValue={entry ? Math.abs(Number(entry.amount)) : undefined}
+          autoFocus={Boolean(entry)}
+          required
+          inputMode="decimal"
+        />
+      </Label>
+      <Label title={t("Payment or refund date", "تاريخ الدفع أو الرد")}>
+        <input
+          className={compactField}
+          type="date"
+          name="date"
+          defaultValue={entry ? (entry.occurred_at ? cairoDay(new Date(entry.occurred_at)) : "") : cairoDay()}
+          max={cairoDay()}
+          required={!entry || Boolean(entry.occurred_at)}
+        />
+      </Label>
+      <Label title={t("Payment reference", "مرجع الدفع")}>
+        <input className={compactField} name="reference" defaultValue={entry?.reference} maxLength={300} />
+      </Label>
+      {reason(compactField)}
+    </div>
+  );
+  const paymentValues = (form: HTMLFormElement) => ({
+    amount: number(form, "amount"),
+    date: text(form, "date"),
+    reference: text(form, "reference"),
+  });
   const itemPicker = (mode: "ship" | "return" | "edit") => (
     <div className="space-y-2">
       {detail.items.map((i) => {
@@ -754,21 +814,10 @@ export function OrderAdjustments({
       );
   return (
     <section
-      className="space-y-4"
+      className="space-y-3"
       aria-label={t("Order adjustments", "تعديلات الطلب")}
       aria-busy={busy || loading}
     >
-      <p className="text-xs text-ink-muted">
-        {o.ops_managed
-          ? t(
-              "Product costs follow shipped quantities, less explicitly restocked returns.",
-              "تُحسب تكلفة الكميات المشحونة بعد خصم المرتجعات المعادة للمخزون صراحةً.",
-            )
-          : t(
-              "This order uses the earlier paid-order cost estimate. Its first adjustment switches to shipped quantities with a recorded cost adjustment; no cash movement is created.",
-              "يستخدم هذا الطلب تقدير التكلفة السابق عند الدفع. أول تعديل ينقله إلى تكلفة الكميات المشحونة مع تسجيل تصحيح التكلفة، دون إنشاء حركة نقدية.",
-            )}
-      </p>
       {!o.ops_managed && ["shipped", "delivered"].includes(o.status) && (
         <div className="space-y-2 rounded-xl bg-canvas-sunk p-3 text-sm">
           <p>
@@ -796,99 +845,67 @@ export function OrderAdjustments({
           </button>
         </div>
       )}
-      <div className="grid grid-cols-2 gap-2 rounded-xl bg-canvas-sunk p-3 text-sm">
-        <div>
-          <span className="block text-xs text-ink-muted">
-            {t("Order total", "إجمالي الطلب")}
-          </span>
-          <strong>{money(Number(o.subtotal) + Number(o.delivery_fee))}</strong>
-        </div>
-        <div>
-          <span className="block text-xs text-ink-muted">
-            {t("Net received", "صافي المقبوض")}
-          </span>
-          <strong>
-            {finance?.net_collected == null
-              ? "—"
-              : money(finance.net_collected)}
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-line bg-surface px-3 py-2 text-sm">
+        <p>
+          <span className="text-ink-muted">{t("Payment method", "طريقة الدفع")}</span>
+          <strong className="ms-2">
+            {paymentMethod === "transfer" ? t("InstaPay", "إنستا باي") : t("Cash on delivery", "الدفع عند الاستلام")}
           </strong>
-        </div>
-        <div>
-          <span className="block text-xs text-ink-muted">
-            {t("Amount due", "المتبقي للدفع")}
-          </span>
-          <strong>
-            {finance?.balance_due == null ? "—" : money(finance.balance_due)}
-          </strong>
-        </div>
-        <div>
-          <span className="block text-xs text-ink-muted">
-            {t("Refund due", "المطلوب رده")}
-          </span>
-          <strong>
-            {finance?.refund_due == null ? "—" : money(finance.refund_due)}
-          </strong>
-        </div>
-      </div>
-      <nav aria-label={t("Order tools", "أدوات الطلب")} className="space-y-2">
-        <div className="flex flex-wrap items-end justify-between gap-2 rounded-xl border border-line bg-surface p-3">
-          <div className="min-w-0">
-            <p className="text-xs font-semibold text-ink-muted">
-              {t("Next action", "الخطوة التالية")}
-            </p>
-            <button
-              type="button"
-              className="min-h-11 text-start text-sm font-semibold text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/35 disabled:opacity-40"
-              disabled={busy}
-              onClick={() => {
-                setChosenSection(null);
-                setNextSequence((value) => value + 1);
-                setMoreOpen(false);
-              }}
-            >
-              {nextLabel}
-            </button>
+        </p>
+        <span className={`rounded-full px-2 py-1 text-xs font-semibold ${finance?.payment_state === "paid" ? "bg-leaf-soft text-brand" : "bg-canvas-sunk text-ink"}`}>
+          {paymentStatus}
+        </span>
+        <dl className="flex w-full flex-wrap gap-x-4 gap-y-1 border-t border-line pt-2 text-xs">
+          <div className="flex flex-wrap gap-x-1">
+            <dt className="text-ink-muted">{t("Net received", "صافي المقبوض")}</dt>
+            <dd className="font-semibold">{money(finance?.net_collected)}</dd>
           </div>
+          {Number(finance?.balance_due) > 0 && (
+            <div className="flex flex-wrap gap-x-1">
+              <dt className="text-ink-muted">{t("Amount due", "المتبقي للدفع")}</dt>
+              <dd className="font-semibold">{money(finance.balance_due)}</dd>
+            </div>
+          )}
+          {Number(finance?.refund_due) > 0 && (
+            <div className="flex flex-wrap gap-x-1">
+              <dt className="text-ink-muted">{t("Refund due", "المطلوب رده")}</dt>
+              <dd className="font-semibold">{money(finance.refund_due)}</dd>
+            </div>
+          )}
+        </dl>
+      </div>
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-line bg-surface px-3 py-2">
+        <div className="min-w-0">
+          <p className="text-xs font-semibold text-ink-muted">
+            {t("Next action", "الخطوة التالية")}
+          </p>
           <button
-            ref={moreButton}
             type="button"
-            className={button}
+            className="min-h-11 text-start text-sm font-semibold text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/35 disabled:opacity-40"
             disabled={busy}
-            aria-expanded={moreOpen}
-            aria-controls="more-order-tools"
-            onClick={() => setMoreOpen((value) => !value)}
+            onClick={() => {
+              setReviewingPayments(false);
+              setNextSequence((value) => value + 1);
+              setMoreOpen(false);
+            }}
           >
-            {t("More", "المزيد")}
+            {nextLabel}
           </button>
         </div>
-        <div
-          id="more-order-tools"
-          hidden={!moreOpen}
-          className={`${moreOpen ? "grid" : "hidden"} grid-cols-2 gap-2 rounded-xl border border-line bg-surface p-2`}
+        <button
+          type="button"
+          className={button + " gap-1"}
+          disabled={busy}
+          aria-expanded={moreOpen}
+          aria-controls={toolsId}
+          onClick={() => {
+            setMoreOpen((value) => !value);
+          }}
         >
-          {sections.map((s) => (
-            <button
-              key={s.id}
-              type="button"
-              disabled={busy}
-              aria-pressed={section === s.id}
-              onClick={() => {
-                setChosenSection(s.id);
-                setMoreOpen(false);
-                moreButton.current?.focus();
-              }}
-              className={`min-h-11 rounded-lg px-2 py-1 text-start text-sm font-semibold focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/35 ${section === s.id ? "bg-brand text-canvas" : "border border-line text-brand"}`}
-            >
-              {ar ? s.ar : s.en}
-            </button>
-          ))}
-        </div>
-        {chosenSection !== null && (
-          <p className="text-xs text-ink-muted">
-            {t("Showing:", "المعروض:")} {ar ? currentTool.ar : currentTool.en}
-          </p>
-        )}
-      </nav>
+          {moreOpen ? t("Show less", "عرض أقل") : t("More", "المزيد")}
+          <ChevronDown className={moreOpen ? "rotate-180" : ""} size={16} aria-hidden />
+        </button>
+      </div>
       {error && (
         <p
           ref={errorElement}
@@ -919,8 +936,8 @@ export function OrderAdjustments({
           </span>
         </div>
       )}
-      <div key={generation}>
-        <div hidden={section !== "details"} className={panel}>
+      <div id={toolsId} key={generation} className="space-y-2">
+        <div hidden={!showTool("details")} className={panel}>
           <h3 className="font-semibold">
             {t("Customer & delivery", "العميل والتوصيل")}
           </h3>
@@ -1029,7 +1046,7 @@ export function OrderAdjustments({
             </fieldset>
           </form>
         </div>
-        <div hidden={section !== "items"} className={panel}>
+        <div hidden={!showTool("items")} className={panel}>
           <h3 className="font-semibold">
             {t("Items & agreed replacements", "المنتجات والبدائل المتفق عليها")}
           </h3>
@@ -1077,7 +1094,7 @@ export function OrderAdjustments({
                   ))}
               </CatalogAddition>
               <div className="grid items-end gap-2 min-[480px]:grid-cols-[minmax(0,1fr)_auto]">
-                {reason(t("Reason", "السبب"), compactField)}
+                {reason(compactField)}
                 <button type="submit" className={primary}>
                   {t("Save item adjustment", "حفظ تعديل المنتجات")}
                 </button>
@@ -1085,7 +1102,7 @@ export function OrderAdjustments({
             </fieldset>
           </form>
         </div>
-        <div hidden={section !== "shipping"} className={panel}>
+        <div hidden={!showTool("shipping")} className={panel}>
           <h3 className="font-semibold">{t("Shipments", "الشحنات")}</h3>
           <p className="text-xs text-ink-muted">
             {t(
@@ -1148,7 +1165,7 @@ export function OrderAdjustments({
                   </Label>
                 </div>
                 <div className="grid items-end gap-2 min-[480px]:grid-cols-[minmax(0,1fr)_auto]">
-                  {reason(t("Reason", "السبب"), compactField)}
+                  {reason(compactField)}
                   <button className={primary} type="submit">
                     {t(
                       "Record selected shipment",
@@ -1328,124 +1345,110 @@ export function OrderAdjustments({
             ))}
           </ul>
         </div>
-        <div hidden={section !== "payments"} className={panel}>
-          <h3 className="font-semibold">
-            {t("Record payment or refund", "تسجيل دفع أو رد مبلغ")}
+        <div hidden={!showTool("payments")} className={panel}>
+          <h3 ref={paymentsHeading} tabIndex={-1} className="font-semibold">
+            {t("Payments", "الدفع")}
           </h3>
-          <p className="text-xs text-ink-muted">
-            {t(
-              "Only record money you have received or returned.",
-              "سجّل فقط المبلغ الذي استلمته أو رددته فعليًا.",
-            )}
-          </p>
           <form
-            className={formClass}
-            onSubmit={async (e) => {
-              e.preventDefault();
-              const form = e.currentTarget;
-              const action = text(form, "kind");
-              if (
-                await mutate(
-                  action,
-                  {
-                    amount: number(form, "amount"),
-                    date: text(form, "date"),
-                    reference: text(form, "reference"),
-                  },
-                  text(form, "reason"),
-                )
-              )
-                form.reset();
+            hidden={paymentDraft !== null}
+            onSubmit={async (event) => {
+              event.preventDefault();
+              const form = event.currentTarget;
+              setReviewingPayments(true);
+              if (await mutate(text(form, "kind"), paymentValues(form), text(form, "reason"))) form.reset();
             }}
           >
-            <fieldset disabled={disabled} className="space-y-2">
-              <div className={pairedFields}>
-                <Label title={t("Entry type", "نوع القيد")}>
-                  <select
-                    className={compactField}
-                    name="kind"
-                    defaultValue={
-                      recommendation.kind === "refund" ? "refund" : "payment"
-                    }
-                  >
-                    <option value="payment">
-                      {t("Payment received", "مبلغ مستلم")}
-                    </option>
-                    <option value="refund">
-                      {t("Refund sent", "مبلغ تم رده")}
-                    </option>
-                  </select>
-                </Label>
-                <Label title={t("Amount (EGP)", "المبلغ (جنيه)")}>
-                  <input
-                    className={compactField}
-                    name="amount"
-                    type="number"
-                    min="0.01"
-                    step="0.01"
-                    max="9999999999.99"
-                    required
-                    inputMode="decimal"
-                  />
-                </Label>
-                <Label
-                  title={t(
-                    "Original payment/refund date",
-                    "تاريخ الدفع أو الرد الأصلي",
-                  )}
-                >
-                  <input
-                    className={compactField}
-                    type="date"
-                    name="date"
-                    defaultValue={cairoDay()}
-                    max={cairoDay()}
-                    required
-                  />
-                </Label>
-                <Label title={t("Payment reference", "مرجع الدفع")}>
-                  <input
-                    className={compactField}
-                    name="reference"
-                    maxLength={200}
-                  />
-                </Label>
-              </div>
-              {reason(t("Reason", "السبب"), compactField)}
-              <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-                <label className="flex min-h-11 items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    required
-                    className="h-5 w-5 shrink-0 accent-brand"
-                  />
-                  {t(
-                    "I verified the receipt or refund.",
-                    "تحققت من الاستلام أو الرد.",
-                  )}
-                </label>
-                <button className={primary}>
-                  {t("Record payment entry", "تسجيل القيد المالي")}
+            <fieldset disabled={disabled || paymentDraft !== null} className="space-y-2">
+              {paymentFields()}
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-xs text-ink-muted">
+                  {t("Record money received or returned.", "سجّل المبالغ المستلمة أو المردودة.")}
+                </p>
+                <button className={primary} type="submit">
+                  {t("Record entry", "تسجيل القيد")}
                 </button>
               </div>
             </fieldset>
           </form>
-          <ul className="divide-y divide-line">
-            {finance?.payments?.map((p) => (
-              <li key={p.id} className="space-y-1 py-2 text-sm">
-                <p className="flex justify-between gap-3">
-                  <span>{actionLabel(p.event_type)}</span>
-                  <strong>{money(p.amount)}</strong>
-                </p>
-                <p className="text-xs text-ink-muted">
-                  {date(p.occurred_at)}
-                  {p.reference ? ` · ${p.reference}` : ""}
-                </p>
-              </li>
-            ))}
-          </ul>
+          {!!finance?.payments?.length && (
+            <ul className="divide-y divide-line border-t border-line">
+              {finance.payments.map((entry) => {
+                const mode = paymentDraft?.id === entry.id ? paymentDraft.mode : null;
+                return (
+                  <li key={entry.id} className="space-y-2 py-2 text-sm">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="font-medium">{actionLabel(entry.event_type)}</p>
+                        <p className="break-words text-xs text-ink-muted">
+                          {date(entry.occurred_at)}
+                          {entry.reference ? ` · ${entry.reference}` : ""}
+                        </p>
+                      </div>
+                      <div className="ms-auto flex flex-wrap items-center justify-end gap-2">
+                        <strong className="tabular-nums">{money(entry.amount)}</strong>
+                        {entry.event_type !== "correction" && (
+                          <div className="flex gap-1">
+                            {(["edit", "delete"] as const).map((action) => (
+                              <button
+                                key={action}
+                                type="button"
+                                className="min-h-11 rounded-lg px-2 text-xs font-semibold text-brand hover:bg-canvas-sunk focus-visible:ring-4 focus-visible:ring-brand/35 disabled:opacity-40"
+                                aria-expanded={mode === action}
+                                aria-controls={mode === action ? `${toolsId}-payment-${entry.id}` : undefined}
+                                disabled={disabled}
+                                onClick={(event) => {
+                                  paymentTrigger.current = event.currentTarget;
+                                  if (mode === action) closePaymentDraft();
+                                  else setPaymentDraft({ id: entry.id, mode: action });
+                                }}
+                              >
+                                {action === "edit" ? t("Edit", "تعديل") : t("Delete", "حذف")}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    {mode && (
+                      <form
+                        key={mode}
+                        id={`${toolsId}-payment-${entry.id}`}
+                        className="rounded-lg bg-canvas-sunk p-2"
+                        onSubmit={async (event) => {
+                          event.preventDefault();
+                          const form = event.currentTarget;
+                          setReviewingPayments(true);
+                          const payload = mode === "edit" ? paymentValues(form) : {};
+                          if (await mutate(mode === "edit" ? "payment_edit" : "payment_delete", { event_id: entry.id, ...payload }, text(form, "reason"))) {
+                            closePaymentDraft(mode === "delete");
+                          }
+                        }}
+                      >
+                        <fieldset disabled={disabled} className="space-y-2">
+                          {mode === "edit" ? paymentFields(entry) : (
+                            <>
+                              <p>{t("Delete this entry from the order balance and finance report?", "حذف هذا القيد من رصيد الطلب والتقرير المالي؟")}</p>
+                              {reason(compactField)}
+                            </>
+                          )}
+                          <div className="flex flex-wrap justify-end gap-2">
+                            <button type="button" className={button} autoFocus={mode === "delete"} onClick={() => closePaymentDraft()}>
+                              {t("Cancel", "إلغاء")}
+                            </button>
+                            <button type="submit" className={primary}>
+                              {mode === "edit" ? t("Save changes", "حفظ التغييرات") : t("Delete entry", "حذف القيد")}
+                            </button>
+                          </div>
+                        </fieldset>
+                      </form>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
         </div>
-        <div hidden={section !== "returns"} className={panel}>
+        <div hidden={!showTool("returns")} className={panel}>
           <h3 className="font-semibold">
             {t("Returned products & exchanges", "المنتجات المرتجعة والاستبدال")}
           </h3>
@@ -1567,7 +1570,7 @@ export function OrderAdjustments({
             ))}
           </ul>
         </div>
-        <div hidden={section !== "history"} className={panel}>
+        <div hidden={!showTool("history")} className={panel}>
           <h3 className="font-semibold">
             {t("Private order notes", "ملاحظات الطلب الداخلية")}
           </h3>
@@ -1642,15 +1645,12 @@ export function OrderAdjustments({
             ))}
           </ol>
         </div>
-        <div hidden={section !== "recovery"} className={panel}>
+        <div hidden={!showTool("recovery")} className={panel}>
           <CorrectionActions
             detail={detail}
             disabled={disabled}
             submit={submit}
             reason={reason}
-            money={money}
-            date={date}
-            actionLabel={actionLabel}
             preset={{
               action: recommendation.correction,
               sequence: nextSequence,

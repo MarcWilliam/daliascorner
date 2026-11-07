@@ -60,6 +60,7 @@ async function action(
   payload: Record<string, unknown>,
   key = crypto.randomUUID(),
   rev?: number,
+  reason = "TEST admin adjustment",
 ) {
   return (
     await db.query<{ v: unknown }>(
@@ -70,7 +71,7 @@ async function action(
         key,
         name,
         JSON.stringify(payload),
-        "TEST admin adjustment",
+        reason,
       ],
     )
   ).rows[0].v;
@@ -390,6 +391,57 @@ test("migration refuses refunded legacy orders with no recorded cash history", a
       ).rows[0].v,
       0,
     );
+  } finally {
+    await db.close();
+  }
+});
+
+test("inline payment corrections update balances and reports without deleting audit history", async () => {
+  const { db, id, item, day } = await setup();
+  try {
+    await action(db, id, "confirm", {}, undefined, undefined, "");
+    await action(db, id, "ship", { lines: [{ item_id: item, quantity: 1 }], dispatched_on: day }, undefined, undefined, "");
+    await action(db, id, "payment", { amount: 220, date: day, reference: "Original" }, undefined, undefined, "");
+    await action(db, id, "refund", { amount: 30, date: day });
+    const events = (await db.query<{ id: number; event_type: string }>(
+      "select id,event_type from finance_payment_events where order_id=$1 order by id",
+      [id],
+    )).rows;
+    const [receipt, refund] = events;
+    const earlier = (await db.query<{ v: string }>(
+      "select ((now() at time zone 'Africa/Cairo')::date-1)::text v",
+    )).rows[0].v;
+    const key = crypto.randomUUID(), rev = await revision(db, id);
+    const edit = { event_id: receipt.id, amount: 180, date: earlier, reference: "Corrected" };
+    const result = await action(db, id, "payment_edit", edit, key, rev, "");
+    assert.deepEqual(await action(db, id, "payment_edit", edit, key, rev, ""), result);
+    assert.equal((await order(db, id)).balance_due, 70);
+    assert.equal((await overview(db, earlier, earlier)).net_collected, 180);
+    assert.equal((await overview(db, day, day)).net_collected, -30);
+    assert.equal((await overview(db)).known_product_cost, 30);
+    await assert.rejects(action(db, id, "payment_delete", { event_id: receipt.id }), /INVALID_PAYMENT_SEQUENCE/);
+    assert.equal((await order(db, id)).amount_received, 180);
+    const recent = (await db.query<{ v: { id: number; reference: string }[] }>("select finance_recent_payments() v")).rows[0].v;
+    assert.equal(recent.find((entry) => entry.id === receipt.id)?.reference, "Corrected");
+    await action(db, id, "payment_edit", { event_id: refund.id, amount: 25, date: day });
+    assert.equal((await order(db, id)).amount_refunded, 25);
+    await action(db, id, "payment_delete", { event_id: refund.id }, undefined, undefined, "");
+    await action(db, id, "payment_delete", { event_id: receipt.id }, undefined, undefined, "");
+    assert.equal((await overview(db)).net_collected, 0);
+    assert.equal((await overview(db)).known_product_cost, 30);
+    assert.equal((await order(db, id)).payment_state, "unpaid");
+    const ledger = (await db.query<{ v: { finance: { payments: unknown[] }; timeline: { kind: string; reason: string }[] } }>(
+      "select admin_order_detail($1) v", [id],
+    )).rows[0].v;
+    assert.deepEqual(ledger.finance.payments, []);
+    assert.equal(ledger.timeline.filter((event) => event.kind === "payment_delete" && event.reason === "").length, 2);
+    assert.equal((await db.query<{ reference: string }>(
+      "select reference from finance_payment_events where id=$1", [receipt.id],
+    )).rows[0].reference, "Original");
+    await db.query("select set_config('request.jwt.claim.sub',$1,false)", [customer]);
+    await db.exec("set role authenticated");
+    await assert.rejects(action(db, id, "payment_edit", edit, undefined, 0), /FORBIDDEN/);
+    await assert.rejects(db.query("select * from private.order_cash_entries"), /permission denied/);
   } finally {
     await db.close();
   }
